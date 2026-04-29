@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useSchoolData } from '../../../../contexts/SchoolDataContext';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEventListener } from 'expo';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Icons } from '../../../../components/Icons';
 import { Video as VideoType } from '../../../../contexts/SchoolDataContext';
@@ -29,15 +27,12 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     React.useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isLiveNode) {
-            // Calculate actual elapsed time based on the database creation timestamp
             const startTimestamp = video?.created_at ? new Date(video.created_at).getTime() : Date.now();
-            
             const syncTimer = () => {
                 const deltaSeconds = Math.floor((Date.now() - startTimestamp) / 1000);
                 setElapsedTime(deltaSeconds > 0 ? deltaSeconds : 0);
             };
-
-            syncTimer(); // Set immediately on mount
+            syncTimer();
             interval = setInterval(syncTimer, 1000);
         }
         return () => clearInterval(interval);
@@ -168,14 +163,14 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                                 <Icons.Video size={20} color="#818cf8" />
                             </View>
                             <View>
-                                <Text className="text-white font-black text-[11px]">Tactical Feed Active</Text>
-                                <Text className="text-gray-400 text-[8px] uppercase font-black tracking-[2px] mt-0.5">Secure Institutional Node</Text>
+                                <Text className="text-white font-black text-[11px]">Live Classroom Feed</Text>
+                                <Text className="text-gray-400 text-[8px] uppercase font-black tracking-[2px] mt-0.5">Academic Broadcast</Text>
                             </View>
                         </View>
                         {isLiveNode && (
                              <View className="items-end">
                                 <Text className="text-red-500 font-mono text-lg font-black tracking-tighter leading-none">{formatTime(elapsedTime)}</Text>
-                                <Text className="text-slate-500 text-[8px] font-black uppercase mt-1">Telemetry</Text>
+                                <Text className="text-slate-500 text-[8px] font-black uppercase mt-1">Elapsed</Text>
                              </View>
                         )}
                     </View>
@@ -202,7 +197,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                         className="bg-red-600 px-6 py-3.5 rounded-2xl flex-row items-center shadow-lg shadow-red-500/20"
                     >
                         <Icons.Close size={16} color="white" />
-                        <Text className="text-white font-black uppercase tracking-widest text-[10px] ml-3">Terminate</Text>
+                        <Text className="text-white font-black uppercase tracking-widest text-[10px] ml-3">Leave Class</Text>
                     </TouchableOpacity>
                 </View>
             </View>
