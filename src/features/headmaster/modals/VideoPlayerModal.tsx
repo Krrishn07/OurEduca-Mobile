@@ -29,10 +29,19 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     React.useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isLiveNode) {
-            interval = setInterval(() => setElapsedTime(prev => prev + 1), 1000);
+            // Calculate actual elapsed time based on the database creation timestamp
+            const startTimestamp = video?.created_at ? new Date(video.created_at).getTime() : Date.now();
+            
+            const syncTimer = () => {
+                const deltaSeconds = Math.floor((Date.now() - startTimestamp) / 1000);
+                setElapsedTime(deltaSeconds > 0 ? deltaSeconds : 0);
+            };
+
+            syncTimer(); // Set immediately on mount
+            interval = setInterval(syncTimer, 1000);
         }
         return () => clearInterval(interval);
-    }, [isLiveNode]);
+    }, [isLiveNode, video?.created_at]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -61,16 +70,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         if (isPlaying) setIsLoading(false);
     });
 
-    // Handle source changes if the modal stays mounted
-    React.useEffect(() => {
-        async function syncSource() {
-            if (playbackUrl && !youtubeId) {
-                await player.replaceAsync(playbackUrl);
-                player.play();
-            }
-        }
-        syncSource();
-    }, [playbackUrl, player, youtubeId]);
+
 
     if (!video) return null;
 
