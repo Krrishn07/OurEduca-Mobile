@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useSchoolData } from '../../../../contexts/SchoolDataContext';
-import { HardwareStreamPlayer } from '../../../../components/HardwareStreamPlayer';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEventListener } from 'expo';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Icons } from '../../../../components/Icons';
 import { Video as VideoType } from '../../../../contexts/SchoolDataContext';
+import { HardwareStreamPlayer } from '../../../../components/HardwareStreamPlayer';
 
 interface VideoPlayerModalProps {
     visible: boolean;
