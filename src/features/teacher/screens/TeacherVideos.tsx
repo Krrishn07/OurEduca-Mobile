@@ -206,22 +206,16 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
     }
   }, [globalIsLiveActive]);
 
-  // Orphan Stream Recovery (Place near the other useEffects)
   useEffect(() => {
     if (!liveStreams || !currentUser) return;
-    
-    // Find any active stream in the DB owned by this user
     const orphanStream = liveStreams.find(s => s.created_by === currentUser.id && s.is_active);
-    
-    // If one exists but the UI is NOT showing the streaming console, snap them back to it
     if (orphanStream && !isStreaming) {
-        console.log('[RESCUE] Recovering orphaned stream:', orphanStream.id);
         setActiveSessionId(orphanStream.id);
         setActiveSessionData({
             id: orphanStream.id,
-            title: orphanStream.title || 'Recovered Session',
-            subject: orphanStream.subject || 'Recovered Session',
-            source: orphanStream.stream_url === 'HARDWARE_CAMERA' ? 'CAMERA' : 'CCTV',
+            title: orphanStream.title,
+            subject: orphanStream.subject,
+            source: 'CAMERA',
             startTime: new Date(orphanStream.created_at).getTime()
         });
         setStreamSubject(orphanStream.subject || 'Recovered Session');
