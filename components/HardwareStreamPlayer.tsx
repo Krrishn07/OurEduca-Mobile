@@ -8,9 +8,10 @@ import { useSchoolData } from '../contexts/SchoolDataContext';
 interface HardwareStreamPlayerProps {
   url: string;
   style?: any;
+  hideUI?: boolean;
 }
 
-export const HardwareStreamPlayer: React.FC<HardwareStreamPlayerProps> = ({ url, style }) => {
+export const HardwareStreamPlayer: React.FC<HardwareStreamPlayerProps> = ({ url, style, hideUI = false }) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { schoolDetails } = useSchoolData();
@@ -79,10 +80,12 @@ export const HardwareStreamPlayer: React.FC<HardwareStreamPlayerProps> = ({ url,
             <Text style={styles.errorSubtitle}>Ensure you are on the same Wi-Fi as the camera. (HTTP error: {error})</Text>
           </View>
         )}
-        <View style={styles.overlay}>
-           <Text style={styles.overlayText}>MJPEG COMPATIBILITY MODE</Text>
-        </View>
-        {schoolDetails?.logo_url && (
+        {!hideUI && (
+          <View style={styles.overlay}>
+             <Text style={styles.overlayText}>MJPEG COMPATIBILITY MODE</Text>
+          </View>
+        )}
+        {!hideUI && schoolDetails?.logo_url && (
           <View style={styles.watermarkContainer}>
             <Image 
               source={{ uri: schoolDetails.logo_url }} 
@@ -102,10 +105,12 @@ export const HardwareStreamPlayer: React.FC<HardwareStreamPlayerProps> = ({ url,
         style={styles.video}
         contentMode="contain"
       />
-      <View style={styles.overlay}>
-         <Text style={styles.overlayText}>NATIVE HLS STREAM</Text>
-      </View>
-      {schoolDetails?.logo_url && (
+      {!hideUI && (
+        <View style={styles.overlay}>
+           <Text style={styles.overlayText}>NATIVE HLS STREAM</Text>
+        </View>
+      )}
+      {!hideUI && schoolDetails?.logo_url && (
         <View style={styles.watermarkContainer}>
           <Image 
             source={{ uri: schoolDetails.logo_url }} 

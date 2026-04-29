@@ -93,7 +93,11 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                     {youtubeId ? (
                          <YoutubePlayer height="100%" play={true} videoId={youtubeId} onReady={() => setIsLoading(false)} />
                     ) : (
-                         <HardwareStreamPlayer url={playbackUrl} style={{ flex: 1 }} />
+                         <HardwareStreamPlayer 
+                             url={playbackUrl} 
+                             style={{ flex: 1 }} 
+                             hideUI={true}
+                         />
                     )}
 
                     {/* Platinum Viewfinder Overlays */}
