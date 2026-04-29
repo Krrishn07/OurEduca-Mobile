@@ -49,15 +49,13 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const staffAnnouncements = (announcements || []).filter((a) => a.audience === 'ALL' || a.audience === 'STAFF');
-  const displayAnnouncements = staffAnnouncements.slice(0, 5);
-  const myMeetings = meetings || [];
-
-  const getStudentCountForClass = (classId: string, section: string = 'A') => {
-    return (dbRoster || []).filter((r) =>
-      r.class_id === classId &&
-      (r.section || 'A').toString().toLowerCase().trim() === section.toString().toLowerCase().trim()
-    ).length;
-  };
+  const displayAnnouncements = staffAnnouncements.slice(0, 3);
+  
+  const mockRecentActivity = [
+    { id: 'act1', title: 'Assignment Submitted', user: 'John Doe', type: 'submission', time: '10m ago', icon: <Icons.Report size={14} color="#f59e0b" />, bg: '#fff7ed' },
+    { id: 'act2', title: 'Leave Request', user: 'Alice Smith', type: 'request', time: '1h ago', icon: <Icons.Calendar size={14} color="#ef4444" />, bg: '#fef2f2' },
+    { id: 'act3', title: 'Material Downloaded', user: 'Mark Wilson', type: 'engagement', time: '2h ago', icon: <Icons.Download size={14} color="#10b981" />, bg: '#f0fdf4' },
+  ];
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
@@ -66,45 +64,6 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
     if (hour < 22) return 'Good evening,';
     return 'Working late? Hello,';
   };
-
-  const stats = [
-    {
-      label: 'Students',
-      value: totalStudents,
-      target: 'classes',
-      toneClassName: 'bg-indigo-50',
-      icon: <Icons.Users size={22} color={AppTheme.colors.primary} />,
-      subtitle: 'Active scholars',
-      subtitleTone: 'info' as const,
-    },
-    {
-      label: 'Class Resources',
-      value: (teacherMaterials || []).length,
-      target: 'videos',
-      toneClassName: 'bg-emerald-50',
-      icon: <Icons.BookOpen size={22} color={AppTheme.colors.success} />,
-      subtitle: 'Shared in class',
-      subtitleTone: 'success' as const,
-    },
-    {
-      label: 'Sections',
-      value: (assignedSections || []).length,
-      target: 'classes',
-      toneClassName: 'bg-amber-50',
-      icon: <Icons.Classes size={22} color={AppTheme.colors.warning} />,
-      subtitle: 'Assigned groups',
-      subtitleTone: 'warning' as const,
-    },
-    {
-      label: 'Briefings',
-      value: staffAnnouncements.length,
-      target: 'messages',
-      toneClassName: 'bg-rose-50',
-      icon: <Icons.Notifications size={22} color={AppTheme.colors.error} />,
-      subtitle: 'Staff notices',
-      subtitleTone: 'danger' as const,
-    },
-  ];
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
@@ -156,23 +115,34 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           end={{ x: 1, y: 1 }}
           className="flex-1 rounded-[24px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
         >
-          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center relative z-10">
-            <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30">
-              {currentSchool?.logo_url ? (
-                <Image
-                  source={{ uri: currentSchool.logo_url }}
-                  style={{ width: '100%', height: '100%', borderRadius: 16 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Icons.School size={32} color="white" />
-              )}
-            </Animated.View>
-            <View className="flex-1">
-              <Text className="text-xl font-black text-white tracking-tighter leading-6 font-inter-black">
-                {currentSchool?.name || 'Faculty Studio'}
-              </Text>
-              <Text className="text-indigo-100 text-[9px] font-black uppercase tracking-[3px] mt-0.5 opacity-85 font-inter-black">OurEduca Global</Text>
+          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center justify-between relative z-10">
+            <View className="flex-row items-center">
+              <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30">
+                {currentSchool?.logo_url ? (
+                  <Image
+                    source={{ uri: currentSchool.logo_url }}
+                    style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Icons.School size={28} color="white" />
+                )}
+              </Animated.View>
+              <View>
+                <Text className="text-lg font-black text-white tracking-tighter leading-5 font-inter-black">
+                  {currentSchool?.name || 'Faculty Studio'}
+                </Text>
+                <Text className="text-indigo-100 text-[8px] font-black uppercase tracking-[3px] opacity-85 font-inter-black">OurEduca Node</Text>
+              </View>
+            </View>
+            
+            <View className="flex-row">
+              <TouchableOpacity className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20 mr-2">
+                <Icons.Search size={18} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20">
+                <Icons.Notifications size={18} color="white" />
+              </TouchableOpacity>
             </View>
           </Animated.View>
 
@@ -182,12 +152,6 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
             <View className="flex-row items-center mt-0.5">
               <Text className="text-2xl font-black text-[#fde047] tracking-tight leading-tight font-inter-black">
                 {formatGreetingName(currentUser?.name, 'Teacher')} ✦
-              </Text>
-            </View>
-            <View className="flex-row items-center bg-white/10 self-start px-3 py-1 rounded-full border border-white/20 mt-3">
-              <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2" />
-              <Text className="text-white text-[10px] font-bold font-inter-medium">
-                Institutional Load: <Text className="text-emerald-300">{(assignedSections || []).length} active sections</Text>
               </Text>
             </View>
           </Animated.View>
@@ -205,54 +169,28 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
-        <View className="flex-row gap-3 mb-6">
-          <ActionTile
-            label="Upload"
-            icon={<Icons.Plus size={18} color="white" />}
-            toneClassName="bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-100/50"
-            iconShellClassName="bg-white/15 border-white/20"
-            textClassName="text-white"
-            className="py-4"
-            onPress={() => onQuickAction('Upload Material')}
-          />
-          <ActionTile
-            label="Post Notice"
-            icon={<Icons.Notifications size={18} color="#4f46e5" />}
-            toneClassName="bg-white border-gray-100 shadow-md shadow-indigo-100/20"
-            iconShellClassName="bg-indigo-50 border-indigo-100"
-            textClassName="text-indigo-700"
-            className="py-4"
-            onPress={() => onQuickAction('Post Announcement')}
-          />
-        </View>
-
-        <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
-          {(stats || []).map((stat, idx) => (
-            <TouchableOpacity
-              key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`}
-              className="w-[48%]"
-              activeOpacity={stat.target ? 0.9 : 1}
-              disabled={!stat.target}
-              onPress={() => stat.target && onStatPress?.(stat.target)}
+        {/* Core Quick Actions - 4 Item Circular Grid */}
+        <View className="flex-row justify-between mb-8 px-2">
+          {[
+            { label: 'Attendance', icon: <Icons.Check size={24} color="#10b981" />, bg: 'bg-emerald-50', action: 'attendance' },
+            { label: 'Assignments', icon: <Icons.Report size={24} color="#f59e0b" />, bg: 'bg-amber-50', action: 'assignments' },
+            { label: 'Schedule', icon: <Icons.Calendar size={24} color="#4f46e5" />, bg: 'bg-indigo-50', action: 'schedule' },
+            { label: 'Students', icon: <Icons.Users size={24} color="#8b5cf6" />, bg: 'bg-purple-50', action: 'students' },
+          ].map((item, idx) => (
+            <TouchableOpacity 
+              key={idx} 
+              onPress={() => onQuickAction(item.action)}
+              className="items-center"
             >
-              <StatCard
-                value={stat.value}
-                label={stat.label}
-                icon={stat.icon}
-                toneClassName={stat.toneClassName}
-                pill={
-                  <StatusPill
-                    label={stat.subtitle}
-                    className="self-center"
-                    type={stat.subtitleTone === 'danger' ? 'danger' : stat.subtitleTone === 'success' ? 'success' : stat.subtitleTone === 'warning' ? 'warning' : 'neutral'}
-                  />
-                }
-              />
+              <View className={`w-16 h-16 ${item.bg} rounded-full items-center justify-center mb-2 border border-white/50 shadow-sm`}>
+                {item.icon}
+              </View>
+              <Text className="text-[10px] font-black text-gray-500 uppercase tracking-widest font-inter-black">{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View className="mb-6">
+        <View className="mb-8">
           <SectionHeader
             title="DAILY AGENDA"
             className="px-2"
@@ -322,14 +260,40 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           )}
         </View>
 
-        <View className="mb-6">
+        <View className="mb-8">
+          <SectionHeader
+            title="RECENT ACTIVITY"
+            className="px-2"
+            rightElement={
+              <StatusPill 
+                label="LIVE FEED" 
+                type="info" 
+              />
+            }
+          />
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {mockRecentActivity.map((act, idx) => (
+              <AppRow
+                key={act.id}
+                title={act.title}
+                subtitle={`${act.user} • ${act.time}`}
+                avatarIcon={act.icon}
+                avatarBg={act.bg}
+                showBorder={idx < mockRecentActivity.length - 1}
+                rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
+              />
+            ))}
+          </AppCard>
+        </View>
+
+        <View className="mb-8">
           <SectionHeader
             title="FACULTY NEWS"
             className="px-2"
             rightElement={
               <StatusPill 
-                label={`${staffAnnouncements.length} Active`} 
-                type="info" 
+                label={`${staffAnnouncements.length} Total`} 
+                type="neutral" 
               />
             }
           />
@@ -369,32 +333,6 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           </AppCard>
         </View>
 
-        {myMeetings.length > 0 && (
-          <View className="mb-8">
-            <SectionHeader
-              title="SESSION BRIEFINGS"
-              className="px-2"
-              rightElement={<StatusPill label="LIVE" type="info" />}
-            />
-
-            <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-              {(myMeetings || []).map((m, idx) => (
-                <AppRow
-                  key={m.id}
-                  title={m.title}
-                  subtitle={m.description}
-                  avatarIcon={<Icons.Video size={15} color="#4f46e5" />}
-                  avatarBg="#eef2ff"
-                  meta={m.time}
-                  showBorder={idx < myMeetings.length - 1}
-                  onPress={() => {}}
-                  rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
-                />
-              ))}
-            </AppCard>
-          </View>
-        )}
-
         <View className="mb-8">
           <SectionHeader
             title="INSTITUTIONAL CALENDAR"
@@ -405,7 +343,6 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           </AppCard>
         </View>
 
-        {/* Platform Build Info Integration */}
         <View className="mt-10 items-center opacity-30">
           <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
           <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[4px] font-inter-black">Verified Institutional Node</Text>
@@ -415,3 +352,4 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
     </View>
   );
 };
+
