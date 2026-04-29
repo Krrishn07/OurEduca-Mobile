@@ -33,13 +33,7 @@ export const HardwareStreamPlayer: React.FC<HardwareStreamPlayerProps> = ({ url,
     if (url && !isMjpeg) player.play();
   });
 
-  React.useEffect(() => {
-    if (url && !isMjpeg) {
-      player.replaceAsync(url).then(() => player.play());
-    } else {
-      player.pause();
-    }
-  }, [url, isMjpeg]);
+
 
   if (!url) {
     return (
