@@ -65,35 +65,44 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
     return 'Working late? Hello,';
   };
 
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
-    extrapolate: 'clamp',
-  });
-
-  const headerZindex = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 1000],
-    extrapolate: 'clamp',
-  });
-
-  const greetingOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
-    outputRange: [1, 0.45, 0],
-    extrapolate: 'clamp',
-  });
-
-  const logoScale = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [1, 0.8],
-    extrapolate: 'clamp',
-  });
-
-  const brandTranslate = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
+  const stats = [
+    {
+      label: 'Students',
+      value: totalStudents,
+      target: 'classes',
+      toneClassName: 'bg-indigo-50',
+      icon: <Icons.Users size={22} color={AppTheme.colors.primary} />,
+      subtitle: 'Active scholars',
+      subtitleTone: 'info' as const,
+    },
+    {
+      label: 'Class Resources',
+      value: (teacherMaterials || []).length,
+      target: 'videos',
+      toneClassName: 'bg-emerald-50',
+      icon: <Icons.BookOpen size={22} color={AppTheme.colors.success} />,
+      subtitle: 'Shared in class',
+      subtitleTone: 'success' as const,
+    },
+    {
+      label: 'Sections',
+      value: (assignedSections || []).length,
+      target: 'classes',
+      toneClassName: 'bg-amber-50',
+      icon: <Icons.Classes size={22} color={AppTheme.colors.warning} />,
+      subtitle: 'Assigned groups',
+      subtitleTone: 'warning' as const,
+    },
+    {
+      label: 'Briefings',
+      value: staffAnnouncements.length,
+      target: 'messages',
+      toneClassName: 'bg-rose-50',
+      icon: <Icons.Notifications size={22} color={AppTheme.colors.error} />,
+      subtitle: 'Staff notices',
+      subtitleTone: 'danger' as const,
+    },
+  ];
 
   return (
     <View className="flex-1 bg-[#f5f7ff]">
@@ -186,6 +195,33 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 {item.icon}
               </View>
               <Text className="text-[10px] font-black text-gray-500 uppercase tracking-widest font-inter-black">{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* KPI Stats Grid - Restored */}
+        <View className="flex-row flex-wrap justify-between mb-8 gap-y-4">
+          {(stats || []).map((stat, idx) => (
+            <TouchableOpacity
+              key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`}
+              className="w-[48%]"
+              activeOpacity={stat.target ? 0.9 : 1}
+              disabled={!stat.target}
+              onPress={() => stat.target && onStatPress?.(stat.target)}
+            >
+              <StatCard
+                value={stat.value}
+                label={stat.label}
+                icon={stat.icon}
+                toneClassName={stat.toneClassName}
+                pill={
+                  <StatusPill
+                    label={stat.subtitle}
+                    className="self-center"
+                    type={stat.subtitleTone === 'danger' ? 'danger' : stat.subtitleTone === 'success' ? 'success' : stat.subtitleTone === 'warning' ? 'warning' : 'neutral'}
+                  />
+                }
+              />
             </TouchableOpacity>
           ))}
         </View>
