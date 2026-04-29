@@ -171,9 +171,13 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
-        <View className="flex-row flex-wrap justify-between mb-4">
-          {stats.map((stat) => (
-            <TouchableOpacity key={stat.label} onPress={stat.onPress} className="w-[48.2%] mb-4">
+        <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
+          {stats.map((stat, idx) => (
+            <TouchableOpacity 
+              key={`headmaster-stat-${stat.label.replace(/\s+/g, '-')}-${idx}`} 
+              onPress={stat.onPress} 
+              className="w-[48%]"
+            >
               <StatCard
                 value={stat.value}
                 label={stat.label}
@@ -200,7 +204,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
             {announcements.slice(0, 3).map((a, idx) => (
               <AppRow
-                key={a.id || idx}
+                key={'hm-notice-' + (a.id || idx)}
                 title={a.title}
                 subtitle={a.message || 'No description provided'}
                 meta={a.date}
@@ -287,7 +291,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
 
               return (
                 <AppRow
-                  key={item.id || idx}
+                  key={'hm-activity-' + (item.id || idx)}
                   title={item.title}
                   subtitle={`${dateStr} · ${timeStr}`}
                   statusDot={
