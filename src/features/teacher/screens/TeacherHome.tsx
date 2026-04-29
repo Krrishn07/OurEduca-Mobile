@@ -253,15 +253,15 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
         </View>
 
         <View className="mb-6">
-          <View className="flex-row justify-between items-center mb-3 px-2">
-            <View className="flex-row items-center">
-              <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-              <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Daily Agenda</Text>
-            </View>
-            <TouchableOpacity onPress={() => onNavigateToClass?.({})} className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 active:bg-indigo-100">
-              <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">Registry</Text>
-            </TouchableOpacity>
-          </View>
+          <SectionHeader
+            title="DAILY AGENDA"
+            className="px-2"
+            rightElement={
+              <TouchableOpacity onPress={() => onNavigateToClass?.({})} className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 active:bg-indigo-100">
+                <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">Registry</Text>
+              </TouchableOpacity>
+            }
+          />
 
           {(assignedSections || []).length > 0 ? (
             <Animated.ScrollView
@@ -371,13 +371,11 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
 
         {myMeetings.length > 0 && (
           <View className="mb-8">
-            <View className="flex-row justify-between items-center mb-3 px-2">
-              <View className="flex-row items-center">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Session Briefings</Text>
-              </View>
-              <StatusPill label="LIVE" type="info" />
-            </View>
+            <SectionHeader
+              title="SESSION BRIEFINGS"
+              className="px-2"
+              rightElement={<StatusPill label="LIVE" type="info" />}
+            />
 
             <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
               {(myMeetings || []).map((m, idx) => (
@@ -398,10 +396,10 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
         )}
 
         <View className="mb-8">
-          <View className="flex-row items-center mb-3 px-2">
-            <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Institutional Calendar</Text>
-          </View>
+          <SectionHeader
+            title="INSTITUTIONAL CALENDAR"
+            className="px-2"
+          />
           <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">
             <CalendarWidget compact={true} />
           </AppCard>

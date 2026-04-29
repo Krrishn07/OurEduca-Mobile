@@ -64,10 +64,10 @@ export const PlatformProfile: React.FC<PlatformProfileProps> = ({
 
         {/* 3. Personal Information — AppRow pattern */}
         <View className="px-4 mb-5">
-            <View className="flex-row items-center mb-3 px-2">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Personal Information</Text>
-            </View>
+            <SectionHeader
+                title="PERSONAL INFORMATION"
+                className="px-2"
+            />
 
             <AppCard className="overflow-hidden p-0">
                 <AppRow
@@ -99,10 +99,10 @@ export const PlatformProfile: React.FC<PlatformProfileProps> = ({
 
         {/* 4. Account & Security — AppRow pattern */}
         <View className="px-4 mb-16">
-            <View className="flex-row items-center mb-3 px-2">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Account & Security</Text>
-            </View>
+            <SectionHeader
+                title="ACCOUNT & SECURITY"
+                className="px-2"
+            />
             
             <AppCard className="p-0 overflow-hidden">
                 <AppRow

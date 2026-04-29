@@ -61,10 +61,10 @@ export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
 
         {/* 3. Personal Information — AppRow pattern */}
         <View className="px-4 mb-5">
-            <View className="flex-row items-center mb-3 px-2">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Profile Details</Text>
-            </View>
+            <SectionHeader
+                title="PROFILE DETAILS"
+                className="px-2"
+            />
 
             <AppCard className="overflow-hidden p-0">
                 <AppRow
@@ -96,10 +96,10 @@ export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
 
         {/* 4. Account & Security — AppRow pattern */}
         <View className="px-4 mb-16">
-            <View className="flex-row items-center mb-3 px-2">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Security & Account</Text>
-            </View>
+            <SectionHeader
+                title="SECURITY & ACCOUNT"
+                className="px-2"
+            />
             
             <AppCard className="p-0 overflow-hidden">
                 <AppRow

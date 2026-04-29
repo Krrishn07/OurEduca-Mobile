@@ -68,10 +68,10 @@ export const MentorProfile: React.FC<MentorProfileProps> = ({
 
         {/* Personal Information Module */}
         <View className="px-4 mb-5">
-            <View className="flex-row items-center mb-3 px-2">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Personal Information</Text>
-            </View>
+            <SectionHeader
+                title="PERSONAL INFORMATION"
+                className="px-2"
+            />
             
             <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
                 <AppRow 
@@ -103,10 +103,10 @@ export const MentorProfile: React.FC<MentorProfileProps> = ({
 
         {/* Security & Settings Section */}
         <View className="px-4 mb-24">
-            <View className="flex-row items-center mb-3 px-2">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Security & Settings</Text>
-            </View>
+            <SectionHeader
+                title="SECURITY & SETTINGS"
+                className="px-2"
+            />
             
             <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
                 <AppRow 

@@ -68,10 +68,10 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({
 
     {/* Academic Identity Module — Standardized Header */}
     <View className="px-4 mb-5">
-        <View className="flex-row items-center mb-3 px-2">
-            <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Academic Identity</Text>
-        </View>
+        <SectionHeader
+            title="ACADEMIC IDENTITY"
+            className="px-2"
+        />
         <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
             <AppRow 
                 title={currentUser.email || 'not set'}
@@ -101,10 +101,10 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({
 
     {/* Security & Access Registry — Standardized Header */}
     <View className="px-4 mb-24">
-        <View className="flex-row items-center mb-3 px-2">
-            <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Account & Security</Text>
-        </View>
+        <SectionHeader
+            title="ACCOUNT & SECURITY"
+            className="px-2"
+        />
         <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
             <AppRow 
                 title="Security Credentials"
