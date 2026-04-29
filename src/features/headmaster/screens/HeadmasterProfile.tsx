@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Icons } from '../../../../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AppTheme, AppCard, AppTypography, StatusPill, AppRow } from '../../../design-system';
+import { AppTheme, AppCard, AppTypography, StatusPill, AppRow, SectionHeader } from '../../../design-system';
 
 const StyledLinearGradient = LinearGradient ? typeof LinearGradient === 'function' ? LinearGradient : View : View;
 

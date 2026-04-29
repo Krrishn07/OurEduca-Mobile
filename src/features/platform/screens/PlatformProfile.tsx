@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Icons } from '../../../../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoleLabel } from '../../../../src/utils/roleUtils';
-import { AppTheme, AppCard, AppTypography, StatusPill, AppRow } from '../../../design-system';
+import { AppTheme, AppCard, AppTypography, StatusPill, AppRow, SectionHeader } from '../../../design-system';
 
 interface PlatformProfileProps {
   currentUser: any;
