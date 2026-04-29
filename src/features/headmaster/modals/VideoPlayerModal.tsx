@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useSchoolData } from '../../../../contexts/SchoolDataContext';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEventListener } from 'expo';
+import { HardwareStreamPlayer } from '../../../../components/HardwareStreamPlayer';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Icons } from '../../../../components/Icons';
 import { Video as VideoType } from '../../../../contexts/SchoolDataContext';
-import { HardwareStreamPlayer } from '../../../../components/HardwareStreamPlayer';
 
 interface VideoPlayerModalProps {
     visible: boolean;
@@ -61,14 +59,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         ? 'https://d23dyxeqlo5psv.cloudfront.net/big_buck_bunny.mp4' 
         : (video?.video_url || '');
 
-    const player = useVideoPlayer(youtubeId ? '' : playbackUrl, (p) => {
-        p.loop = !!isLiveNode;
-        if (!youtubeId) p.play();
-    });
 
-    useEventListener(player, 'playingChange', ({ isPlaying }) => {
-        if (isPlaying) setIsLoading(false);
-    });
 
 
 
@@ -98,21 +89,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
                 {/* Video Player & Monitor Deck */}
                 <View className={`w-full aspect-video bg-black relative`}>
                     {youtubeId ? (
-                         <YoutubePlayer
-                             height="100%"
-                             play={true}
-                             videoId={youtubeId}
-                             onReady={() => setIsLoading(false)}
-                         />
+                         <YoutubePlayer height="100%" play={true} videoId={youtubeId} onReady={() => setIsLoading(false)} />
                     ) : (
-                         <VideoView 
-                             player={player} 
-                             style={{ flex: 1 }} 
-                             fullscreenOptions={{
-                                 variant: 'ALLOW',
-                             }}
-                             allowsPictureInPicture 
-                         />
+                         <HardwareStreamPlayer url={playbackUrl} style={{ flex: 1 }} />
                     )}
 
                     {/* Platinum Viewfinder Overlays */}

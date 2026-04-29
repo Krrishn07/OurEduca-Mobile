@@ -817,7 +817,8 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
           <View className="flex-row bg-white/50 p-1 rounded-[20px] border border-white shadow-sm mb-4">
             {(() => {
               let tabs = ['STREAM', 'LIBRARY'];
-              if (currentUser?.role === 'mentor') tabs = ['MONITOR', 'LIBRARY'];
+              // Mentors should get STREAM, MONITOR, and LIBRARY
+              if (currentUser?.role === 'mentor') tabs = ['STREAM', 'MONITOR', 'LIBRARY']; 
               return tabs;
             })().map(s => (
               <TouchableOpacity 

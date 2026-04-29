@@ -40,8 +40,13 @@ export const StudentVideos: React.FC<StudentVideosProps> = ({
   const [parentMode, setParentMode] = React.useState(false);
   
   const filteredLiveStreams = React.useMemo(() => {
-    return (liveStreams || []).filter(ls => ls.is_active);
-  }, [liveStreams]);
+    return (liveStreams || []).filter(ls => {
+        if (!ls.is_active) return false;
+        // Show if it's a general broadcast (no class_id) OR if it matches the student's enrolled class
+        const isTargeted = studentClasses.some(c => c.class_id === ls.class_id || c.id === ls.class_id);
+        return !ls.class_id || isTargeted; 
+    });
+  }, [liveStreams, studentClasses]);
 
   const filteredVideos = (studentMaterials || []).filter(v => {
     return !videoSearch || v.title?.toLowerCase().includes(videoSearch.toLowerCase()) || v.subject?.toLowerCase().includes(videoSearch.toLowerCase());
