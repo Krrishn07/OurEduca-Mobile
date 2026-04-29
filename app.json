@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -21,10 +20,47 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9d929d61-fbf7-4660-9a64-c9e0dc8ce965"
+      }
+    },
+    "owner": "radialinformer790",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9d929d61-fbf7-4660-9a64-c9e0dc8ce965"
+    },
+    "plugins": [
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Springfield Academy to access your camera to broadcast live sessions.",
+          "microphonePermission": "Allow Springfield Academy to access your microphone for live audio.",
+          "recordAudioPermission": "Allow Springfield Academy to record audio during your session."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Springfield Academy to save session recordings to your gallery.",
+          "savePhotosPermission": "Allow Springfield Academy to save session recordings to your gallery.",
+          "granularPermissions": [
+            "audio",
+            "photo",
+            "video"
+          ]
+        }
+      ],
+      "expo-font"
+    ]
   }
 }
