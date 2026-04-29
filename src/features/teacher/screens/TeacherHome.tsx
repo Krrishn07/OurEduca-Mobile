@@ -226,11 +226,11 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           />
         </View>
 
-        <View className="flex-row flex-wrap justify-between mb-4">
-          {(stats || []).map((stat) => (
+        <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
+          {(stats || []).map((stat, idx) => (
             <TouchableOpacity
-              key={stat.label}
-              className="w-[48.2%] mb-4"
+              key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`}
+              className="w-[48%]"
               activeOpacity={stat.target ? 0.9 : 1}
               disabled={!stat.target}
               onPress={() => stat.target && onStatPress?.(stat.target)}

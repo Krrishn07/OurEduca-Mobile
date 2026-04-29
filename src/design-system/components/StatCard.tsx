@@ -21,7 +21,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   pill,
 }) => {
   return (
-    <AppCard className={`flex-1 items-center ${className}`}>
+    <AppCard className={`w-full items-center justify-center min-h-[140px] ${className}`}>
       <View className={`p-3 rounded-[12px] mb-3 ${toneClassName}`}>
         {icon}
       </View>
