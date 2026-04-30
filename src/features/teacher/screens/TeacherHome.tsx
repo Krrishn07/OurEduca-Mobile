@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Animated, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Text, TouchableOpacity, View, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
@@ -376,6 +376,54 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
               />
             ))}
+          </AppCard>
+        </View>
+
+        <View className="mb-8">
+          <SectionHeader
+            title="MY UPLOADED MATERIALS"
+            className="px-2"
+            rightElement={
+              <StatusPill 
+                label={`${teacherMaterials.length} Nodes`} 
+                type="neutral" 
+              />
+            }
+          />
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {teacherMaterials.slice(0, 5).map((mat, idx) => (
+              <AppRow
+                key={mat.id}
+                title={mat.title}
+                subtitle={`${mat.type} • ${mat.subject || 'Academic Node'}`}
+                avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
+                avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
+                meta={new Date(mat.created_at).toLocaleDateString()}
+                showBorder={idx < Math.min(teacherMaterials.length, 5) - 1}
+                onPress={() => mat.url && Linking.openURL(mat.url)}
+                rightElement={
+                  onDeleteMaterial ? (
+                    <TouchableOpacity
+                      onPress={() => onDeleteMaterial(mat.id)}
+                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
+                    >
+                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
+                    </TouchableOpacity>
+                  ) : <Icons.ChevronRight size={13} color="#d1d5db" />
+                }
+              />
+            ))}
+            {teacherMaterials.length === 0 && (
+              <View className="items-center py-10">
+                <Icons.FileText size={24} color="#cbd5e1" />
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">No materials uploaded</Text>
+              </View>
+            )}
+            {teacherMaterials.length > 5 && (
+              <TouchableOpacity className="py-4 items-center border-t border-gray-50 active:bg-gray-50">
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">View All Materials</Text>
+              </TouchableOpacity>
+            )}
           </AppCard>
         </View>
 

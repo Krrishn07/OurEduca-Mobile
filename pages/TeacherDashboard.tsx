@@ -417,6 +417,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                 onNavigateToClass={(cls) => { onNavigate?.('classes'); }}
                 onShowHistory={() => setShowAnnouncementHistoryModal(true)}
                 onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
+                onDeleteMaterial={async (id) => {
+                  try {
+                    await supabase.from('materials').delete().eq('id', id);
+                    showToast("Material Removed");
+                    fetchTeacherData();
+                  } catch (err) {
+                    showToast("Delete Failed");
+                  }
+                }}
                 currentSchool={currentSchool}
               />
             )}
