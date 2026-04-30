@@ -22,25 +22,11 @@ export const TeacherRouter: React.FC<TeacherRouterProps> = ({ bundle, common }) 
 
     const handleQuickAction = (action: string) => {
         switch (action) {
-            case 'materials':
-                actions.setShowUploadModal?.(true);
-                // Also navigate to videos where materials are managed
-                onNavigate('videos');
-                return;
-            case 'live':
-                onNavigate('videos');
-                return;
-            case 'attendance':
-            case 'assignments':
-            case 'schedule':
-            case 'students':
-                onNavigate('classes');
-                return;
             case 'Upload Material':
-                actions.setShowUploadModal?.(true);
+                actions.setShowUploadModal(true);
                 return;
             case 'Post Announcement':
-                actions.setShowAnnouncementModal?.(true);
+                actions.setShowAnnouncementModal(true);
                 return;
             default:
                 showToast(`Action: ${action}`);
