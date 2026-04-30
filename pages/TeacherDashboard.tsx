@@ -29,7 +29,6 @@ import { AnnouncementHistoryModal } from '../src/features/teacher/modals/Announc
 // GoLiveModal removed - implementation consolidated in TeacherVideos
 import { AddStudentModal } from '../src/features/teacher/modals/AddStudentModal';
 import { EditProfileModal } from '../src/features/teacher/modals/EditProfileModal';
-import { GradeQuizModal } from '../src/features/teacher/modals/GradeQuizModal';
 
 const isValidUrl = (value: string) => {
   try {
@@ -43,9 +42,10 @@ const isValidUrl = (value: string) => {
 interface TeacherDashboardProps {
   activeTab: string;
   onNavigate?: (tab: string) => void;
+  navigation?: any;
 }
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, onNavigate }) => {
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, onNavigate, navigation }) => {
   // --- Modals State ---
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
@@ -62,8 +62,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   // Videos State
   const [videoTab, setVideoTab] = useState<'PUBLIC' | 'PRIVATE' | 'MY_CONTENT'>('MY_CONTENT');
   const [videoSearch, setVideoSearch] = useState('');
-  // GoLive state moved into TeacherVideos Hub
-  
   
   const [selectedClass, setSelectedClass] = useState<any | null>(null);
   const [playingVideo, setPlayingVideo] = useState<VideoType | null>(null);
@@ -71,7 +69,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [activeStreamId, setActiveStreamId] = useState<string | null>(null);
   const [isLiveStreamActive, setIsLiveStreamActive] = useState(false);
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
-  const [showGradeQuizModal, setShowGradeQuizModal] = useState(false);
   const [gradingInitialClass, setGradingInitialClass] = useState<any>(null);
   const [uploadSaving, setUploadSaving] = useState(false);
   const [studentSaving, setStudentSaving] = useState(false);
@@ -296,10 +293,35 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   };
 
   const handleQuickAction = (action: string) => {
-      if (action === 'Upload Material') setShowUploadModal(true);
-      else if (action === 'Post Announcement') setShowAnnouncementModal(true);
-      else if (action === 'Grade Quiz') setShowGradeQuizModal(true);
-      else if (action === 'View Report') setShowReports(true);
+      switch (action) {
+          case 'Upload Material':
+              setShowUploadModal(true);
+              break;
+          case 'Post Announcement':
+              setShowAnnouncementModal(true);
+              break;
+          case 'GRADE':
+          case 'Grade Quiz':
+              if (navigation?.navigate) {
+                  navigation.navigate("TeacherGrading", {
+                      classId: selectedClass?.id || selectedClass?.class_id,
+                      section: selectedClass?.section,
+                  });
+              } else {
+                  setShowGrading(true);
+              }
+              break;
+          case 'REPORT':
+          case 'View Report':
+              if (navigation?.navigate) {
+                  navigation.navigate("TeacherReports");
+              } else {
+                  setShowReports(true);
+              }
+              break;
+          default:
+              console.log(`Action: ${action}`);
+      }
   };
 
   const handleUpload = async () => {
@@ -744,12 +766,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         visible={showUploadModal} onClose={handleCloseUploadModal}
         onUpload={handleUpload} uploadTitle={uploadTitle} setUploadTitle={setUploadTitle}
         uploadRosterId={uploadRosterId} setUploadRosterId={setUploadRosterId}
-        assignedSections={assignedSections} isUploading={isSaving}
+        assignedSections={assignedSections} isUploading={uploadSaving}
         uploadType={uploadType} setUploadType={setUploadType}
         uploadUrl={uploadUrl} setUploadUrl={setUploadUrl}
         selectedFile={selectedFile} setSelectedFile={setSelectedFile}
         error={uploadError}
-        loading={uploadSaving}
         status={uploadStatus}
       />
 
@@ -824,15 +845,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         status={profileStatus}
       />
       
-      <GradeQuizModal 
-        visible={showGradeQuizModal}
-        onClose={() => setShowGradeQuizModal(false)}
-        assignedSections={assignedSections}
-        onSelectClass={(cls) => {
-            setGradingInitialClass(cls);
-            setShowGrading(true);
-        }}
-      />
 
       <AddStudentModal 
         visible={showAddStudentModal} 

@@ -17,7 +17,6 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
   onShowToast
 }) => {
   const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'WEEK' | 'MONTH' | 'QUARTER'>('MONTH');
   const [isExporting, setIsExporting] = useState(false);
   const [exportStep, setExportStep] = useState(0);
 
@@ -26,38 +25,42 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
     ? dbRoster.filter(s => (s.class_id === selectedRosterId || s.rosterId === selectedRosterId))
     : dbRoster;
 
+  // Real Data Intelligence
   const totalStudents = filteredRoster.length;
-  const criticalStudents = filteredRoster.slice(0, 5).map(s => ({
-      name: s.users?.name || 'Academic Node',
-      issue: s.grade_score ? `Current Evaluation: ${s.grade_score}` : 'Evaluation Pending',
-      color: s.grade_score ? 'text-emerald-600' : 'text-rose-600',
-      bg: s.grade_score ? 'bg-emerald-50' : 'bg-rose-50'
-  }));
+  
+  // Calculate Weak Students (e.g. score < 50 or Grade C/D/F)
+  const weakStudents = filteredRoster.filter(s => {
+      const score = s.grade_score;
+      if (!score) return false;
+      const numericScore = parseFloat(score);
+      if (!isNaN(numericScore)) return numericScore < 50;
+      return ['C', 'D', 'F', 'C-', 'D-'].includes(score.toUpperCase());
+  });
 
-  const subjectPerformance = [
-    { name: 'Core', value: 88, color: '#4f46e5' },
-    { name: 'Labs', value: 72, color: '#06b6d4' },
-    { name: 'Tests', value: 94, color: '#10b981' },
-    { name: 'Avg', value: 81, color: '#f59e0b' },
-    { name: 'Attn', value: 65, color: '#ef4444' },
-  ];
+  // Calculate Average Score
+  const gradedStudents = filteredRoster.filter(s => s.grade_score && !isNaN(parseFloat(s.grade_score)));
+  const averageScore = gradedStudents.length > 0 
+    ? Math.round(gradedStudents.reduce((acc, s) => acc + parseFloat(s.grade_score), 0) / gradedStudents.length)
+    : 0;
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true);
-    setExportStep(1); // Preparation
+    setExportStep(1); // Preparing data
     
-    setTimeout(() => setExportStep(2), 1000); // Generation
-    setTimeout(() => setExportStep(3), 2000); // Finalization
+    // Simulate complex PDF generation / Backend Sync
+    setTimeout(() => setExportStep(2), 1000); // Compiling
+    setTimeout(() => setExportStep(3), 2000); // Finalizing
+    
     setTimeout(() => {
         setIsExporting(false);
         setExportStep(0);
-        onShowToast("Institutional Analysis PDF Downloaded");
+        onShowToast("Institutional Performance Report Exported (PDF)");
     }, 3000);
   };
 
   return (
     <View className="flex-1 bg-gray-50/50">
-      {/* Platinum Analytics Header */}
+      {/* Platinum Header */}
       <View className="bg-white pt-14 pb-6 px-6 shadow-sm border-b border-gray-100">
         <View className="flex-row items-center justify-between mb-6">
             <View className="flex-row items-center">
@@ -68,150 +71,94 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
                     <Icons.ChevronLeft size={20} color="#4f46e5" />
                 </TouchableOpacity>
                 <View>
-                    <Text className="text-[20px] font-black text-gray-900 tracking-tight font-inter-black">Institutional Intelligence</Text>
-                    <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] font-inter-black">Performance & Analytics Node</Text>
+                    <Text className="text-[20px] font-black text-gray-900 tracking-tight font-inter-black">Class Reports</Text>
+                    <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] font-inter-black">Institutional Intelligence Hub</Text>
                 </View>
             </View>
-            <TouchableOpacity className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                <Icons.Notifications size={20} color="#94a3b8" />
-            </TouchableOpacity>
         </View>
 
-        {/* Time Range Selector */}
-        <View className="flex-row gap-2 mt-2">
-            {[
-                { id: 'WEEK', label: 'Last 7 Days' },
-                { id: 'MONTH', label: 'Current Month' },
-                { id: 'QUARTER', label: 'Quarterly' }
-            ].map(t => (
-                <TouchableOpacity 
-                    key={t.id}
-                    onPress={() => setTimeRange(t.id as any)}
-                    className={`px-4 py-2.5 rounded-xl border ${timeRange === t.id ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-50 border-gray-100'}`}
-                >
-                    <Text className={`text-[9px] font-black uppercase tracking-widest font-inter-black ${timeRange === t.id ? 'text-white' : 'text-gray-400'}`}>{t.label}</Text>
-                </TouchableOpacity>
-            ))}
-        </View>
+        {/* Class Filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+            <TouchableOpacity 
+                onPress={() => setSelectedRosterId(null)}
+                className={`px-5 py-2.5 rounded-xl border mr-2 ${!selectedRosterId ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-50 border-gray-100'}`}
+            >
+                <Text className={`text-[9px] font-black uppercase tracking-widest font-inter-black ${!selectedRosterId ? 'text-white' : 'text-gray-400'}`}>All Segments</Text>
+            </TouchableOpacity>
+            {assignedSections.map((item, idx) => {
+                const uniqueId = item.class_id || item.rosterId;
+                const isSelected = selectedRosterId === uniqueId;
+                return (
+                    <TouchableOpacity 
+                        key={idx} 
+                        onPress={() => setSelectedRosterId(uniqueId)}
+                        className={`px-5 py-2.5 rounded-xl border mr-2 ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-50 border-gray-100'}`}
+                    >
+                        <Text className={`text-[9px] font-black uppercase tracking-widest font-inter-black ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                            {item.name || item.subject} {item.section || 'A'}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
+        </ScrollView>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Class Filter Horizontal Scroll */}
-        <View className="pt-6">
-            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mb-4 px-6 font-inter-black">Select Segment Context</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4">
-                <TouchableOpacity 
-                    onPress={() => setSelectedRosterId(null)}
-                    className={`px-6 py-4 rounded-[24px] border mr-3 ${!selectedRosterId ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100'}`}
-                >
-                    <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${!selectedRosterId ? 'text-indigo-600' : 'text-gray-400'}`}>All Classes</Text>
-                </TouchableOpacity>
-                {assignedSections.map((item, idx) => {
-                    const uniqueId = item.class_id || item.rosterId;
-                    const isSelected = selectedRosterId === uniqueId;
-                    return (
-                        <TouchableOpacity 
-                            key={idx} 
-                            onPress={() => setSelectedRosterId(uniqueId)}
-                            className={`px-6 py-4 rounded-[24px] border mr-3 ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-100'}`}
-                        >
-                            <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${isSelected ? 'text-indigo-600' : 'text-gray-400'}`}>{item.name || item.subject} - {item.section || 'A'}</Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
-        </View>
-
-        {/* KPI Row */}
-        <View className="flex-row px-4 pt-8 gap-3 mb-8">
-            <View className="flex-1 bg-white p-5 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
-                <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center mb-3">
-                    <Icons.Users size={14} color="#4f46e5" />
-                </View>
-                <Text className="text-[24px] font-black text-gray-900 font-inter-black">{totalStudents}</Text>
-                <Text className="text-[8px] font-black uppercase text-gray-400 tracking-widest mt-1">Learner Nodes</Text>
+        {/* KPI Cards */}
+        <View className="flex-row px-4 pt-8 gap-3">
+            <View className="flex-1 bg-white p-6 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
+                <Text className="text-[32px] font-black text-gray-900 font-inter-black">{totalStudents}</Text>
+                <Text className="text-[9px] font-black uppercase text-gray-400 tracking-widest mt-1">Total Students</Text>
             </View>
-            <View className="flex-1 bg-white p-5 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
-                <View className="w-8 h-8 rounded-full bg-emerald-50 items-center justify-center mb-3">
-                    <Icons.Classes size={14} color="#10b981" />
-                </View>
-                <Text className="text-[24px] font-black text-gray-900 font-inter-black">{selectedRosterId ? '1' : assignedSections.length}</Text>
-                <Text className="text-[8px] font-black uppercase text-gray-400 tracking-widest mt-1">Active Segments</Text>
-            </View>
-            <View className="flex-1 bg-white p-5 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
-                <View className="w-8 h-8 rounded-full bg-amber-50 items-center justify-center mb-3">
-                    <Icons.Globe size={14} color="#f59e0b" />
-                </View>
-                <Text className="text-[24px] font-black text-gray-900 font-inter-black">98<Text className="text-sm font-black text-gray-300">%</Text></Text>
-                <Text className="text-[8px] font-black uppercase text-gray-400 tracking-widest mt-1">Data Accuracy</Text>
+            <View className="flex-1 bg-white p-6 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
+                <Text className="text-[32px] font-black text-gray-900 font-inter-black">{averageScore}<Text className="text-sm font-black text-gray-300">%</Text></Text>
+                <Text className="text-[9px] font-black uppercase text-gray-400 tracking-widest mt-1">Average Score</Text>
             </View>
         </View>
 
-        {/* Benchmarks Section */}
-        <View className="px-4 mb-10">
-            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mb-4 px-2 font-inter-black">Academic Benchmarks</Text>
-            <AppCard className="p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-100/30 bg-white">
-                <View className="h-56 flex-row items-end justify-between px-2 mb-8">
-                    {subjectPerformance.map((s, i) => (
-                        <View key={i} className="items-center flex-1">
-                            <View className="bg-gray-50 w-5 h-full rounded-full overflow-hidden justify-end border border-gray-100">
-                                <View 
-                                    className="w-full rounded-full" 
-                                    style={{ height: `${s.value}%`, backgroundColor: s.color }} 
-                                />
+        <View className="px-4 pt-4">
+            <View className="bg-rose-50 p-6 rounded-[32px] border border-rose-100 shadow-xl shadow-rose-100/20">
+                <Text className="text-[32px] font-black text-rose-600 font-inter-black">{weakStudents.length}</Text>
+                <Text className="text-[9px] font-black uppercase text-rose-400 tracking-widest mt-1">Weak Students</Text>
+            </View>
+        </View>
+
+        {/* performance summary / Weak students list */}
+        <View className="px-6 pt-10">
+            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mb-6 font-inter-black">Performance Summary</Text>
+            
+            <View className="bg-white p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-100/20 mb-20">
+                {weakStudents.length > 0 ? (
+                    <View>
+                        <Text className="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-6 font-inter-black">Priority Action Nodes</Text>
+                        {weakStudents.slice(0, 5).map((s, i) => (
+                            <View key={i} className="flex-row items-center justify-between mb-5">
+                                <View className="flex-row items-center">
+                                    <View className="w-10 h-10 rounded-xl bg-rose-50 items-center justify-center mr-4 border border-rose-100">
+                                        <Icons.Profile size={16} color="#ef4444" />
+                                    </View>
+                                    <View>
+                                        <Text className="text-[14px] font-black text-gray-900 font-inter-black">{s.users?.name || 'Student'}</Text>
+                                        <Text className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Score: {s.grade_score}</Text>
+                                    </View>
+                                </View>
+                                <TouchableOpacity className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    <Icons.Messages size={14} color="#64748b" />
+                                </TouchableOpacity>
                             </View>
-                            <Text className="text-[9px] font-black text-gray-400 mt-4 uppercase tracking-tighter">{s.name}</Text>
-                            <Text className="text-[10px] font-black text-gray-900 mt-1">{s.value}%</Text>
-                        </View>
-                    ))}
-                </View>
-                <View className="pt-8 border-t border-gray-50 flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                        <View className="w-3 h-3 bg-indigo-500 rounded-full mr-3 shadow-sm shadow-indigo-500" />
-                        <Text className="text-[11px] font-black text-gray-500 italic">Institutional Baseline: <Text className="text-gray-900 not-italic">82%</Text></Text>
+                        ))}
                     </View>
-                    <TouchableOpacity className="bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                        <Icons.ChevronRight size={14} color="#94a3b8" />
-                    </TouchableOpacity>
-                </View>
-            </AppCard>
-        </View>
-
-        {/* Roster Intelligence */}
-        <View className="px-4 mb-20">
-            <View className="flex-row items-center justify-between mb-4 px-2">
-                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Roster Intelligence</Text>
-                <TouchableOpacity>
-                    <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View Full List</Text>
-                </TouchableOpacity>
-            </View>
-            <View className="gap-4">
-                {criticalStudents.length > 0 ? criticalStudents.map((node, i) => (
-                    <View key={i} className={`${node.bg} p-6 rounded-[32px] border border-black/5 flex-row items-center justify-between shadow-sm`}>
-                        <View className="flex-row items-center flex-1">
-                            <View className="w-12 h-12 rounded-2xl bg-white items-center justify-center mr-4 shadow-sm border border-black/5">
-                                <Icons.Profile size={20} color="#64748b" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="font-black text-gray-900 text-[15px] tracking-tight font-inter-black">{node.name}</Text>
-                                <Text className={`text-[10px] font-black uppercase tracking-[1px] mt-1 ${node.color} font-inter-black`}>{node.issue}</Text>
-                            </View>
-                        </View>
-                        <TouchableOpacity className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm active:scale-90">
-                            <Icons.Messages size={18} color="#4f46e5" />
-                        </TouchableOpacity>
-                    </View>
-                )) : (
-                    <View className="p-12 items-center justify-center bg-gray-50 rounded-[40px] border border-dashed border-gray-200">
-                        <Icons.Users size={32} color="#cbd5e1" />
-                        <Text className="text-gray-400 font-black text-[11px] uppercase tracking-widest mt-4 font-inter-black">No matching records found</Text>
+                ) : (
+                    <View className="py-10 items-center">
+                        <Icons.CheckCircle size={40} color="#10b981" />
+                        <Text className="text-emerald-600 font-black text-[11px] uppercase tracking-widest mt-4 font-inter-black">All Scholars above baseline</Text>
                     </View>
                 )}
             </View>
         </View>
       </ScrollView>
 
-      {/* Persistent Export FAB */}
+      {/* Export FAB */}
       <View className="absolute bottom-10 left-6 right-6">
         <TouchableOpacity 
             onPress={handleExport}
@@ -220,22 +167,22 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
             className={`py-5 rounded-[24px] flex-row items-center justify-center border ${
                 isExporting 
                     ? 'bg-gray-100 border-gray-200' 
-                    : 'bg-gray-900 border-gray-800 shadow-2xl shadow-black/30'
+                    : 'bg-indigo-600 border-indigo-500 shadow-2xl shadow-indigo-500/30'
             }`}
         >
             {isExporting ? (
                 <View className="flex-row items-center">
-                    <ActivityIndicator color="#64748b" size="small" />
-                    <Text className="text-gray-500 font-black uppercase tracking-[3px] text-[11px] font-inter-black ml-4">
-                        {exportStep === 1 && "Preparing Nodes..."}
+                    <ActivityIndicator color="#4f46e5" size="small" />
+                    <Text className="text-indigo-600 font-black uppercase tracking-[3px] text-[11px] font-inter-black ml-4">
+                        {exportStep === 1 && "Analyzing Data..."}
                         {exportStep === 2 && "Compiling PDF..."}
-                        {exportStep === 3 && "Finalizing Sync..."}
+                        {exportStep === 3 && "Finalizing..."}
                     </Text>
                 </View>
             ) : (
                 <>
                     <Icons.Notifications size={18} color="white" />
-                    <Text className="text-white font-black uppercase tracking-[3px] text-[12px] font-inter-black ml-4">Export Analysis</Text>
+                    <Text className="text-white font-black uppercase tracking-[3px] text-[12px] font-inter-black ml-4">Export Analysis Report</Text>
                 </>
             )}
         </TouchableOpacity>
