@@ -44,6 +44,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
   onStatPress,
   onShowHistory,
   onDeleteNotice,
+  onDeleteMaterial,
   currentSchool,
 }) => {
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -400,7 +401,14 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
                 meta={new Date(mat.created_at).toLocaleDateString()}
                 showBorder={idx < Math.min(teacherMaterials.length, 5) - 1}
-                onPress={() => mat.url && Linking.openURL(mat.url)}
+                onPress={() => {
+                  if (!mat.url) {
+                    console.warn(`[TEACHER_HOME] Material Node ${mat.id} has no valid transmission URL.`);
+                    return;
+                  }
+                  const finalUrl = mat.url.startsWith('http') ? mat.url : `https://${mat.url}`;
+                  Linking.openURL(finalUrl).catch(err => console.error("Linking Error:", err));
+                }}
                 rightElement={
                   onDeleteMaterial ? (
                     <TouchableOpacity
@@ -420,7 +428,10 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
               </View>
             )}
             {teacherMaterials.length > 5 && (
-              <TouchableOpacity className="py-4 items-center border-t border-gray-50 active:bg-gray-50">
+              <TouchableOpacity 
+                onPress={() => onStatPress?.('materials')}
+                className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
+              >
                 <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">View All Materials</Text>
               </TouchableOpacity>
             )}

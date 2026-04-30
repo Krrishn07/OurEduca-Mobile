@@ -13,6 +13,7 @@ import { TeacherClasses } from '../src/features/teacher/screens/TeacherClasses';
 import { TeacherVideos } from '../src/features/teacher/screens/TeacherVideos';
 import { TeacherMessages } from '../src/features/teacher/screens/TeacherMessages';
 import { TeacherProfile } from '../src/features/teacher/screens/TeacherProfile';
+import { TeacherMaterials } from '../src/features/teacher/screens/TeacherMaterials';
 
 // Modular Modals
 import { UploadMaterialModal } from '../src/features/teacher/modals/UploadMaterialModal';
@@ -273,6 +274,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     setIsUploading(true);
     try {
         let finalUrl = uploadUrl;
+        if (uploadType === 'LINK' && uploadUrl && !uploadUrl.startsWith('http')) {
+            finalUrl = `https://${uploadUrl}`;
+        }
 
         // --- Step 1: Handle File Upload if PDF ---
         if (uploadType === 'PDF' && selectedFile) {
@@ -444,6 +448,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     role={teacherProfile.role}
                 />
               )
+            )}
+            {activeTab === 'materials' && (
+              <TeacherMaterials 
+                materials={teacherMaterials}
+                onDeleteMaterial={async (id) => {
+                  try {
+                    await supabase.from('materials').delete().eq('id', id);
+                    showToast("Material Removed");
+                    fetchTeacherData();
+                  } catch (err) {
+                    showToast("Delete Failed");
+                  }
+                }}
+                onShowUploadModal={() => setShowUploadModal(true)}
+              />
             )}
             {activeTab === 'videos' && (
               hasPermission('videos', teacherProfile.role, currentSchool?.id) ? (
