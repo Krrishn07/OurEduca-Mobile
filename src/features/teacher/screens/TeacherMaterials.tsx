@@ -17,20 +17,15 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
   onBack
 }) => {
   const [search, setSearch] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('ALL');
 
-  const filtered = materials.filter(m => 
-    m.title?.toLowerCase().includes(search.toLowerCase()) ||
-    m.subject?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = materials.filter(m => {
+    const matchesSearch = (m.title?.toLowerCase().includes(search.toLowerCase()) || m.subject?.toLowerCase().includes(search.toLowerCase()));
+    const matchesSubject = selectedSubject === 'ALL' || m.subject === selectedSubject;
+    return matchesSearch && matchesSubject;
+  });
 
-  const grouped = filtered.reduce((acc: any, mat: any) => {
-    const subject = mat.subject || 'General Knowledge';
-    if (!acc[subject]) acc[subject] = [];
-    acc[subject].push(mat);
-    return acc;
-  }, {});
-
-  const subjects = Object.keys(grouped).sort();
+  const allSubjects = ['ALL', ...Array.from(new Set(materials.map(m => m.subject || 'General'))).sort()];
 
   const handleOpen = (url: string) => {
     if (!url) return;
@@ -39,7 +34,7 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
   };
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-gray-50/50">
       {/* Institutional Header */}
       <View className="bg-white border-b border-gray-100 pt-12 pb-6 px-6 shadow-sm">
         <View className="flex-row items-center">
@@ -56,7 +51,7 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
         </View>
       </View>
 
-      <View className="flex-1 px-4 pt-6">
+      <View className="px-4 pt-6">
         <View className="bg-white p-4 rounded-[28px] border border-gray-100 shadow-sm flex-row items-center mb-6">
           <Icons.Search size={18} color="#94a3b8" />
           <TextInput 
@@ -74,51 +69,65 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-          {subjects.length > 0 ? subjects.map((subject) => (
-            <View key={subject} className="mb-8">
-              <SectionHeader 
-                  title={subject} 
-                  className="mb-3 px-2"
-                  rightElement={<StatusPill label={`${grouped[subject].length} Nodes`} type="info" />}
-              />
-              <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-                {grouped[subject].map((mat: any, idx: number) => (
-                  <AppRow
-                    key={mat.id}
-                    title={mat.title}
-                    subtitle={`${mat.classes?.name || 'Academic Node'} • Section ${mat.section || 'General'}`}
-                    avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
-                    avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
-                    meta={new Date(mat.created_at).toLocaleDateString()}
-                    showBorder={idx < grouped[subject].length - 1}
-                    onPress={() => handleOpen(mat.url)}
-                    rightElement={
-                      <TouchableOpacity
-                        onPress={() => onDeleteMaterial(mat.id)}
-                        className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
-                      >
-                        <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
-                      </TouchableOpacity>
-                    }
-                  />
+        {/* Subject Filter Tabs */}
+        <View className="mb-6">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-1">
+                {allSubjects.map((sub) => (
+                    <TouchableOpacity
+                        key={sub}
+                        onPress={() => setSelectedSubject(sub)}
+                        className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedSubject === sub ? 'bg-indigo-600 border-indigo-700 shadow-lg shadow-indigo-100' : 'bg-white border-gray-100'}`}
+                    >
+                        <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${selectedSubject === sub ? 'text-white' : 'text-gray-500'}`}>
+                            {sub}
+                        </Text>
+                    </TouchableOpacity>
                 ))}
-              </AppCard>
-            </View>
+            </ScrollView>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} className="flex-1 px-4">
+        <SectionHeader 
+            title={selectedSubject === 'ALL' ? 'ALL RESOURCES' : selectedSubject} 
+            className="mb-4 px-2"
+            rightElement={<StatusPill label={`${filtered.length} Nodes`} type="neutral" />}
+        />
+        
+        <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-10">
+          {filtered.length > 0 ? filtered.map((mat, idx) => (
+            <AppRow
+              key={mat.id}
+              title={mat.title}
+              subtitle={`${mat.classes?.name || 'Academic Node'} • Section ${mat.section || 'General'}`}
+              avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
+              avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
+              meta={new Date(mat.created_at).toLocaleDateString()}
+              showBorder={idx < filtered.length - 1}
+              onPress={() => handleOpen(mat.url)}
+              rightElement={
+                <TouchableOpacity
+                  onPress={() => onDeleteMaterial(mat.id)}
+                  className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
+                >
+                  <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
+                </TouchableOpacity>
+              }
+            />
           )) : (
             <View className="items-center py-20">
               <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-6 border border-gray-100">
                 <Icons.FileText size={32} color="#cbd5e1" />
               </View>
-              <Text className="text-gray-900 font-black text-lg font-inter-black">Node Empty</Text>
+              <Text className="text-gray-900 font-black text-lg font-inter-black">No Results</Text>
               <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mt-2 text-center px-10">
-                The institutional knowledge base is currently clear.
+                No academic nodes matched your query in this sector.
               </Text>
             </View>
           )}
           <View className="h-20" />
         </ScrollView>
-      </View>
+      </ScrollView>
     </View>
   );
 };
