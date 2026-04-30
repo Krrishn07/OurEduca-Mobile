@@ -7,13 +7,15 @@ import { supabase } from '../../../../lib/supabase';
 interface TeacherGradingProps {
   assignedSections: any[];
   onBack: () => void;
+  initialClass?: any;
 }
 
 export const TeacherGrading: React.FC<TeacherGradingProps> = ({
   assignedSections = [],
-  onBack
+  onBack,
+  initialClass
 }) => {
-  const [selectedClass, setSelectedClass] = useState<any>(null);
+  const [selectedClass, setSelectedClass] = useState<any>(initialClass || null);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);

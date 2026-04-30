@@ -11,6 +11,8 @@ interface AddStudentModalProps {
   setStudentName: (text: string) => void;
   studentEmail: string;
   setStudentEmail: (text: string) => void;
+  error?: string | null;
+  loading?: boolean;
 }
 
 export const AddStudentModal: React.FC<AddStudentModalProps> = ({
@@ -21,7 +23,11 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   setStudentName,
   studentEmail,
   setStudentEmail,
+  error,
+  loading
 }) => {
+  const canSave = studentName.trim() && studentEmail.trim();
+
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View className="flex-1 justify-center items-center bg-black/60 p-4">
@@ -29,54 +35,76 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="w-full max-w-md"
         >
-          <View className="bg-white rounded-2xl p-6 shadow-2xl">
-          <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xl font-black text-gray-900">Add New Student</Text>
-              <TouchableOpacity onPress={onClose} className="p-2 bg-gray-100 rounded-full">
-                  <Icons.Close size={20} color="#6b7280" />
+          <View className="bg-white rounded-[24px] p-8 shadow-2xl">
+            {error && (
+              <View className="bg-rose-50 p-4 rounded-2xl border border-rose-100 mb-6">
+                <Text className="text-rose-600 text-[11px] font-black uppercase tracking-wider font-inter-black text-center">{error}</Text>
+              </View>
+            )}
+          <View className="flex-row justify-between items-center mb-8">
+              <View>
+                <Text className="text-2xl font-black text-gray-900 font-inter-black">Register Student</Text>
+                <Text className="text-[10px] font-black text-indigo-400 uppercase tracking-widest font-inter-black mt-1">Institutional Node Entry</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <Icons.Close size={20} color="#94a3b8" />
               </TouchableOpacity>
           </View>
 
-          <ScrollView className="space-y-6">
-              <View>
-                  <Text className="text-sm font-black text-gray-700 mb-2 uppercase tracking-wider">Full Name</Text>
-                  <View className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+          <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="mb-6">
+                  <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[2px] mb-3 px-1 font-inter-black">Legal Identity</Text>
+                  <View className="bg-gray-50 border border-gray-100 rounded-[20px] px-5 py-4 shadow-inner">
                       <TextInput 
-                          placeholder="e.g., Bart Simpson" 
+                          placeholder="e.g. Bart Simpson" 
                           value={studentName}
                           onChangeText={setStudentName}
-                          className="text-gray-900"
+                          className="text-gray-900 font-black text-[14px] font-inter-black p-0"
+                          placeholderTextColor="#cbd5e1"
                       />
                   </View>
               </View>
 
-              <View>
-                  <Text className="text-sm font-black text-gray-700 mb-2 uppercase tracking-wider">Email Address</Text>
-                  <View className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+              <View className="mb-8">
+                  <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[2px] mb-3 px-1 font-inter-black">Communication Node (Email)</Text>
+                  <View className="bg-gray-50 border border-gray-100 rounded-[20px] px-5 py-4 shadow-inner">
                       <TextInput 
-                          placeholder="e.g., bart@school.edu" 
+                          placeholder="e.g. bart@springfield.edu" 
                           value={studentEmail}
                           onChangeText={setStudentEmail}
                           keyboardType="email-address"
                           autoCapitalize="none"
-                          className="text-gray-900"
+                          className="text-gray-900 font-black text-[14px] font-inter-black p-0"
+                          placeholderTextColor="#cbd5e1"
                       />
                   </View>
               </View>
 
-              <View className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex-row items-center mb-6">
-                <Icons.School size={20} color="#2563eb" />
-                <Text className="text-blue-700 text-[11px] font-medium ml-3 flex-1">
-                  New students will be added to your currently selected class section.
+              <View className="bg-indigo-50/50 p-5 rounded-[24px] border border-indigo-100/50 flex-row items-center mb-8">
+                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-4 border border-indigo-100 shadow-sm">
+                    <Icons.School size={18} color="#4f46e5" />
+                </View>
+                <Text className="text-indigo-900 text-[11px] font-black leading-tight flex-1 font-inter-black">
+                  New student will be automatically synchronized with your active class segment roster.
                 </Text>
               </View>
 
               <TouchableOpacity 
                   onPress={onAdd}
-                  className="w-full py-4 bg-indigo-600 rounded-xl shadow-lg flex-row items-center justify-center mt-4"
+                  disabled={!canSave || loading}
+                  activeOpacity={0.9}
+                  className={`w-full py-5 rounded-[20px] flex-row items-center justify-center shadow-xl ${
+                    !canSave || loading 
+                      ? 'bg-gray-100 border border-gray-200' 
+                      : 'bg-[#16a34a] border border-[#15803d] shadow-green-200'
+                  }`}
               >
-                  <Icons.Plus size={20} color="white" />
-                  <Text className="text-white font-black ml-2 text-lg">Register Student</Text>
+                  {!loading && <Icons.Plus size={20} color={!canSave ? "#94a3b8" : "white"} />}
+                  <Text className={`font-black ml-3 text-[14px] uppercase tracking-[2px] font-inter-black ${
+                    !canSave || loading ? 'text-gray-400' : 'text-white'
+                  }`}>
+                      {loading ? 'Synchronizing Node...' : 'Register Student'}
+                  </Text>
               </TouchableOpacity>
           </ScrollView>
         </View>

@@ -29,6 +29,16 @@ import { AnnouncementHistoryModal } from '../src/features/teacher/modals/Announc
 // GoLiveModal removed - implementation consolidated in TeacherVideos
 import { AddStudentModal } from '../src/features/teacher/modals/AddStudentModal';
 import { EditProfileModal } from '../src/features/teacher/modals/EditProfileModal';
+import { GradeQuizModal } from '../src/features/teacher/modals/GradeQuizModal';
+
+const isValidUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 interface TeacherDashboardProps {
   activeTab: string;
@@ -61,6 +71,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [activeStreamId, setActiveStreamId] = useState<string | null>(null);
   const [isLiveStreamActive, setIsLiveStreamActive] = useState(false);
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
+  const [showGradeQuizModal, setShowGradeQuizModal] = useState(false);
+  const [gradingInitialClass, setGradingInitialClass] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   
   // --- Context & Supabase ---
   const { currentUser: mockAuthUser, currentSchool } = useMockAuth();
@@ -273,29 +287,44 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const handleQuickAction = (action: string) => {
       if (action === 'Upload Material') setShowUploadModal(true);
       else if (action === 'Post Announcement') setShowAnnouncementModal(true);
-      else if (action === 'Grade Quiz') setShowGrading(true);
+      else if (action === 'Grade Quiz') setShowGradeQuizModal(true);
       else if (action === 'View Report') setShowReports(true);
   };
 
   const handleUpload = async () => {
+    setActionError(null);
     const selectedRoster = (assignedSections || []).find(s => (s.id || s.rosterId) === uploadRosterId);
     const targetClassId = selectedRoster?.class_id || uploadClassId;
     const targetSection = selectedRoster?.section;
 
-    if (!uploadTitle || !targetClassId || !mockAuthUser?.id) { showToast("Missing info"); return; }
-    
-    // Validation: PDF mode requires file, LINK mode requires URL
-    if (uploadType === 'PDF' && !selectedFile) { showToast("Please select a PDF file"); return; }
-    if (uploadType === 'LINK' && !uploadUrl) { showToast("Please enter a valid URL"); return; }
+    if (!uploadTitle.trim()) {
+        setActionError("Please enter a title.");
+        return;
+    }
 
-    setIsUploading(true);
+    if (!targetClassId) {
+        setActionError("Please select a class.");
+        return;
+    }
+
+    if (uploadType === 'PDF' && !selectedFile) {
+        setActionError("Please choose a PDF file.");
+        return;
+    }
+
+    if (uploadType === 'LINK' && (!uploadUrl.trim() || !isValidUrl(uploadUrl))) {
+        setActionError("Please enter a valid web link.");
+        return;
+    }
+
+    if (!mockAuthUser?.id) { showToast("Authentication Required"); return; }
+
+    setIsSaving(true);
     try {
         let finalUrl = uploadUrl;
         if (uploadType === 'LINK' && uploadUrl && !uploadUrl.startsWith('http')) {
             finalUrl = `https://${uploadUrl}`;
         }
-
-        // --- Step 1: Handle File Upload if PDF ---
         if (uploadType === 'PDF' && selectedFile) {
             const fileExt = selectedFile.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
@@ -344,9 +373,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         fetchTeacherData();
     } catch (err: any) {
         console.error('Upload Error:', err.message);
-        showToast(`Sync Failed: ${err.message}`);
+        setActionError(err.message ?? "Upload failed.");
     } finally { 
-        setIsUploading(false); 
+        setIsSaving(false); 
     }
   };
 
@@ -359,15 +388,24 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   };
 
   const handleAddStudent = async () => {
+    setActionError(null);
     const targetClass = selectedClass;
-    if (!studentName.trim() || !mockAuthUser?.school_id || !targetClass) {
-        showToast("Enter student name and ensure class context");
+    if (!studentName.trim()) {
+        setActionError("Student name is required.");
+        return;
+    }
+    if (!studentEmail.trim()) {
+        setActionError("Student email is required.");
+        return;
+    }
+    if (!mockAuthUser?.school_id || !targetClass) {
+        showToast("Context Missing");
         return;
     }
     
-    setIsLoading(true);
+    setIsSaving(true);
     try {
-        const email = studentEmail.trim() || `${studentName.toLowerCase().replace(/\s+/g, '.')}@student.com`;
+        const email = studentEmail.trim();
         
         // Institutional Registry Sync
         let userId = '';
@@ -414,19 +452,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         fetchTeacherData();
     } catch (err: any) {
         console.error('Registration Error:', err.message);
-        showToast(`Sync Failed: ${err.message}`);
+        setActionError(err.message ?? "Could not add student.");
     } finally {
-        setIsLoading(false);
+        setIsSaving(false);
     }
   };
 
   const handleSaveProfile = async () => {
+    setActionError(null);
     if (!editProfileName.trim()) {
-        showToast("Display name is required");
+        setActionError("Display name is required");
         return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
     try {
         const { error } = await supabase
             .from('users')
@@ -443,9 +482,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         setShowEditProfileModal(false);
         fetchTeacherData(); // Refresh local profile
     } catch (err: any) {
-        showToast("Update Failed: " + err.message);
+        setActionError(err.message ?? "Could not save profile.");
     } finally {
-        setIsLoading(false);
+        setIsSaving(false);
     }
   };
 
@@ -550,7 +589,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               ) : showGrading ? (
                 <TeacherGrading 
                   assignedSections={assignedSections}
-                  onBack={() => setShowGrading(false)}
+                  onBack={() => { setShowGrading(false); setGradingInitialClass(null); }}
+                  initialClass={gradingInitialClass}
                 />
               ) : showReports ? (
                 <TeacherReports 
@@ -571,7 +611,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   onQuickAction={handleQuickAction}
                   onNavigateToClass={(cls) => { 
                     setSelectedClass(cls);
-                    setShowClassDetail(true);
+                    if (cls && Object.keys(cls).length > 0) setShowClassDetail(true);
+                    else setShowClassDetail(false);
                     onNavigate?.('classes'); 
                   }}
                   onShowHistory={() => setShowAnnouncementHistoryModal(true)}
@@ -683,10 +724,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         visible={showUploadModal} onClose={handleCloseUploadModal}
         onUpload={handleUpload} uploadTitle={uploadTitle} setUploadTitle={setUploadTitle}
         uploadRosterId={uploadRosterId} setUploadRosterId={setUploadRosterId}
-        assignedSections={assignedSections} isUploading={isUploading}
+        assignedSections={assignedSections} isUploading={isSaving}
         uploadType={uploadType} setUploadType={setUploadType}
         uploadUrl={uploadUrl} setUploadUrl={setUploadUrl}
         selectedFile={selectedFile} setSelectedFile={setSelectedFile}
+        error={actionError}
       />
 
       <AnnouncementModal 
@@ -694,14 +736,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         onClose={() => setShowAnnouncementModal(false)}
         userRole={teacherProfile.role}
         assignedClasses={assignedSections}
-        onSave={(data) => { 
-          addAnnouncement({ 
-            ...data, 
-            school_id: mockAuthUser?.school_id,
-            sender_id: mockAuthUser?.id
-          }); 
-          showToast("Notice Posted!"); 
+        onSave={async (data) => { 
+          setActionError(null);
+          setIsSaving(true);
+          try {
+            await addAnnouncement({ 
+              ...data, 
+              school_id: mockAuthUser?.school_id,
+              sender_id: mockAuthUser?.id
+            }); 
+            showToast("Notice Posted!"); 
+            setShowAnnouncementModal(false);
+          } catch (err: any) {
+            setActionError(err.message ?? "Could not post notice.");
+          } finally {
+            setIsSaving(false);
+          }
         }}
+        error={actionError}
+        loading={isSaving}
       />
 
       <AnnouncementHistoryModal 
@@ -744,7 +797,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         office={editProfileOffice} 
         setOffice={setEditProfileOffice} 
         onSave={handleSaveProfile} 
+        error={actionError}
+        loading={isSaving}
       />
+      
+      <GradeQuizModal 
+        visible={showGradeQuizModal}
+        onClose={() => setShowGradeQuizModal(false)}
+        assignedSections={assignedSections}
+        onSelectClass={(cls) => {
+            setGradingInitialClass(cls);
+            setShowGrading(true);
+        }}
+      />
+
       <AddStudentModal 
         visible={showAddStudentModal} 
         onClose={() => setShowAddStudentModal(false)} 
@@ -753,6 +819,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         studentEmail={studentEmail} 
         setStudentEmail={setStudentEmail} 
         onAdd={handleAddStudent} 
+        error={actionError}
+        loading={isSaving}
       />
       {/* GoLiveModal removed for Platinum Consolidation */}
       

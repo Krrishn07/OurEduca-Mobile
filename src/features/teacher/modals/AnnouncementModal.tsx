@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { Icons } from '../../../../components/Icons';
 import { AppTheme, AppTypography, ModalShell, AppButton } from '../../../design-system';
 
@@ -9,6 +9,8 @@ interface AnnouncementModalProps {
   onSave: (data: { title: string; message: string; audience: 'ALL' | 'STUDENT' | 'STAFF'; class_id?: string; section?: string }) => void;
   userRole?: string;
   assignedClasses?: any[];
+  error?: string | null;
+  loading?: boolean;
 }
 
 export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
@@ -17,6 +19,8 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
   onSave,
   userRole,
   assignedClasses = [],
+  error,
+  loading
 }) => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -30,7 +34,7 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
   // Validation: Hard-block empty or invalid target states
   const isValidTarget = () => {
     if (isMentor) return assignedClasses.length > 0;
-    if (isTeacher) return !!selectedCompId;
+    if (isTeacher) return (audience === 'STUDENT' ? !!selectedCompId : !!audience);
     return !!audience;
   };
 
@@ -90,6 +94,11 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
       subtitle={isTeacherOrMentor ? "Classroom Transmission" : "Institutional Communication Node"}
       headerGradient={AppTheme.colors.gradients.brand}
     >
+      {error && (
+        <View className="bg-rose-50 p-4 rounded-2xl border border-rose-100 mb-6">
+          <Text className="text-rose-600 text-[11px] font-black uppercase tracking-wider font-inter-black">{error}</Text>
+        </View>
+      )}
       <ScrollView showsVerticalScrollIndicator={false} className="max-h-[550px]">
         <View className="mb-6">
           <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Notice Designation</Text>
@@ -190,33 +199,44 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
         )}
 
         {/* Transmission Summary - Preview Card */}
-        <View className="bg-indigo-50/50 p-6 rounded-[32px] border border-indigo-100/50 mb-10 flex-row items-center">
-            <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-4 border border-indigo-100 shadow-sm">
-                <Icons.Globe size={20} color="#4f46e5" />
-            </View>
-            <View className="flex-1">
-                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-1 font-inter-black">Transmission Recipient</Text>
-                <Text className="text-indigo-900 font-black text-[12px] font-inter-black leading-tight" numberOfLines={1}>
-                    {getRecipientSummary()}
-                </Text>
+        <View className="bg-indigo-50/50 p-6 rounded-[32px] border border-indigo-100/50 mb-10">
+            <Text className="text-[10px] font-medium text-gray-500 mb-3 italic opacity-70">
+              This announcement will go to: {audience === 'STUDENT' && isTeacherOrMentor ? "Selected class" : audience}
+            </Text>
+            <View className="flex-row items-center">
+                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-4 border border-indigo-100 shadow-sm">
+                    <Icons.Globe size={20} color="#4f46e5" />
+                </View>
+                <View className="flex-1">
+                    <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-1 font-inter-black">Transmission Recipient</Text>
+                    <Text className="text-indigo-900 font-black text-[12px] font-inter-black leading-tight" numberOfLines={1}>
+                        {getRecipientSummary()}
+                    </Text>
+                </View>
             </View>
         </View>
       </ScrollView>
 
       <TouchableOpacity 
         onPress={handlePost}
-        disabled={isSubmitDisabled}
+        disabled={isSubmitDisabled || loading}
         activeOpacity={0.9}
         className={`py-5 rounded-2xl flex-row items-center justify-center mb-4 border ${
-            isSubmitDisabled 
+            isSubmitDisabled || loading
                 ? 'bg-gray-100 border-gray-200' 
                 : 'bg-indigo-600 border-indigo-500 shadow-xl shadow-indigo-200'
         }`}
       >
-        <Icons.Notifications size={18} color={isSubmitDisabled ? "#94a3b8" : "white"} />
-        <Text className={`font-black uppercase tracking-[3px] text-[11px] font-inter-black ml-3 ${
-            isSubmitDisabled ? 'text-gray-400' : 'text-white'
-        }`}>Transmit Notice</Text>
+        {loading ? (
+          <ActivityIndicator color="#94a3b8" size="small" />
+        ) : (
+          <>
+            <Icons.Notifications size={18} color={isSubmitDisabled ? "#94a3b8" : "white"} />
+            <Text className={`font-black uppercase tracking-[3px] text-[11px] font-inter-black ml-3 ${
+                isSubmitDisabled ? 'text-gray-400' : 'text-white'
+            }`}>Transmit Notice</Text>
+          </>
+        )}
       </TouchableOpacity>
     </ModalShell>
   );

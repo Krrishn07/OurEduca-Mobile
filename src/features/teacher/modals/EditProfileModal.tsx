@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Icons } from '../../../../components/Icons';
 import { AppTheme, ModalShell, AppButton, AppTypography } from '../../../design-system';
 
@@ -13,6 +13,8 @@ interface EditProfileModalProps {
   setPhone: (text: string) => void;
   office: string;
   setOffice: (text: string) => void;
+  error?: string | null;
+  loading?: boolean;
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -25,6 +27,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   setPhone,
   office,
   setOffice,
+  error,
+  loading
 }) => {
   return (
     <ModalShell
@@ -35,6 +39,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       headerGradient={AppTheme.colors.gradients.brand}
     >
       <View className="gap-6">
+        {error && (
+          <View className="bg-rose-50 p-4 rounded-2xl border border-rose-100 mb-2">
+            <Text className="text-rose-600 text-[11px] font-black uppercase tracking-wider font-inter-black">{error}</Text>
+          </View>
+        )}
         <View>
           <Text className={`${AppTypography.eyebrow} text-gray-400 mb-2 ml-1`}>Display Name</Text>
           <TextInput 
@@ -69,11 +78,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           />
         </View>
 
-        <AppButton 
-          label="Save Identity Updates"
+        <TouchableOpacity 
           onPress={onSave}
-          className="py-5 mt-4 mb-6"
-        />
+          disabled={loading || !name.trim()}
+          activeOpacity={0.9}
+          className={`py-5 rounded-[20px] flex-row items-center justify-center shadow-xl mt-4 mb-6 ${
+            loading || !name.trim() 
+              ? 'bg-gray-100 border border-gray-200' 
+              : 'bg-[#7c3aed] border border-[#6d28d9] shadow-purple-200'
+          }`}
+        >
+          <Text className={`font-black text-[14px] uppercase tracking-[2px] font-inter-black ${
+            loading || !name.trim() ? 'text-gray-400' : 'text-white'
+          }`}>
+              {loading ? 'Synchronizing Updates...' : 'Save Identity Updates'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </ModalShell>
   );

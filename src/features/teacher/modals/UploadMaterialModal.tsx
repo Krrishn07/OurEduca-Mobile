@@ -20,6 +20,7 @@ interface UploadMaterialModalProps {
   setUploadUrl: (url: string) => void;
   selectedFile: any;
   setSelectedFile: (file: any) => void;
+  error?: string | null;
 }
 
 export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
@@ -38,6 +39,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
   setUploadUrl,
   selectedFile,
   setSelectedFile,
+  error
 }) => {
   const [currentStep, setCurrentStep] = React.useState(1);
 
@@ -83,6 +85,11 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
     return false;
   };
 
+  const canSubmit = uploadTitle.trim() && uploadRosterId && (
+    (uploadType === 'PDF' && selectedFile) || 
+    (uploadType === 'LINK' && uploadUrl.trim() && isUrlValid(uploadUrl))
+  );
+
   const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === uploadRosterId);
 
   return (
@@ -92,6 +99,13 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
       title="Upload Materials"
       subtitle={currentStep === 1 ? "Step 1: Resource Context" : currentStep === 2 ? "Step 2: Resource Details" : "Step 3: Finalize Node"}
     >
+      {/* Error Display */}
+      {error && (
+        <View className="bg-rose-50 p-4 rounded-2xl border border-rose-100 mb-6">
+          <Text className="text-rose-600 text-[11px] font-black uppercase tracking-wider font-inter-black">{error}</Text>
+        </View>
+      )}
+
       {/* Progress Indicator */}
       <View className="flex-row items-center justify-center mb-8 gap-2">
           {[1, 2, 3].map(s => (
@@ -122,6 +136,14 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                         <Text className={`text-[10px] font-black uppercase tracking-wider ml-2 font-inter-black ${uploadType === 'LINK' ? 'text-indigo-600' : 'text-gray-400'}`}>WEB LINK</Text>
                     </TouchableOpacity>
                 </View>
+
+                {uploadType === "PDF" && (
+                  <View className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100/50">
+                    <Text className="text-[10px] font-medium text-gray-500 leading-relaxed italic">
+                      PDF mode uploads a document file and creates a class material entry in the institutional repository.
+                    </Text>
+                  </View>
+                )}
 
                 <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Target Academic Section</Text>
                 <View className="flex-row flex-wrap gap-3 mb-6">
@@ -239,9 +261,10 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
               <AppButton 
                 label={isUploading ? "Synchronizing..." : "Establish Material Link"}
                 onPress={onUpload}
-                disabled={isUploading}
+                disabled={!canSubmit || isUploading}
                 loading={isUploading}
                 className="py-5"
+                style={{ opacity: !canSubmit || isUploading ? 0.5 : 1 }}
               />
           )}
 

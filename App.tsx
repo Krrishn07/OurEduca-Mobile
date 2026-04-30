@@ -143,7 +143,7 @@ function AppInner() {
           {renderDashboard()}
         </Layout>
       )}
-      <DevSimulationOverlay />
+      {__DEV__ && <DevSimulationOverlay />}
     </SafeAreaView>
   );
 }

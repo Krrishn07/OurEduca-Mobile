@@ -16,12 +16,18 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
   onBack,
   onShowToast
 }) => {
+  const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<'WEEK' | 'MONTH' | 'QUARTER'>('MONTH');
   const [isExporting, setIsExporting] = useState(false);
   const [exportStep, setExportStep] = useState(0);
 
-  // Analytics Logic
-  const totalStudents = dbRoster.length;
-  const criticalStudents = dbRoster.slice(0, 5).map(s => ({
+  // Filter logic
+  const filteredRoster = selectedRosterId 
+    ? dbRoster.filter(s => (s.class_id === selectedRosterId || s.rosterId === selectedRosterId))
+    : dbRoster;
+
+  const totalStudents = filteredRoster.length;
+  const criticalStudents = filteredRoster.slice(0, 5).map(s => ({
       name: s.users?.name || 'Academic Node',
       issue: s.grade_score ? `Current Evaluation: ${s.grade_score}` : 'Evaluation Pending',
       color: s.grade_score ? 'text-emerald-600' : 'text-rose-600',
@@ -53,7 +59,7 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
     <View className="flex-1 bg-gray-50/50">
       {/* Platinum Analytics Header */}
       <View className="bg-white pt-14 pb-6 px-6 shadow-sm border-b border-gray-100">
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between mb-6">
             <View className="flex-row items-center">
                 <TouchableOpacity 
                     onPress={onBack}
@@ -70,11 +76,54 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
                 <Icons.Notifications size={20} color="#94a3b8" />
             </TouchableOpacity>
         </View>
+
+        {/* Time Range Selector */}
+        <View className="flex-row gap-2 mt-2">
+            {[
+                { id: 'WEEK', label: 'Last 7 Days' },
+                { id: 'MONTH', label: 'Current Month' },
+                { id: 'QUARTER', label: 'Quarterly' }
+            ].map(t => (
+                <TouchableOpacity 
+                    key={t.id}
+                    onPress={() => setTimeRange(t.id as any)}
+                    className={`px-4 py-2.5 rounded-xl border ${timeRange === t.id ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-50 border-gray-100'}`}
+                >
+                    <Text className={`text-[9px] font-black uppercase tracking-widest font-inter-black ${timeRange === t.id ? 'text-white' : 'text-gray-400'}`}>{t.label}</Text>
+                </TouchableOpacity>
+            ))}
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Class Filter Horizontal Scroll */}
+        <View className="pt-6">
+            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mb-4 px-6 font-inter-black">Select Segment Context</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4">
+                <TouchableOpacity 
+                    onPress={() => setSelectedRosterId(null)}
+                    className={`px-6 py-4 rounded-[24px] border mr-3 ${!selectedRosterId ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100'}`}
+                >
+                    <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${!selectedRosterId ? 'text-indigo-600' : 'text-gray-400'}`}>All Classes</Text>
+                </TouchableOpacity>
+                {assignedSections.map((item, idx) => {
+                    const uniqueId = item.class_id || item.rosterId;
+                    const isSelected = selectedRosterId === uniqueId;
+                    return (
+                        <TouchableOpacity 
+                            key={idx} 
+                            onPress={() => setSelectedRosterId(uniqueId)}
+                            className={`px-6 py-4 rounded-[24px] border mr-3 ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-100'}`}
+                        >
+                            <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${isSelected ? 'text-indigo-600' : 'text-gray-400'}`}>{item.name || item.subject} - {item.section || 'A'}</Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </ScrollView>
+        </View>
+
         {/* KPI Row */}
-        <View className="flex-row px-4 pt-6 gap-3 mb-8">
+        <View className="flex-row px-4 pt-8 gap-3 mb-8">
             <View className="flex-1 bg-white p-5 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
                 <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center mb-3">
                     <Icons.Users size={14} color="#4f46e5" />
@@ -86,7 +135,7 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
                 <View className="w-8 h-8 rounded-full bg-emerald-50 items-center justify-center mb-3">
                     <Icons.Classes size={14} color="#10b981" />
                 </View>
-                <Text className="text-[24px] font-black text-gray-900 font-inter-black">{assignedSections.length}</Text>
+                <Text className="text-[24px] font-black text-gray-900 font-inter-black">{selectedRosterId ? '1' : assignedSections.length}</Text>
                 <Text className="text-[8px] font-black uppercase text-gray-400 tracking-widest mt-1">Active Segments</Text>
             </View>
             <View className="flex-1 bg-white p-5 rounded-[32px] border border-white shadow-xl shadow-indigo-100/20">
@@ -155,7 +204,7 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
                 )) : (
                     <View className="p-12 items-center justify-center bg-gray-50 rounded-[40px] border border-dashed border-gray-200">
                         <Icons.Users size={32} color="#cbd5e1" />
-                        <Text className="text-gray-400 font-black text-[11px] uppercase tracking-widest mt-4 font-inter-black">Syncing Academic Nodes...</Text>
+                        <Text className="text-gray-400 font-black text-[11px] uppercase tracking-widest mt-4 font-inter-black">No matching records found</Text>
                     </View>
                 )}
             </View>
