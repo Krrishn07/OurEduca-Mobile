@@ -218,28 +218,28 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 icon: <Icons.Plus size={22} color="#4f46e5" />, 
                 bg: 'bg-[#eef2ff]', 
                 text: 'text-indigo-700',
-                action: 'materials' 
+                action: 'Upload Material' 
               },
               { 
                 label: 'Announcement', 
                 icon: <Icons.Notifications size={22} color="#f59e0b" />, 
                 bg: 'bg-[#fff7ed]', 
                 text: 'text-amber-700',
-                action: 'live' 
+                action: 'Post Announcement' 
               },
               { 
                 label: 'Grade Work', 
                 icon: <Icons.Check size={22} color="#10b981" />, 
                 bg: 'bg-[#f0fdf4]', 
                 text: 'text-emerald-700',
-                action: 'assignments' 
+                action: 'Grade Quiz' 
               },
               { 
                 label: 'Class Reports', 
                 icon: <Icons.FileText size={22} color="#0ea5e9" />, 
                 bg: 'bg-[#f0f9ff]', 
                 text: 'text-sky-700',
-                action: 'students' 
+                action: 'View Report' 
               },
             ].map((item, idx) => (
               <TouchableOpacity 

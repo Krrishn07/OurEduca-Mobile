@@ -272,19 +272,61 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     if (!uploadTitle || !targetClassId || !mockAuthUser?.id) { showToast("Missing info"); return; }
     setIsUploading(true);
     try {
+        let finalUrl = uploadUrl;
+
+        // --- Step 1: Handle File Upload if PDF ---
+        if (uploadType === 'PDF' && selectedFile) {
+            const fileExt = selectedFile.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `materials/${mockAuthUser.id}/${fileName}`;
+
+            // React Native File Upload
+            const formData = new FormData();
+            formData.append('file', {
+                uri: selectedFile.uri,
+                name: selectedFile.name,
+                type: 'application/pdf'
+            } as any);
+
+            const { error: uploadError } = await supabase.storage
+                .from('videos') // Using existing public bucket
+                .upload(filePath, formData);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('videos')
+                .getPublicUrl(filePath);
+            
+            finalUrl = publicUrl;
+        }
+
+        // --- Step 2: Insert Database Record ---
         const { error } = await supabase.from('materials').insert({
             title: uploadTitle, 
             class_id: targetClassId, 
+            school_id: mockAuthUser.school_id,
             section: targetSection,
-            subject: 'Lecture', 
+            subject: selectedRoster?.subject || 'Lecture', 
             type: uploadType,
-            url: uploadType === 'LINK' ? uploadUrl : null, 
+            url: finalUrl, 
             created_by: mockAuthUser.id
         });
+
         if (error) throw error;
+        
+        showToast("Material Synchronized!");
         setShowUploadModal(false);
+        setUploadTitle('');
+        setUploadUrl('');
+        setSelectedFile(null);
         fetchTeacherData();
-    } finally { setIsUploading(false); }
+    } catch (err: any) {
+        console.error('Upload Error:', err.message);
+        showToast(`Sync Failed: ${err.message}`);
+    } finally { 
+        setIsUploading(false); 
+    }
   };
 
   const handleToggleLiveStream = async (title: string, rosterId?: string, selectedCameraUrl?: string) => {
