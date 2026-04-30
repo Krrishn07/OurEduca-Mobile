@@ -208,23 +208,25 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
-        {/* Core Quick Actions - 4 Item Circular Grid */}
-        <View className="flex-row justify-between mb-8 px-2">
+        {/* Core Quick Actions - 6 Item Execution Grid */}
+        <View className="flex-row flex-wrap justify-between mb-8 px-2">
           {[
             { label: 'Attendance', icon: <Icons.Check size={24} color="#10b981" />, bg: 'bg-emerald-50', action: 'attendance' },
             { label: 'Assignments', icon: <Icons.Report size={24} color="#f59e0b" />, bg: 'bg-amber-50', action: 'assignments' },
+            { label: 'Live Stream', icon: <Icons.Radio size={24} color="#ef4444" />, bg: 'bg-rose-50', action: 'live' },
             { label: 'Schedule', icon: <Icons.Calendar size={24} color="#4f46e5" />, bg: 'bg-indigo-50', action: 'schedule' },
+            { label: 'Materials', icon: <Icons.Database size={24} color="#0ea5e9" />, bg: 'bg-sky-50', action: 'materials' },
             { label: 'Students', icon: <Icons.Users size={24} color="#8b5cf6" />, bg: 'bg-purple-50', action: 'students' },
           ].map((item, idx) => (
             <TouchableOpacity 
               key={idx} 
               onPress={() => onQuickAction(item.action)}
-              className="items-center"
+              className="items-center w-[30%] mb-6"
             >
-              <View className={`w-16 h-16 ${item.bg} rounded-full items-center justify-center mb-2 border border-white/50 shadow-sm`}>
+              <View className={`w-16 h-16 ${item.bg} rounded-full items-center justify-center mb-2 border border-white shadow-md shadow-indigo-100/50`}>
                 {item.icon}
               </View>
-              <Text className="text-[10px] font-black text-gray-500 uppercase tracking-widest font-inter-black">{item.label}</Text>
+              <Text className="text-[10px] font-black text-gray-500 uppercase tracking-widest font-inter-black text-center">{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
