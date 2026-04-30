@@ -86,7 +86,7 @@ export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
                         const user = Array.isArray(s.users) ? s.users[0] : s.users;
                         return (
                             <AppRow
-                                key={s.id}
+                                key={s.id || `student-${idx}`}
                                 title={user?.name || 'Unknown Student'}
                                 subtitle={`Roll No: ${user?.roll_number || 'N/A'}`}
                                 avatarIcon={<Icons.Profile size={15} color="#4f46e5" />}
@@ -110,7 +110,7 @@ export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
                 <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-10">
                     {classMaterials.map((m, idx) => (
                         <AppRow
-                            key={m.id}
+                            key={m.id || `material-${idx}`}
                             title={m.title}
                             subtitle={m.type}
                             avatarIcon={m.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
