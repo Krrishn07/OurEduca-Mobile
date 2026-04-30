@@ -542,8 +542,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       <EditProfileModal visible={showEditProfileModal} onClose={() => setShowEditProfileModal(false)} name={editProfileName} setName={setEditProfileName} phone={editProfilePhone} setPhone={setEditProfilePhone} office={editProfileOffice} setOffice={setEditProfileOffice} onSave={() => { setShowEditProfileModal(false); showToast("Saved!"); }} />
       <AddStudentModal visible={showAddStudentModal} onClose={() => setShowAddStudentModal(false)} studentName="" setStudentName={() => {}} studentEmail="" setStudentEmail={() => {}} onAdd={() => {}} />
       {/* GoLiveModal removed for Platinum Consolidation */}
-      <GradeQuizModal visible={showGradeQuizModal} onClose={() => setShowGradeQuizModal(false)} onShowToast={showToast} />
-      <ReportModal visible={showReportModal} onClose={() => setShowReportModal(false)} onShowToast={showToast} />
+      <GradeQuizModal 
+        visible={showGradeQuizModal} 
+        onClose={() => setShowGradeQuizModal(false)} 
+        onShowToast={showToast}
+        assignedSections={assignedSections}
+        dbRoster={classStudents}
+      />
+      <ReportModal 
+        visible={showReportModal} 
+        onClose={() => setShowReportModal(false)} 
+        onShowToast={showToast}
+        assignedSections={assignedSections}
+        dbRoster={classStudents}
+      />
       
       <VideoPlayerModal 
         visible={showVideoPlayerModal}

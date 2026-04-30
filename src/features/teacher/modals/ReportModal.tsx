@@ -7,18 +7,31 @@ interface ReportModalProps {
   visible: boolean;
   onClose: () => void;
   onShowToast: (msg: string) => void;
+  assignedSections: any[];
+  dbRoster: any[];
 }
 
 export const ReportModal: React.FC<ReportModalProps> = ({
   visible,
   onClose,
   onShowToast,
+  assignedSections,
+  dbRoster
 }) => {
+  // Logic: Calculate metrics from real roster
+  const totalStudents = dbRoster.length;
+  const criticalStudents = dbRoster.slice(0, 3).map(s => ({
+      name: s.users?.name || 'Academic Node',
+      issue: s.grade_score ? `Grade: ${s.grade_score}` : 'Pending Evaluation',
+      color: s.grade_score ? 'text-emerald-600' : 'text-rose-600',
+      bg: s.grade_score ? 'bg-emerald-50' : 'bg-rose-50'
+  }));
+
   const subjectPerformance = [
-    { name: 'Algebra', value: 88, color: '#4f46e5' },
-    { name: 'Physics', value: 72, color: '#06b6d4' },
-    { name: 'Biology', value: 94, color: '#10b981' },
-    { name: 'History', value: 81, color: '#f59e0b' },
+    { name: 'Core', value: 88, color: '#4f46e5' },
+    { name: 'Labs', value: 72, color: '#06b6d4' },
+    { name: 'Tests', value: 94, color: '#10b981' },
+    { name: 'Avg', value: 81, color: '#f59e0b' },
   ];
 
   return (
@@ -29,26 +42,26 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       subtitle="Global Performance Node"
       headerGradient={AppTheme.colors.gradients.brand}
     >
-      <View>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Summary Metrics */}
         <View className="flex-row gap-4 mb-8">
             <View className="flex-1 bg-indigo-50 p-5 rounded-[28px] border border-indigo-100/50">
-                <Text className="text-[8px] font-black uppercase text-indigo-500 tracking-widest mb-1.5">Attendance</Text>
-                <Text className="text-2xl font-black text-indigo-900 leading-tight">92%</Text>
+                <Text className="text-[8px] font-black uppercase text-indigo-500 tracking-widest mb-1.5">Students</Text>
+                <Text className="text-2xl font-black text-indigo-900 leading-tight">{totalStudents}</Text>
             </View>
             <View className="flex-1 bg-emerald-50 p-5 rounded-[28px] border border-emerald-100/50">
-                <Text className="text-[8px] font-black uppercase text-emerald-500 tracking-widest mb-1.5">Avg Grade</Text>
-                <Text className="text-2xl font-black text-emerald-900 leading-tight">B+</Text>
+                <Text className="text-[8px] font-black uppercase text-emerald-500 tracking-widest mb-1.5">Sections</Text>
+                <Text className="text-2xl font-black text-emerald-900 leading-tight">{assignedSections.length}</Text>
             </View>
             <View className="flex-1 bg-blue-50 p-5 rounded-[28px] border border-blue-100/50">
-                <Text className="text-[8px] font-black uppercase text-blue-500 tracking-widest mb-1.5">Submission</Text>
-                <Text className="text-2xl font-black text-blue-900 leading-tight">80<Text className="text-[10px] text-blue-400">%</Text></Text>
+                <Text className="text-[8px] font-black uppercase text-blue-500 tracking-widest mb-1.5">Accuracy</Text>
+                <Text className="text-2xl font-black text-blue-900 leading-tight">98<Text className="text-[10px] text-blue-400">%</Text></Text>
             </View>
         </View>
 
         {/* Accuracy Chart */}
         <View className="mb-10">
-            <Text className={`${AppTypography.eyebrow} text-gray-400 mb-4 ml-1`}>Subject Accuracy Node</Text>
+            <Text className={`${AppTypography.eyebrow} text-gray-400 mb-4 ml-1 uppercase`}>Institutional Benchmarks</Text>
             <View className="bg-white p-8 rounded-[40px] border border-gray-50 shadow-sm">
                 <View className="h-40 flex-row items-end justify-between px-2 mb-6">
                     {subjectPerformance.map((s, i) => (
@@ -72,12 +85,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
         {/* Critical Attention */}
         <View className="mb-10">
-            <Text className={`${AppTypography.eyebrow} text-gray-400 mb-4 ml-1`}>Integrity Monitoring</Text>
+            <Text className={`${AppTypography.eyebrow} text-gray-400 mb-4 ml-1 uppercase`}>Recent Roster Activity</Text>
             <View className="gap-4">
-                {[
-                    { name: 'John Doe', issue: 'Missing Physics Lab', color: 'text-rose-600', bg: 'bg-rose-50' },
-                    { name: 'Sarah Wilson', issue: 'Attendance Alert', color: 'text-amber-600', bg: 'bg-amber-50' }
-                ].map((node, i) => (
+                {criticalStudents.length > 0 ? criticalStudents.map((node, i) => (
                     <View key={i} className={`${node.bg} p-5 rounded-[28px] border border-black/5 flex-row items-center justify-between`}>
                         <View className="flex-row items-center">
                             <View className="w-10 h-10 rounded-2xl bg-white items-center justify-center mr-4 shadow-sm border border-black/5">
@@ -88,28 +98,35 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                                 <Text className={`text-[9px] font-black uppercase tracking-[2px] mt-1 ${node.color}`}>{node.issue}</Text>
                             </View>
                         </View>
-                        <TouchableOpacity className="bg-white p-3 rounded-xl border border-black/5 shadow-sm active:scale-90">
+                        <TouchableOpacity 
+                            onPress={() => onShowToast(`Initiating private node with ${node.name}`)}
+                            className="bg-white p-3 rounded-xl border border-black/5 shadow-sm active:scale-90"
+                        >
                             <Icons.Messages size={16} color="#4f46e5" />
                         </TouchableOpacity>
                     </View>
-                ))}
+                )) : (
+                    <View className="p-8 items-center justify-center bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
+                        <Text className="text-gray-400 font-black text-[10px] uppercase tracking-widest">No Active Roster Data</Text>
+                    </View>
+                )}
             </View>
         </View>
 
         <View className="gap-4 mb-8">
             <AppButton 
-                label="Export Full Analysis"
-                onPress={() => { onClose(); onShowToast("Generating PDF Report..."); }}
+                label="Export Analysis"
+                onPress={() => { onClose(); onShowToast("Generating Institutional PDF..."); }}
                 className="py-5"
             />
             <AppButton 
-                label="Dismiss Report"
+                label="Dismiss"
                 variant="outline"
                 onPress={onClose}
                 className="py-5"
             />
         </View>
-      </View>
+      </ScrollView>
     </ModalShell>
   );
 };
