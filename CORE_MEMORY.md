@@ -27,6 +27,17 @@ This file serves as the permanent memory for the Oureduca Mobile development pro
 ---
 
 ## ⚠️ Solved Pitfalls (The "Wall of Learning")
+## Linguistic Tone & Naming Conventions
+- **Prioritize Simplicity**: Use standard professional terms over complex institutional metaphors.
+- **Term Mapping**:
+    - "Institutional Yield Hub" → "Class Reports"
+    - "Institutional Sync Node" → "Gradebook Hub"
+    - "Learner Node" → "Student Name"
+    - "Evaluation Node" → "Assignment"
+    - "At-Risk Nodes" → "Weak Students"
+    - "Global Ledger" → "All Classes"
+    - "Institutional Node" → "Registry" / "Record"
+- **Consistency**: Ensure all UI labels, toast messages, and button text follow this "Natural Professional" tone.
 
 ### 1. The "Infinite Pulse" Loop (April 2026)
 - **Issue**: A `useEffect` depended on a function (`fetchTeacherData`) which updated a state (`uploadRosterId`), which was a dependency of that same function.
