@@ -7,12 +7,14 @@ interface TeacherMaterialsProps {
   materials: any[];
   onDeleteMaterial: (id: string) => Promise<void>;
   onShowUploadModal: () => void;
+  onBack: () => void;
 }
 
 export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
   materials = [],
   onDeleteMaterial,
   onShowUploadModal,
+  onBack
 }) => {
   const [search, setSearch] = useState('');
 
@@ -28,7 +30,24 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
   };
 
   return (
-    <View className="flex-1 px-4 pt-6">
+    <View className="flex-1">
+      {/* Header with Back Button */}
+      <View className="bg-white border-b border-gray-100 pt-12 pb-6 px-6 shadow-sm">
+        <View className="flex-row items-center">
+            <TouchableOpacity 
+                onPress={onBack}
+                className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 mr-4 active:scale-90"
+            >
+                <Icons.ChevronLeft size={18} color="#4f46e5" />
+            </TouchableOpacity>
+            <View>
+                <Text className="text-[17px] font-black text-gray-900 tracking-tighter font-inter-black">Institutional Repository</Text>
+                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mt-0.5 font-inter-black">Academic Node Overview</Text>
+            </View>
+        </View>
+      </View>
+
+      <View className="flex-1 px-4 pt-6">
       <View className="bg-white p-4 rounded-[28px] border border-gray-100 shadow-sm flex-row items-center mb-6">
         <Icons.Search size={18} color="#94a3b8" />
         <TextInput 

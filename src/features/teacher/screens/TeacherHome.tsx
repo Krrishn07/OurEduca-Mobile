@@ -103,6 +103,15 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
       subtitle: 'Institutional',
       subtitleTone: 'danger' as const,
     },
+    {
+      label: 'Materials',
+      value: teacherMaterials.length,
+      target: 'materials',
+      toneClassName: 'bg-blue-50',
+      icon: <Icons.FileText size={22} color="#0ea5e9" />,
+      subtitle: 'Uploaded nodes',
+      subtitleTone: 'info' as const,
+    },
   ];
 
   const headerHeight = scrollY.interpolate({
@@ -427,12 +436,12 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">No materials uploaded</Text>
               </View>
             )}
-            {teacherMaterials.length > 5 && (
+            {teacherMaterials.length > 0 && (
               <TouchableOpacity 
                 onPress={() => onStatPress?.('materials')}
                 className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
               >
-                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">View All Materials</Text>
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">View All Repository Nodes</Text>
               </TouchableOpacity>
             )}
           </AppCard>

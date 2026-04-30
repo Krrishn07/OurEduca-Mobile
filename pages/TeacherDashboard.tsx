@@ -43,6 +43,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showAllMaterials, setShowAllMaterials] = useState(false);
   
   // Videos State
   const [videoTab, setVideoTab] = useState<'PUBLIC' | 'PRIVATE' | 'MY_CONTENT'>('MY_CONTENT');
@@ -409,60 +410,50 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       ) : (
           <>
             {activeTab === 'home' && (
-              <TeacherHome 
-                currentUser={teacherProfile}
-                assignedSections={assignedSections}
-                teacherMaterials={teacherMaterials || []}
-                totalStudents={(classStudents || []).length}
-                dbRoster={classStudents || []}
-                announcements={announcements || []}
-                meetings={meetings || []}
-                onQuickAction={handleQuickAction}
-                onNavigateToClass={(cls) => { onNavigate?.('classes'); }}
-                onShowHistory={() => setShowAnnouncementHistoryModal(true)}
-                onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
-                onDeleteMaterial={async (id) => {
-                  try {
-                    await supabase.from('materials').delete().eq('id', id);
-                    showToast("Material Removed");
-                    fetchTeacherData();
-                  } catch (err) {
-                    showToast("Delete Failed");
-                  }
-                }}
-                currentSchool={currentSchool}
-              />
-            )}
-            {activeTab === 'classes' && (
-              hasPermission('classes', teacherProfile.role, currentSchool?.id) ? (
-                <TeacherClasses 
-                  assignedSections={assignedSections}
-                  dbRoster={classStudents}
-                  onNavigateToClass={(cls) => setSelectedClass(cls)}
+              showAllMaterials ? (
+                <TeacherMaterials 
+                  materials={teacherMaterials}
+                  onDeleteMaterial={async (id) => {
+                    try {
+                      await supabase.from('materials').delete().eq('id', id);
+                      showToast("Material Removed");
+                      fetchTeacherData();
+                    } catch (err) {
+                      showToast("Delete Failed");
+                    }
+                  }}
                   onShowUploadModal={() => setShowUploadModal(true)}
+                  onBack={() => setShowAllMaterials(false)}
                 />
               ) : (
-                <RestrictedAccessView 
-                    featureName="Classroom Access" 
-                    onContactAdmin={() => onNavigate?.('messages')}
-                    role={teacherProfile.role}
+                <TeacherHome 
+                  currentUser={teacherProfile}
+                  assignedSections={assignedSections}
+                  teacherMaterials={teacherMaterials || []}
+                  totalStudents={(classStudents || []).length}
+                  dbRoster={classStudents || []}
+                  announcements={announcements || []}
+                  meetings={meetings || []}
+                  onQuickAction={handleQuickAction}
+                  onNavigateToClass={(cls) => { onNavigate?.('classes'); }}
+                  onShowHistory={() => setShowAnnouncementHistoryModal(true)}
+                  onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
+                  onDeleteMaterial={async (id) => {
+                    try {
+                      await supabase.from('materials').delete().eq('id', id);
+                      showToast("Material Removed");
+                      fetchTeacherData();
+                    } catch (err) {
+                      showToast("Delete Failed");
+                    }
+                  }}
+                  onStatPress={(target) => {
+                    if (target === 'materials') setShowAllMaterials(true);
+                    else onNavigate?.(target);
+                  }}
+                  currentSchool={currentSchool}
                 />
               )
-            )}
-            {activeTab === 'materials' && (
-              <TeacherMaterials 
-                materials={teacherMaterials}
-                onDeleteMaterial={async (id) => {
-                  try {
-                    await supabase.from('materials').delete().eq('id', id);
-                    showToast("Material Removed");
-                    fetchTeacherData();
-                  } catch (err) {
-                    showToast("Delete Failed");
-                  }
-                }}
-                onShowUploadModal={() => setShowUploadModal(true)}
-              />
             )}
             {activeTab === 'videos' && (
               hasPermission('videos', teacherProfile.role, currentSchool?.id) ? (
