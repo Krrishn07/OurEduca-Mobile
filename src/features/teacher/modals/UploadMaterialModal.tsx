@@ -21,6 +21,7 @@ interface UploadMaterialModalProps {
   selectedFile: any;
   setSelectedFile: (file: any) => void;
   error?: string | null;
+  status?: string | null;
 }
 
 export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
@@ -39,7 +40,8 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
   setUploadUrl,
   selectedFile,
   setSelectedFile,
-  error
+  error,
+  status
 }) => {
   const [currentStep, setCurrentStep] = React.useState(1);
 
@@ -85,10 +87,13 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
     return false;
   };
 
-  const canSubmit = uploadTitle.trim() && uploadRosterId && (
-    (uploadType === 'PDF' && selectedFile) || 
-    (uploadType === 'LINK' && uploadUrl.trim() && isUrlValid(uploadUrl))
-  );
+  const canSubmit =
+    uploadTitle.trim().length > 0 &&
+    uploadRosterId &&
+    (
+      (uploadType === "PDF" && !!selectedFile) ||
+      (uploadType === "LINK" && uploadUrl.trim().length > 0)
+    );
 
   const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === uploadRosterId);
 
@@ -100,11 +105,9 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
       subtitle={currentStep === 1 ? "Step 1: Resource Context" : currentStep === 2 ? "Step 2: Resource Details" : "Step 3: Finalize Node"}
     >
       {/* Error Display */}
-      {error && (
-        <View className="bg-rose-50 p-4 rounded-2xl border border-rose-100 mb-6">
-          <Text className="text-rose-600 text-[11px] font-black uppercase tracking-wider font-inter-black">{error}</Text>
-        </View>
-      )}
+      {error ? (
+        <Text className="text-red-500 text-sm mb-4 font-bold text-center">{error}</Text>
+      ) : null}
 
       {/* Progress Indicator */}
       <View className="flex-row items-center justify-center mb-8 gap-2">
@@ -258,14 +261,18 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                 className="py-5"
               />
           ) : (
-              <AppButton 
-                label={isUploading ? "Synchronizing..." : "Establish Material Link"}
+              <TouchableOpacity
                 onPress={onUpload}
                 disabled={!canSubmit || isUploading}
-                loading={isUploading}
-                className="py-5"
-                style={{ opacity: !canSubmit || isUploading ? 0.5 : 1 }}
-              />
+                activeOpacity={0.9}
+                className={`py-5 rounded-2xl shadow-xl border items-center justify-center mb-4 ${
+                  !canSubmit || isUploading ? "bg-indigo-300 border-indigo-200" : "bg-indigo-600 border-indigo-500"
+                }`}
+              >
+                <Text className="text-white font-black uppercase tracking-[3px] text-[11px] font-inter-black">
+                  {isUploading ? (status || "Synchronizing Node...") : "Establish Material Link"}
+                </Text>
+              </TouchableOpacity>
           )}
 
           {currentStep > 1 && !isUploading && (

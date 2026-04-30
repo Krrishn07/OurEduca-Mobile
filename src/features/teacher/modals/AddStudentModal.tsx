@@ -13,6 +13,7 @@ interface AddStudentModalProps {
   setStudentEmail: (text: string) => void;
   error?: string | null;
   loading?: boolean;
+  status?: string | null;
 }
 
 export const AddStudentModal: React.FC<AddStudentModalProps> = ({
@@ -24,9 +25,10 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   studentEmail,
   setStudentEmail,
   error,
-  loading
+  loading,
+  status
 }) => {
-  const canSave = studentName.trim() && studentEmail.trim();
+  const canSave = studentName.trim().length > 0 && studentEmail.trim().length > 0;
 
   return (
     <Modal visible={visible} animationType="fade" transparent>
@@ -36,11 +38,9 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
           className="w-full max-w-md"
         >
           <View className="bg-white rounded-[24px] p-8 shadow-2xl">
-            {error && (
-              <View className="bg-rose-50 p-4 rounded-2xl border border-rose-100 mb-6">
-                <Text className="text-rose-600 text-[11px] font-black uppercase tracking-wider font-inter-black text-center">{error}</Text>
-              </View>
-            )}
+            {error ? (
+              <Text className="text-red-500 text-sm mb-4 text-center font-bold">{error}</Text>
+            ) : null}
           <View className="flex-row justify-between items-center mb-8">
               <View>
                 <Text className="text-2xl font-black text-gray-900 font-inter-black">Register Student</Text>
@@ -92,18 +92,13 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
               <TouchableOpacity 
                   onPress={onAdd}
                   disabled={!canSave || loading}
-                  activeOpacity={0.9}
-                  className={`w-full py-5 rounded-[20px] flex-row items-center justify-center shadow-xl ${
-                    !canSave || loading 
-                      ? 'bg-gray-100 border border-gray-200' 
-                      : 'bg-[#16a34a] border border-[#15803d] shadow-green-200'
+                  className={`w-full py-4 rounded-xl shadow-lg flex-row items-center justify-center mt-4 ${
+                    !canSave || loading ? "bg-indigo-300" : "bg-indigo-600"
                   }`}
               >
-                  {!loading && <Icons.Plus size={20} color={!canSave ? "#94a3b8" : "white"} />}
-                  <Text className={`font-black ml-3 text-[14px] uppercase tracking-[2px] font-inter-black ${
-                    !canSave || loading ? 'text-gray-400' : 'text-white'
-                  }`}>
-                      {loading ? 'Synchronizing Node...' : 'Register Student'}
+                  <Icons.Plus size={20} color="white" />
+                  <Text className="text-white font-black ml-2 text-lg">
+                    {loading ? (status || "Registering...") : "Register Student"}
                   </Text>
               </TouchableOpacity>
           </ScrollView>

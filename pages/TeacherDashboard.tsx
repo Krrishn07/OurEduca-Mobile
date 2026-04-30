@@ -73,8 +73,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
   const [showGradeQuizModal, setShowGradeQuizModal] = useState(false);
   const [gradingInitialClass, setGradingInitialClass] = useState<any>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [uploadSaving, setUploadSaving] = useState(false);
+  const [studentSaving, setStudentSaving] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [announcementSaving, setAnnouncementSaving] = useState(false);
+
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [studentError, setStudentError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [announcementError, setAnnouncementError] = useState<string | null>(null);
+
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [studentStatus, setStudentStatus] = useState<string | null>(null);
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
   
   // --- Context & Supabase ---
   const { currentUser: mockAuthUser, currentSchool } = useMockAuth();
@@ -292,34 +303,35 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   };
 
   const handleUpload = async () => {
-    setActionError(null);
+    setUploadError(null);
     const selectedRoster = (assignedSections || []).find(s => (s.id || s.rosterId) === uploadRosterId);
     const targetClassId = selectedRoster?.class_id || uploadClassId;
     const targetSection = selectedRoster?.section;
 
     if (!uploadTitle.trim()) {
-        setActionError("Please enter a title.");
+        setUploadError("Please enter a title.");
         return;
     }
 
     if (!targetClassId) {
-        setActionError("Please select a class.");
+        setUploadError("Please select a class.");
         return;
     }
 
     if (uploadType === 'PDF' && !selectedFile) {
-        setActionError("Please choose a PDF file.");
+        setUploadError("Please choose a PDF file.");
         return;
     }
 
     if (uploadType === 'LINK' && (!uploadUrl.trim() || !isValidUrl(uploadUrl))) {
-        setActionError("Please enter a valid web link.");
+        setUploadError("Please enter a valid web link.");
         return;
     }
 
     if (!mockAuthUser?.id) { showToast("Authentication Required"); return; }
 
-    setIsSaving(true);
+    setUploadSaving(true);
+    setUploadStatus("Preparing Node...");
     try {
         let finalUrl = uploadUrl;
         if (uploadType === 'LINK' && uploadUrl && !uploadUrl.startsWith('http')) {
@@ -338,6 +350,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                 type: 'application/pdf'
             } as any);
 
+            setUploadStatus("Uploading Document...");
             const { error: uploadError } = await supabase.storage
                 .from('videos') 
                 .upload(filePath, formData);
@@ -352,6 +365,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         }
 
         // --- Step 2: Insert Database Record ---
+        setUploadStatus("Synchronizing Database...");
         const { error } = await supabase.from('materials').insert({
             title: uploadTitle, 
             class_id: targetClassId, 
@@ -373,9 +387,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         fetchTeacherData();
     } catch (err: any) {
         console.error('Upload Error:', err.message);
-        setActionError(err.message ?? "Upload failed.");
+        setUploadError(err.message ?? "Upload failed.");
     } finally { 
-        setIsSaving(false); 
+        setUploadSaving(false); 
+        setUploadStatus(null);
     }
   };
 
@@ -388,14 +403,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   };
 
   const handleAddStudent = async () => {
-    setActionError(null);
+    setStudentError(null);
     const targetClass = selectedClass;
     if (!studentName.trim()) {
-        setActionError("Student name is required.");
+        setStudentError("Student name is required.");
         return;
     }
     if (!studentEmail.trim()) {
-        setActionError("Student email is required.");
+        setStudentError("Student email is required.");
         return;
     }
     if (!mockAuthUser?.school_id || !targetClass) {
@@ -403,11 +418,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         return;
     }
     
-    setIsSaving(true);
+    setStudentSaving(true);
     try {
         const email = studentEmail.trim();
         
         // Institutional Registry Sync
+        setStudentStatus("Checking Registry...");
         let userId = '';
         const { data: existingUser } = await supabase
             .from('users')
@@ -434,6 +450,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         }
         
         // Roster Assignment
+        setStudentStatus("Syncing Roster...");
         const { error: rosterError } = await supabase
             .from('class_roster')
             .insert({
@@ -452,20 +469,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         fetchTeacherData();
     } catch (err: any) {
         console.error('Registration Error:', err.message);
-        setActionError(err.message ?? "Could not add student.");
+        setStudentError(err.message ?? "Could not add student.");
     } finally {
-        setIsSaving(false);
+        setStudentSaving(false);
+        setStudentStatus(null);
     }
   };
 
   const handleSaveProfile = async () => {
-    setActionError(null);
+    setProfileError(null);
     if (!editProfileName.trim()) {
-        setActionError("Display name is required");
+        setProfileError("Display name is required");
         return;
     }
 
-    setIsSaving(true);
+    setProfileSaving(true);
+    setProfileStatus("Updating Identity...");
     try {
         const { error } = await supabase
             .from('users')
@@ -482,9 +501,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         setShowEditProfileModal(false);
         fetchTeacherData(); // Refresh local profile
     } catch (err: any) {
-        setActionError(err.message ?? "Could not save profile.");
+        setProfileError(err.message ?? "Could not save profile.");
     } finally {
-        setIsSaving(false);
+        setProfileSaving(false);
+        setProfileStatus(null);
     }
   };
 
@@ -728,7 +748,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         uploadType={uploadType} setUploadType={setUploadType}
         uploadUrl={uploadUrl} setUploadUrl={setUploadUrl}
         selectedFile={selectedFile} setSelectedFile={setSelectedFile}
-        error={actionError}
+        error={uploadError}
+        loading={uploadSaving}
+        status={uploadStatus}
       />
 
       <AnnouncementModal 
@@ -737,8 +759,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         userRole={teacherProfile.role}
         assignedClasses={assignedSections}
         onSave={async (data) => { 
-          setActionError(null);
-          setIsSaving(true);
+          setAnnouncementError(null);
+          setAnnouncementSaving(true);
           try {
             await addAnnouncement({ 
               ...data, 
@@ -748,13 +770,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             showToast("Notice Posted!"); 
             setShowAnnouncementModal(false);
           } catch (err: any) {
-            setActionError(err.message ?? "Could not post notice.");
+            setAnnouncementError(err.message ?? "Could not post notice.");
           } finally {
-            setIsSaving(false);
+            setAnnouncementSaving(false);
           }
         }}
-        error={actionError}
-        loading={isSaving}
+        error={announcementError}
+        loading={announcementSaving}
       />
 
       <AnnouncementHistoryModal 
@@ -797,8 +819,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         office={editProfileOffice} 
         setOffice={setEditProfileOffice} 
         onSave={handleSaveProfile} 
-        error={actionError}
-        loading={isSaving}
+        error={profileError}
+        loading={profileSaving}
+        status={profileStatus}
       />
       
       <GradeQuizModal 
@@ -819,8 +842,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         studentEmail={studentEmail} 
         setStudentEmail={setStudentEmail} 
         onAdd={handleAddStudent} 
-        error={actionError}
-        loading={isSaving}
+        error={studentError}
+        loading={studentSaving}
+        status={studentStatus}
       />
       {/* GoLiveModal removed for Platinum Consolidation */}
       
