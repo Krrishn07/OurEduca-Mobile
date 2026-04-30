@@ -13,6 +13,7 @@ interface TeacherClassesProps {
 
 export const TeacherClasses: React.FC<TeacherClassesProps> = ({
   assignedSections = [],
+  onNavigateToClass,
   dbRoster = [],
   onShowUploadModal,
 }) => {
@@ -152,7 +153,10 @@ export const TeacherClasses: React.FC<TeacherClassesProps> = ({
           {(assignedSections || []).length > 0 ? (assignedSections || []).map((r) => (
             <AppCard
               key={r.rosterId || r.id || Math.random().toString()}
-              onPress={() => setSelectedClass(r)}
+              onPress={() => {
+                setSelectedClass(r);
+                onNavigateToClass(r);
+              }}
               className="p-5 mb-5 overflow-hidden border border-white shadow-xl shadow-indigo-100/30"
             >
               <View className="flex-row items-start justify-between mb-6">

@@ -29,6 +29,7 @@ interface TeacherHomeProps {
   onShowHistory?: () => void;
   onDeleteNotice?: (id: string) => void;
   currentSchool?: any;
+  systemLogs?: any[];
 }
 
 export const TeacherHome: React.FC<TeacherHomeProps> = ({
@@ -46,17 +47,31 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
   onDeleteNotice,
   onDeleteMaterial,
   currentSchool,
+  systemLogs = [],
 }) => {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const staffAnnouncements = (announcements || []).filter((a) => a.audience === 'ALL' || a.audience === 'STAFF');
   const displayAnnouncements = staffAnnouncements.slice(0, 3);
   
-  const mockRecentActivity = [
-    { id: 'act1', title: 'Assignment Submitted', user: 'John Doe', type: 'submission', time: '10m ago', icon: <Icons.Report size={14} color="#f59e0b" />, bg: '#fff7ed' },
-    { id: 'act2', title: 'Leave Request', user: 'Alice Smith', type: 'request', time: '1h ago', icon: <Icons.Calendar size={14} color="#ef4444" />, bg: '#fef2f2' },
-    { id: 'act3', title: 'Material Downloaded', user: 'Mark Wilson', type: 'engagement', time: '2h ago', icon: <Icons.Download size={14} color="#10b981" />, bg: '#f0fdf4' },
-  ];
+  // LIVE LOGIC: Calculate pending grades from roster
+  const pendingGradesCount = (dbRoster || []).filter(s => !s.grade_score).length;
+
+  const getRecentActivity = () => {
+    return (systemLogs || []).slice(0, 5).map((act: any) => {
+      const IconComp = (Icons as any)[act.icon] || Icons.Notifications;
+      return {
+        id: act.id,
+        title: act.title,
+        user: act.category || 'System',
+        time: new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        icon: <IconComp size={16} color={act.color || '#4f46e5'} />,
+        bg: `${act.color || '#4f46e5'}10`, // Subtle alpha background
+      };
+    });
+  };
+
+  const recentActivity = getRecentActivity();
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
@@ -78,7 +93,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
     },
     {
       label: 'To Grade',
-      value: 12,
+      value: pendingGradesCount,
       target: 'assignments',
       toneClassName: 'bg-amber-50',
       icon: <Icons.Report size={22} color={AppTheme.colors.warning} />,
@@ -335,7 +350,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 key={a.id}
                 title={a.title}
                 subtitle={a.message}
-                avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
+                avatarIcon={<Icons.Notifications size={16} color="#4f46e5" />}
                 avatarBg="#eef2ff"
                 meta={a.date}
                 showBorder={idx < displayAnnouncements.length - 1}
@@ -373,7 +388,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
         </View>
 
         {/* QUICK ACTIONS - Below Faculty News */}
-        <View className="mb-10">
+        <View className="mb-8">
           <SectionHeader title="QUICK ACTIONS" className="px-2" />
           <View className="flex-row flex-wrap justify-between px-2 gap-y-4">
             {[
@@ -438,7 +453,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 key={mat.id}
                 title={mat.title}
                 subtitle={`${mat.type} • ${mat.subject || 'Academic Node'}`}
-                avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
+                avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={16} color="#4f46e5" /> : <Icons.Globe size={16} color="#0ea5e9" />}
                 avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
                 meta={new Date(mat.created_at).toLocaleDateString()}
                 showBorder={idx < Math.min(teacherMaterials.length, 5) - 1}
@@ -492,17 +507,22 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
             }
           />
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {mockRecentActivity.map((act, idx) => (
+            {recentActivity.length > 0 ? recentActivity.map((act, idx) => (
               <AppRow
                 key={act.id}
                 title={act.title}
                 subtitle={`${act.user} • ${act.time}`}
                 avatarIcon={act.icon}
                 avatarBg={act.bg}
-                showBorder={idx < mockRecentActivity.length - 1}
+                showBorder={idx < recentActivity.length - 1}
                 rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
               />
-            ))}
+            )) : (
+                <View className="items-center py-10">
+                    <Icons.Notifications size={24} color="#cbd5e1" />
+                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">No recent system activity</Text>
+                </View>
+            )}
           </AppCard>
         </View>
 

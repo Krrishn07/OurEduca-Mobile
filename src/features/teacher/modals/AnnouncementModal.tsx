@@ -27,6 +27,15 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
   const isMentor = userRole === 'ADMIN_TEACHER';
   const isTeacherOrMentor = isTeacher || isMentor;
 
+  // Validation: Hard-block empty or invalid target states
+  const isValidTarget = () => {
+    if (isMentor) return assignedClasses.length > 0;
+    if (isTeacher) return !!selectedCompId;
+    return !!audience;
+  };
+
+  const isSubmitDisabled = !title.trim() || !message.trim() || !isValidTarget();
+
   // Reset state ONLY when modal transitions from closed -> open
   const wasVisible = useRef(false);
   useEffect(() => {
@@ -41,7 +50,7 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
   }, [visible]);
 
   const handlePost = () => {
-    if (!title.trim() || !message.trim()) return;
+    if (isSubmitDisabled) return;
     
     let targetClassId = undefined;
     let targetSection = undefined;
@@ -59,120 +68,155 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
     onClose();
   };
 
+  const getRecipientSummary = () => {
+    if (isMentor && assignedClasses.length > 0) {
+        return `${assignedClasses[0].name || assignedClasses[0].subject} Students`;
+    }
+    if (isTeacher && selectedCompId) {
+        const cls = assignedClasses.find(c => `${c.class_id}::${c.section || 'A'}` === selectedCompId);
+        return `${cls?.name || cls?.subject || 'Class'} Students (Sec ${cls?.section || 'A'})`;
+    }
+    if (audience === 'ALL') return 'Entire Institution (All Staff & Students)';
+    if (audience === 'STUDENT') return 'All Students (Cross-Department)';
+    if (audience === 'STAFF') return 'Institutional Faculty & Staff';
+    return 'Undetermined Recipient';
+  };
+
   return (
     <ModalShell
       visible={visible}
       onClose={onClose}
       title="Global Broadcast"
-      subtitle="Institutional Communication Node"
+      subtitle={isTeacherOrMentor ? "Classroom Transmission" : "Institutional Communication Node"}
       headerGradient={AppTheme.colors.gradients.brand}
     >
-      <View className="mb-6">
-        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Notice Designation</Text>
-        <View className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 shadow-inner">
-          <TextInput 
-            placeholder="e.g. Annual Sports Day Briefing" 
-            value={title}
-            onChangeText={setTitle}
-            className="text-gray-900 font-black text-[13px] font-inter-black p-0"
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-      </View>
-
-      <View className="mb-6">
-        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Content Transmission</Text>
-        <View className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 h-36 shadow-inner">
-          <TextInput 
-            placeholder="Construct your institutional message..." 
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            className="text-gray-900 font-black text-[13px] font-inter-black flex-1 leading-relaxed p-0"
-            textAlignVertical="top"
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-      </View>
-
-      {!isMentor && (
-        <View className="mb-8">
-          <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Targeted Node Distribution</Text>
-          <View className="flex-row gap-3">
-            {(isTeacher ? [
-              { key: 'STUDENT', label: 'My Students', sub: 'Class Only' }
-            ] : [
-              { key: 'ALL', label: 'Everyone', sub: 'Broadcast' },
-              { key: 'STUDENT', label: 'Students', sub: 'Learners' },
-              { key: 'STAFF', label: 'Teachers', sub: 'Staff' }
-            ]).map((aud) => (
-              <TouchableOpacity 
-                key={aud.key}
-                onPress={() => setAudience(aud.key as any)}
-                className={`p-4 rounded-2xl border flex-1 items-center ${audience === aud.key ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-200' : 'bg-white border-white shadow-sm'}`}
-              >
-                <Text className={`font-black text-[10px] tracking-widest uppercase font-inter-black ${audience === aud.key ? 'text-white' : 'text-gray-500'}`}>{aud.label}</Text>
-                <Text className={`text-[8px] font-black mt-1 uppercase tracking-tighter ${audience === aud.key ? 'text-indigo-100' : 'text-gray-400'}`}>{aud.sub}</Text>
-              </TouchableOpacity>
-            ))}
+      <ScrollView showsVerticalScrollIndicator={false} className="max-h-[550px]">
+        <View className="mb-6">
+          <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Notice Designation</Text>
+          <View className="bg-gray-50 border border-gray-100 rounded-[24px] px-6 py-5 shadow-inner">
+            <TextInput 
+              placeholder="e.g. Annual Sports Day Briefing" 
+              value={title}
+              onChangeText={setTitle}
+              className="text-gray-900 font-black text-[14px] font-inter-black p-0"
+              placeholderTextColor="#94a3b8"
+            />
           </View>
         </View>
-      )}
 
-      {isTeacher && assignedClasses.length > 0 && (
-        <View className="mb-8">
-          <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Academic Segment Synchronization</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-            {assignedClasses.map((cls) => {
-              const compId = `${cls.class_id}::${cls.section || 'A'}`;
-              const isSelected = selectedCompId === compId;
-              return (
-                <TouchableOpacity 
-                  key={compId}
-                  onPress={() => setSelectedCompId(compId)}
-                  className={`px-5 py-4 rounded-2xl border mr-3 ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-xl shadow-indigo-100/50' : 'bg-white border-white shadow-sm'}`}
-                >
-                  <View className="flex-row items-center">
-                    <View className={`w-2 h-2 rounded-full mr-3 ${isSelected ? 'bg-indigo-500 shadow-sm shadow-indigo-500/50' : 'bg-gray-300'}`} />
-                    <Text className={`font-black text-[10px] uppercase tracking-[2px] font-inter-black ${isSelected ? 'text-indigo-700' : 'text-gray-500'}`}>
-                      {cls.name || cls.subject} - {cls.section || 'A'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+        <View className="mb-6">
+          <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Content Transmission</Text>
+          <View className="bg-gray-50 border border-gray-100 rounded-[28px] px-6 py-5 h-40 shadow-inner">
+            <TextInput 
+              placeholder="Construct your institutional message..." 
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              className="text-gray-900 font-black text-[14px] font-inter-black flex-1 leading-relaxed p-0"
+              textAlignVertical="top"
+              placeholderTextColor="#94a3b8"
+            />
+          </View>
         </View>
-      )}
 
-      {isMentor && assignedClasses.length > 0 && (
-        <View className="mb-8">
-          <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Enforced Segment Target</Text>
-          <View className="bg-white border border-white rounded-[24px] p-5 flex-row items-center shadow-xl shadow-indigo-100/30">
-            <View className="w-12 h-12 rounded-2xl bg-indigo-50 items-center justify-center mr-4 border border-indigo-100 shadow-sm">
-              <Icons.Users size={24} color="#4f46e5" />
+        {!isMentor && (
+          <View className="mb-8">
+            <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Targeted Node Distribution</Text>
+            <View className="flex-row gap-3">
+              {(isTeacher ? [
+                { key: 'STUDENT', label: 'My Students', sub: 'Class Only' }
+              ] : [
+                { key: 'ALL', label: 'Everyone', sub: 'Broadcast' },
+                { key: 'STUDENT', label: 'Students', sub: 'Learners' },
+                { key: 'STAFF', label: 'Teachers', sub: 'Staff' }
+              ]).map((aud) => (
+                <TouchableOpacity 
+                  key={aud.key}
+                  onPress={() => setAudience(aud.key as any)}
+                  className={`p-5 rounded-[24px] border flex-1 items-center ${audience === aud.key ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-200' : 'bg-white border-gray-100 shadow-sm'}`}
+                >
+                  <Text className={`font-black text-[11px] tracking-widest uppercase font-inter-black ${audience === aud.key ? 'text-white' : 'text-gray-500'}`}>{aud.label}</Text>
+                  <Text className={`text-[9px] font-black mt-1 uppercase tracking-tighter ${audience === aud.key ? 'text-indigo-100' : 'text-gray-400'}`}>{aud.sub}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {isTeacher && assignedClasses.length > 0 && (
+          <View className="mb-8">
+            <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Academic Segment Synchronization</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row pb-2">
+              {assignedClasses.map((cls) => {
+                const compId = `${cls.class_id}::${cls.section || 'A'}`;
+                const isSelected = selectedCompId === compId;
+                return (
+                  <TouchableOpacity 
+                    key={compId}
+                    onPress={() => setSelectedCompId(compId)}
+                    className={`px-6 py-5 rounded-[24px] border mr-3 ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-xl shadow-indigo-100/50' : 'bg-white border-gray-100 shadow-sm'}`}
+                  >
+                    <View className="flex-row items-center">
+                      <View className={`w-2.5 h-2.5 rounded-full mr-3 ${isSelected ? 'bg-indigo-500 shadow-sm shadow-indigo-500/50' : 'bg-gray-300'}`} />
+                      <Text className={`font-black text-[11px] uppercase tracking-[2px] font-inter-black ${isSelected ? 'text-indigo-700' : 'text-gray-500'}`}>
+                        {cls.name || cls.subject} - {cls.section || 'A'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {isMentor && assignedClasses.length > 0 && (
+          <View className="mb-8">
+            <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Enforced Segment Target</Text>
+            <View className="bg-white border border-gray-50 rounded-[32px] p-6 flex-row items-center shadow-2xl shadow-indigo-100/40">
+              <View className="w-14 h-14 rounded-2xl bg-indigo-50 items-center justify-center mr-5 border border-indigo-100 shadow-sm">
+                <Icons.Users size={28} color="#4f46e5" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[10px] font-black text-indigo-400 uppercase tracking-[2px] mb-1.5 font-inter-black">Institutional Roster</Text>
+                <Text className="font-black text-gray-900 text-lg tracking-tight font-inter-black">
+                  {assignedClasses[0].name || assignedClasses[0].subject} - {assignedClasses[0].section || 'A'}
+                </Text>
+              </View>
+              <View className="bg-indigo-600 px-4 py-2 rounded-xl shadow-lg shadow-indigo-200">
+                <Text className="text-[10px] font-black text-white font-inter-black uppercase">SECURE</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Transmission Summary - Preview Card */}
+        <View className="bg-indigo-50/50 p-6 rounded-[32px] border border-indigo-100/50 mb-10 flex-row items-center">
+            <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-4 border border-indigo-100 shadow-sm">
+                <Icons.Globe size={20} color="#4f46e5" />
             </View>
             <View className="flex-1">
-              <Text className="text-[10px] font-black text-indigo-400 uppercase tracking-[2px] mb-1 font-inter-black">Institutional Roster</Text>
-              <Text className="font-black text-gray-900 text-lg tracking-tighter font-inter-black">
-                {assignedClasses[0].name || assignedClasses[0].subject} - {assignedClasses[0].section || 'A'}
-              </Text>
+                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-1 font-inter-black">Transmission Recipient</Text>
+                <Text className="text-indigo-900 font-black text-[12px] font-inter-black leading-tight" numberOfLines={1}>
+                    {getRecipientSummary()}
+                </Text>
             </View>
-            <View className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-              <Text className="text-[9px] font-black text-indigo-600 font-inter-black">SECURE</Text>
-            </View>
-          </View>
         </View>
-      )}
+      </ScrollView>
 
       <TouchableOpacity 
         onPress={handlePost}
-        disabled={!title.trim() || !message.trim()}
+        disabled={isSubmitDisabled}
         activeOpacity={0.9}
-        className="bg-indigo-600 py-5 rounded-2xl shadow-xl shadow-indigo-200 border border-indigo-500 flex-row items-center justify-center mb-4"
+        className={`py-5 rounded-2xl flex-row items-center justify-center mb-4 border ${
+            isSubmitDisabled 
+                ? 'bg-gray-100 border-gray-200' 
+                : 'bg-indigo-600 border-indigo-500 shadow-xl shadow-indigo-200'
+        }`}
       >
-        <Icons.Notifications size={18} color="white" />
-        <Text className="text-white font-black uppercase tracking-[3px] text-[11px] font-inter-black ml-3">Transmit Notice</Text>
+        <Icons.Notifications size={18} color={isSubmitDisabled ? "#94a3b8" : "white"} />
+        <Text className={`font-black uppercase tracking-[3px] text-[11px] font-inter-black ml-3 ${
+            isSubmitDisabled ? 'text-gray-400' : 'text-white'
+        }`}>Transmit Notice</Text>
       </TouchableOpacity>
     </ModalShell>
   );
