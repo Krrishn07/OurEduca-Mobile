@@ -35,8 +35,8 @@ export const TeacherNotices: React.FC<TeacherNoticesProps> = ({
                 <Icons.ChevronLeft size={18} color="#4f46e5" />
             </TouchableOpacity>
             <View>
-                <Text className="text-[17px] font-black text-gray-900 tracking-tighter font-inter-black uppercase tracking-widest">Faculty Briefings</Text>
-                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[3px] mt-0.5 font-inter-black">Institutional Intelligence</Text>
+                <Text className="text-[17px] font-black text-gray-900 tracking-tighter font-inter-black uppercase tracking-widest">School Notices</Text>
+                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[3px] mt-0.5 font-inter-black">Official Updates</Text>
             </View>
         </View>
       </View>
@@ -55,7 +55,7 @@ export const TeacherNotices: React.FC<TeacherNoticesProps> = ({
 
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <SectionHeader 
-            title="ALL BRIEFINGS" 
+            title="ALL ANNOUNCEMENTS" 
             className="mb-4 px-2"
             rightElement={<StatusPill label={`${staffAnnouncements.length} Total`} type="neutral" />}
           />
@@ -88,9 +88,9 @@ export const TeacherNotices: React.FC<TeacherNoticesProps> = ({
                 <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-6 border border-gray-100">
                   <Icons.Notifications size={32} color="#cbd5e1" />
                 </View>
-                <Text className="text-gray-900 font-black text-lg font-inter-black">Board Clear</Text>
+                <Text className="text-gray-900 font-black text-lg font-inter-black">No New Notices</Text>
                 <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mt-2 text-center px-10">
-                  No institutional briefings found in the current sector.
+                  There are no school-wide updates at this time.
                 </Text>
               </View>
             )}

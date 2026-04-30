@@ -45,8 +45,8 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
                 <Icons.ChevronLeft size={18} color="#4f46e5" />
             </TouchableOpacity>
             <View>
-                <Text className="text-[17px] font-black text-gray-900 tracking-tighter font-inter-black uppercase tracking-widest">Institutional Repository</Text>
-                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[3px] mt-0.5 font-inter-black">Verified Academic Nodes</Text>
+                <Text className="text-[17px] font-black text-gray-900 tracking-tighter font-inter-black uppercase tracking-widest">Resource Library</Text>
+                <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[3px] mt-0.5 font-inter-black">Teaching Materials</Text>
             </View>
         </View>
       </View>
@@ -56,7 +56,7 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
           <Icons.Search size={18} color="#94a3b8" />
           <TextInput 
             className="flex-1 ml-4 text-[13px] font-black text-gray-900 font-inter-black"
-            placeholder="Query Repository..."
+            placeholder="Search Resources..."
             value={search}
             onChangeText={setSearch}
             placeholderTextColor="#94a3b8"
@@ -89,9 +89,9 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1 px-4">
         <SectionHeader 
-            title={selectedSubject === 'ALL' ? 'ALL RESOURCES' : selectedSubject} 
+            title={selectedSubject === 'ALL' ? 'ALL MATERIALS' : selectedSubject} 
             className="mb-4 px-2"
-            rightElement={<StatusPill label={`${filtered.length} Nodes`} type="neutral" />}
+            rightElement={<StatusPill label={`${filtered.length} Items`} type="neutral" />}
         />
         
         <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-10">
@@ -119,9 +119,9 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
               <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-6 border border-gray-100">
                 <Icons.FileText size={32} color="#cbd5e1" />
               </View>
-              <Text className="text-gray-900 font-black text-lg font-inter-black">No Results</Text>
+              <Text className="text-gray-900 font-black text-lg font-inter-black">Library Empty</Text>
               <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mt-2 text-center px-10">
-                No academic nodes matched your query in this sector.
+                You haven't uploaded any resources to this subject yet.
               </Text>
             </View>
           )}

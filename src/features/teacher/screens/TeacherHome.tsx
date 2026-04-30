@@ -73,34 +73,34 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
       target: 'classes',
       toneClassName: 'bg-indigo-50',
       icon: <Icons.Users size={22} color={AppTheme.colors.primary} />,
-      subtitle: 'Active scholars',
+      subtitle: 'Class Roster',
       subtitleTone: 'info' as const,
     },
     {
       label: 'To Grade',
-      value: 12, // Mocking value for prototype alignment
+      value: 12,
       target: 'assignments',
       toneClassName: 'bg-amber-50',
       icon: <Icons.Report size={22} color={AppTheme.colors.warning} />,
-      subtitle: 'Pending reviews',
+      subtitle: 'Pending Work',
       subtitleTone: 'warning' as const,
     },
     {
-      label: 'Classes Today',
+      label: 'Sessions',
       value: (assignedSections || []).length,
       target: 'classes',
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Classes size={22} color={AppTheme.colors.success} />,
-      subtitle: "Today's sessions",
+      subtitle: "Today's Schedule",
       subtitleTone: 'success' as const,
     },
     {
-      label: 'Notices',
+      label: 'Announcements',
       value: staffAnnouncements.length,
       target: 'messages',
       toneClassName: 'bg-rose-50',
       icon: <Icons.Notifications size={22} color={AppTheme.colors.error} />,
-      subtitle: 'Institutional',
+      subtitle: 'Latest Updates',
       subtitleTone: 'danger' as const,
     },
     {
@@ -109,7 +109,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
       target: 'materials',
       toneClassName: 'bg-blue-50',
       icon: <Icons.FileText size={22} color="#0ea5e9" />,
-      subtitle: 'Uploaded nodes',
+      subtitle: 'Resource Library',
       subtitleTone: 'info' as const,
     },
   ];
@@ -218,55 +218,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
-        {/* Quick Actions - Prototype Aligned 2x2 Grid */}
-        <View className="mb-10">
-          <SectionHeader title="QUICK ACTIONS" className="px-2" />
-          <View className="flex-row flex-wrap justify-between px-2 gap-y-4">
-            {[
-              { 
-                label: 'Upload Material', 
-                icon: <Icons.Plus size={22} color="#4f46e5" />, 
-                bg: 'bg-[#eef2ff]', 
-                text: 'text-indigo-700',
-                action: 'Upload Material' 
-              },
-              { 
-                label: 'Announcement', 
-                icon: <Icons.Notifications size={22} color="#f59e0b" />, 
-                bg: 'bg-[#fff7ed]', 
-                text: 'text-amber-700',
-                action: 'Post Announcement' 
-              },
-              { 
-                label: 'Grade Work', 
-                icon: <Icons.Check size={22} color="#10b981" />, 
-                bg: 'bg-[#f0fdf4]', 
-                text: 'text-emerald-700',
-                action: 'Grade Quiz' 
-              },
-              { 
-                label: 'Class Reports', 
-                icon: <Icons.FileText size={22} color="#0ea5e9" />, 
-                bg: 'bg-[#f0f9ff]', 
-                text: 'text-sky-700',
-                action: 'View Report' 
-              },
-            ].map((item, idx) => (
-              <TouchableOpacity 
-                key={idx} 
-                onPress={() => onQuickAction(item.action)}
-                className={`w-[48%] h-[120px] ${item.bg} rounded-[28px] items-center justify-center border border-white/60 shadow-sm active:scale-95`}
-              >
-                <View className="bg-white/90 p-2.5 rounded-2xl mb-3 shadow-sm">
-                  {item.icon}
-                </View>
-                <Text className={`text-[12px] font-black ${item.text} font-inter-black`}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* KPI Stats Grid - Restored */}
+        {/* KPI Stats Grid - Top */}
         <View className="flex-row flex-wrap justify-between mb-8 gap-y-4">
           {(stats || []).map((stat, idx) => (
             <TouchableOpacity
@@ -293,6 +245,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           ))}
         </View>
 
+        {/* DAILY AGENDA */}
         <View className="mb-8">
           <SectionHeader
             title="DAILY AGENDA"
@@ -363,32 +316,111 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           )}
         </View>
 
+        {/* FACULTY NEWS - Below Daily Agenda */}
         <View className="mb-8">
           <SectionHeader
-            title="RECENT ACTIVITY"
+            title="FACULTY NEWS"
             className="px-2"
             rightElement={
               <StatusPill 
-                label="LIVE FEED" 
-                type="info" 
+                label={`${staffAnnouncements.length} Total`} 
+                type="neutral" 
               />
             }
           />
+
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {mockRecentActivity.map((act, idx) => (
+            {displayAnnouncements.map((a: any, idx: number) => (
               <AppRow
-                key={act.id}
-                title={act.title}
-                subtitle={`${act.user} • ${act.time}`}
-                avatarIcon={act.icon}
-                avatarBg={act.bg}
-                showBorder={idx < mockRecentActivity.length - 1}
-                rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
+                key={a.id}
+                title={a.title}
+                subtitle={a.message}
+                avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
+                avatarBg="#eef2ff"
+                meta={a.date}
+                showBorder={idx < displayAnnouncements.length - 1}
+                rightElement={
+                  onDeleteNotice && a.sender_id === currentUser.id ? (
+                    <TouchableOpacity
+                      onPress={() => onDeleteNotice(a.id)}
+                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
+                    >
+                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
+                    </TouchableOpacity>
+                  ) : <Icons.ChevronRight size={13} color="#d1d5db" />
+                }
               />
             ))}
+
+            {staffAnnouncements.length === 0 && (
+              <View className="items-center py-12">
+                <View className="w-14 h-14 rounded-2xl bg-gray-50 items-center justify-center mb-4 border border-gray-100">
+                  <Icons.Notifications size={24} color="#cbd5e1" />
+                </View>
+                <Text className="text-[15px] font-black text-gray-900 font-inter-black">Internal Board Clear</Text>
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mt-1 font-inter-black">No faculty briefings found</Text>
+              </View>
+            )}
+            {staffAnnouncements.length > 0 && (
+              <TouchableOpacity 
+                onPress={() => onStatPress?.('notices')}
+                className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
+              >
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Faculty Briefings</Text>
+              </TouchableOpacity>
+            )}
           </AppCard>
         </View>
 
+        {/* QUICK ACTIONS - Below Faculty News */}
+        <View className="mb-10">
+          <SectionHeader title="QUICK ACTIONS" className="px-2" />
+          <View className="flex-row flex-wrap justify-between px-2 gap-y-4">
+            {[
+              { 
+                label: 'Upload Material', 
+                icon: <Icons.Plus size={22} color="#4f46e5" />, 
+                bg: 'bg-[#eef2ff]', 
+                text: 'text-indigo-700',
+                action: 'Upload Material' 
+              },
+              { 
+                label: 'Announcement', 
+                icon: <Icons.Notifications size={22} color="#f59e0b" />, 
+                bg: 'bg-[#fff7ed]', 
+                text: 'text-amber-700',
+                action: 'Post Announcement' 
+              },
+              { 
+                label: 'Grade Work', 
+                icon: <Icons.Check size={22} color="#10b981" />, 
+                bg: 'bg-[#f0fdf4]', 
+                text: 'text-emerald-700',
+                action: 'Grade Quiz' 
+              },
+              { 
+                label: 'Class Reports', 
+                icon: <Icons.FileText size={22} color="#0ea5e9" />, 
+                bg: 'bg-[#f0f9ff]', 
+                text: 'text-sky-700',
+                action: 'View Report' 
+              },
+            ].map((item, idx) => (
+              <TouchableOpacity 
+                key={idx} 
+                onPress={() => onQuickAction(item.action)}
+                className={`w-[48%] h-[120px] ${item.bg} rounded-[28px] items-center justify-center border border-white/60 shadow-sm active:scale-95`}
+              >
+                <View className="bg-white/90 p-2.5 rounded-2xl mb-3 shadow-sm">
+                  {item.icon}
+                </View>
+                <Text className={`text-[12px] font-black ${item.text} font-inter-black`}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* MY UPLOADED MATERIALS */}
         <View className="mb-8">
           <SectionHeader
             title="MY UPLOADED MATERIALS"
@@ -447,61 +479,34 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           </AppCard>
         </View>
 
+        {/* RECENT ACTIVITY - Just above Calendar */}
         <View className="mb-8">
           <SectionHeader
-            title="FACULTY NEWS"
+            title="RECENT ACTIVITY"
             className="px-2"
             rightElement={
               <StatusPill 
-                label={`${staffAnnouncements.length} Total`} 
-                type="neutral" 
+                label="LIVE FEED" 
+                type="info" 
               />
             }
           />
-
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {displayAnnouncements.map((a: any, idx: number) => (
+            {mockRecentActivity.map((act, idx) => (
               <AppRow
-                key={a.id}
-                title={a.title}
-                subtitle={a.message}
-                avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
-                avatarBg="#eef2ff"
-                meta={a.date}
-                showBorder={idx < displayAnnouncements.length - 1}
-                rightElement={
-                  onDeleteNotice && a.sender_id === currentUser.id ? (
-                    <TouchableOpacity
-                      onPress={() => onDeleteNotice(a.id)}
-                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
-                    >
-                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
-                    </TouchableOpacity>
-                  ) : <Icons.ChevronRight size={13} color="#d1d5db" />
-                }
+                key={act.id}
+                title={act.title}
+                subtitle={`${act.user} • ${act.time}`}
+                avatarIcon={act.icon}
+                avatarBg={act.bg}
+                showBorder={idx < mockRecentActivity.length - 1}
+                rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
               />
             ))}
-
-            {staffAnnouncements.length === 0 && (
-              <View className="items-center py-12">
-                <View className="w-14 h-14 rounded-2xl bg-gray-50 items-center justify-center mb-4 border border-gray-100">
-                  <Icons.Notifications size={24} color="#cbd5e1" />
-                </View>
-                <Text className="text-[15px] font-black text-gray-900 font-inter-black">Internal Board Clear</Text>
-                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mt-1 font-inter-black">No faculty briefings found</Text>
-              </View>
-            )}
-            {staffAnnouncements.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => onStatPress?.('notices')}
-                className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
-              >
-                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Faculty Briefings</Text>
-              </TouchableOpacity>
-            )}
           </AppCard>
         </View>
 
+        {/* INSTITUTIONAL CALENDAR */}
         <View className="mb-8">
           <SectionHeader
             title="INSTITUTIONAL CALENDAR"
@@ -521,4 +526,3 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
     </View>
   );
 };
-
