@@ -156,7 +156,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               // 2. Fetch Materials & Student Counts (Concurrent)
               const materialsPromise = supabase
                   .from('materials')
-                  .select('*')
+                  .select('*, classes(name)')
                   .in('class_id', classIds)
                   .order('created_at', { ascending: false });
 
@@ -452,6 +452,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     else onNavigate?.(target);
                   }}
                   currentSchool={currentSchool}
+                />
+              )
+            )}
+            {activeTab === 'classes' && (
+              hasPermission('classes', teacherProfile.role, currentSchool?.id) ? (
+                <TeacherClasses 
+                  assignedSections={assignedSections}
+                  dbRoster={classStudents}
+                  onNavigateToClass={(cls) => setSelectedClass(cls)}
+                  onShowUploadModal={() => setShowUploadModal(true)}
+                />
+              ) : (
+                <RestrictedAccessView 
+                    featureName="Classroom Access" 
+                    onContactAdmin={() => onNavigate?.('messages')}
+                    role={teacherProfile.role}
                 />
               )
             )}
