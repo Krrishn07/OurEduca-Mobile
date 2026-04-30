@@ -15,6 +15,7 @@ import { TeacherMessages } from '../src/features/teacher/screens/TeacherMessages
 import { TeacherProfile } from '../src/features/teacher/screens/TeacherProfile';
 import { TeacherMaterials } from '../src/features/teacher/screens/TeacherMaterials';
 import { TeacherNotices } from '../src/features/teacher/screens/TeacherNotices';
+import { TeacherGrading } from '../src/features/teacher/screens/TeacherGrading';
 
 // Modular Modals
 import { UploadMaterialModal } from '../src/features/teacher/modals/UploadMaterialModal';
@@ -46,6 +47,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
   const [showAllNotices, setShowAllNotices] = useState(false);
+  const [showGrading, setShowGrading] = useState(false);
   
   // Videos State
   const [videoTab, setVideoTab] = useState<'PUBLIC' | 'PRIVATE' | 'MY_CONTENT'>('MY_CONTENT');
@@ -264,7 +266,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const handleQuickAction = (action: string) => {
       if (action === 'Upload Material') setShowUploadModal(true);
       else if (action === 'Post Announcement') setShowAnnouncementModal(true);
-      else if (action === 'Grade Quiz') setShowGradeQuizModal(true);
+      else if (action === 'Grade Quiz') setShowGrading(true);
       else if (action === 'View Report') setShowReportModal(true);
   };
 
@@ -434,6 +436,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
                   onBack={() => setShowAllNotices(false)}
                 />
+              ) : showGrading ? (
+                <TeacherGrading 
+                  assignedSections={assignedSections}
+                  onBack={() => setShowGrading(false)}
+                />
               ) : (
                 <TeacherHome 
                   currentUser={teacherProfile}
@@ -459,6 +466,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   onStatPress={(target) => {
                     if (target === 'materials') setShowAllMaterials(true);
                     else if (target === 'notices') setShowAllNotices(true);
+                    else if (target === 'assignments') setShowGrading(true);
                     else onNavigate?.(target);
                   }}
                   currentSchool={currentSchool}
