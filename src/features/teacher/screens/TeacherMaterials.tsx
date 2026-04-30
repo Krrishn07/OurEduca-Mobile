@@ -125,8 +125,8 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
               </Text>
             </View>
           )}
-          <View className="h-20" />
-        </ScrollView>
+        </AppCard>
+        <View className="h-20" />
       </ScrollView>
     </View>
   );

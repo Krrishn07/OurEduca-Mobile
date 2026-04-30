@@ -491,6 +491,14 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[3px] mt-1 font-inter-black">No faculty briefings found</Text>
               </View>
             )}
+            {staffAnnouncements.length > 0 && (
+              <TouchableOpacity 
+                onPress={() => onStatPress?.('notices')}
+                className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
+              >
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Faculty Briefings</Text>
+              </TouchableOpacity>
+            )}
           </AppCard>
         </View>
 

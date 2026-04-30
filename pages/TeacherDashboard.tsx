@@ -14,6 +14,7 @@ import { TeacherVideos } from '../src/features/teacher/screens/TeacherVideos';
 import { TeacherMessages } from '../src/features/teacher/screens/TeacherMessages';
 import { TeacherProfile } from '../src/features/teacher/screens/TeacherProfile';
 import { TeacherMaterials } from '../src/features/teacher/screens/TeacherMaterials';
+import { TeacherNotices } from '../src/features/teacher/screens/TeacherNotices';
 
 // Modular Modals
 import { UploadMaterialModal } from '../src/features/teacher/modals/UploadMaterialModal';
@@ -44,6 +45,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
+  const [showAllNotices, setShowAllNotices] = useState(false);
   
   // Videos State
   const [videoTab, setVideoTab] = useState<'PUBLIC' | 'PRIVATE' | 'MY_CONTENT'>('MY_CONTENT');
@@ -425,6 +427,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   onShowUploadModal={() => setShowUploadModal(true)}
                   onBack={() => setShowAllMaterials(false)}
                 />
+              ) : showAllNotices ? (
+                <TeacherNotices 
+                  announcements={announcements}
+                  currentUser={teacherProfile}
+                  onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
+                  onBack={() => setShowAllNotices(false)}
+                />
               ) : (
                 <TeacherHome 
                   currentUser={teacherProfile}
@@ -449,6 +458,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   }}
                   onStatPress={(target) => {
                     if (target === 'materials') setShowAllMaterials(true);
+                    else if (target === 'notices') setShowAllNotices(true);
                     else onNavigate?.(target);
                   }}
                   currentSchool={currentSchool}
