@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { User, UserRole, Fee, FeeTransaction, CameraNode } from '../types';
 import { supabase } from '../lib/supabase';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { dbRoleToUserRole, userRoleToDbRole } from '../src/utils/roleUtils';
 import { useMockAuth } from './MockAuthContext';
 import { PERMISSION_MAP, getRequiredPermission } from '../constants/permissions';
@@ -67,6 +69,9 @@ export interface ChatMessage {
     sender_id: string;
     receiver_id: string;
     content: string;
+    message_type: 'TEXT' | 'IMAGE' | 'DOCUMENT';
+    attachment_url?: string;
+    attachment_name?: string;
     created_at: string;
     is_read: boolean;
     timestamp?: string; // Formatted mirror for UI usage
@@ -103,6 +108,17 @@ export interface LiveStream {
   subject?: string;
   stream_url: string;
   is_active: boolean;
+  created_at: string;
+}
+
+export interface Assignment {
+  id: string;
+  school_id: string;
+  class_id: string;
+  title: string;
+  description?: string;
+  max_marks: number;
+  due_date?: string;
   created_at: string;
 }
 
@@ -144,7 +160,8 @@ export interface SchoolDataContextType {
   isLoadingInstitutes: boolean;
   fetchInstitutes: () => Promise<void>;
   registerInstitute: (details: { name: string, phone: string, email: string, institute_name: string, address: string }) => Promise<void>;
-  sendChatMessage: (schoolId: string, senderId: string, receiverId: string, content: string) => Promise<void>;
+  sendChatMessage: (schoolId: string, senderId: string, receiverId: string, content: string, type?: 'TEXT' | 'IMAGE' | 'DOCUMENT', attachmentUrl?: string, attachmentName?: string) => Promise<void>;
+  uploadMessageFile: (schoolId: string, fileUri: string, fileName: string, mimeType?: string) => Promise<string>;
   syncBillingAudit: (overdueSchoolIds: string[]) => Promise<void>;
   
   // Inquiries / Leads (Stage 1)
@@ -215,7 +232,13 @@ export interface SchoolDataContextType {
   // Classes
   dbClasses: any[];
   fetchClasses: (schoolId: string) => Promise<void>;
-  fetchTeacherClasses: (teacherId: string) => Promise<void>;
+  fetchTeacherClasses: (teacherId: string, schoolId?: string) => Promise<void>;
+
+  // Assignment Management
+  assignments: Assignment[];
+  fetchAssignments: (schoolId: string) => Promise<void>;
+  addAssignment: (assignment: Partial<Assignment>) => Promise<any>;
+  gradeAssignment: (gradeData: { student_id: string, assignment_id: string, class_id: string, marks: number, feedback?: string }) => Promise<any>;
 
   // Centralized User Fetching
   fetchUsers: (role: UserRole, school_id?: string) => Promise<void>;
@@ -233,6 +256,8 @@ export interface SchoolDataContextType {
   clearInstitutionalData: () => void;
   isLiveSessionActive: boolean;
   setIsLiveSessionActive: (active: boolean) => void;
+  activeSessionData: any;
+  setActiveSessionData: (data: any) => void;
 }
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
@@ -280,9 +305,10 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
   const [dbTransactions, setDbTransactions] = useState<FeeTransaction[]>([]);
   const [dbVideos, setDbVideos] = useState<Video[]>([]);
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([]);
-  const [dbClasses, setDbClasses] = useState<any[]>([]);
-  const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [dbCameraNodes, setDbCameraNodes] = useState<CameraNode[]>([]);
+  const [dbClasses, setDbClasses] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [dbRolePermissions, setDbRolePermissions] = useState<DbRolePermission[]>([]);
   const [isLiveSessionActive, setIsLiveSessionActive] = useState(false);
   const [activeSessionData, setActiveSessionData] = useState<any>(null);
@@ -470,6 +496,37 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       setMeetings(prev => [...prev, newMeeting]);
   }, []);
 
+  const fetchAssignments = useCallback(async (schoolId: string) => {
+    if (!schoolId) return;
+    const { data, error } = await supabase
+      .from('assignments')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('created_at', { ascending: false });
+    if (!error && data) setAssignments(data);
+  }, []);
+
+  const addAssignment = async (assignment: Partial<Assignment>) => {
+    const { data, error } = await supabase
+      .from('assignments')
+      .insert([assignment])
+      .select();
+    if (!error && data) {
+      setAssignments(prev => [data[0], ...prev]);
+      return data[0];
+    }
+    throw error;
+  };
+
+  const gradeAssignment = async (gradeData: { student_id: string, assignment_id: string, class_id: string, marks: number, feedback?: string }) => {
+    const { data, error } = await supabase
+      .from('grades')
+      .upsert([gradeData], { onConflict: 'student_id,assignment_id' })
+      .select();
+    if (error) throw error;
+    return data;
+  };
+
   const fetchPlatformSettings = useCallback(async () => {
       try {
           const { data, error } = await supabase
@@ -629,28 +686,73 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [fetchRegistrationMessages]);
 
 
-  const sendChatMessage = useCallback(async (schoolId: string, senderId: string, receiverId: string, content: string) => {
+  const sendChatMessage = useCallback(async (
+      schoolId: string, 
+      senderId: string, 
+      receiverId: string, 
+      content: string, 
+      type: 'TEXT' | 'IMAGE' | 'DOCUMENT' = 'TEXT',
+      attachmentUrl?: string,
+      attachmentName?: string
+    ) => {
       try {
           if (!schoolId || !senderId || !receiverId) {
               console.warn('[Messaging] Missing required IDs:', { schoolId, senderId, receiverId });
               return;
           }
 
-          const { error } = await supabase
+          const { data, error } = await supabase
               .from('messages')
               .insert({
                   school_id: schoolId,
                   sender_id: senderId,
                   receiver_id: receiverId,
-                  content: content
-              });
+                  content: content,
+                  message_type: type,
+                  attachment_url: attachmentUrl,
+                  attachment_name: attachmentName
+              })
+              .select();
           
           if (error) {
               console.error('sendChatMessage DB error:', error.message);
               throw error;
           }
+
+          if (data) {
+              setChatMessages(prev => {
+                  const exists = prev.some(m => m.id === data[0].id);
+                  if (exists) return prev;
+                  return [...prev, data[0]];
+              });
+          }
       } catch (err: any) {
           console.error('sendChatMessage catch error:', err.message);
+          throw err;
+      }
+  }, []);
+
+  const uploadMessageFile = useCallback(async (schoolId: string, fileUri: string, fileName: string, mimeType?: string) => {
+      try {
+          const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
+          const fileExt = fileName.split('.').pop();
+          const path = `${schoolId}/${Date.now()}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+              .from('messages')
+              .upload(path, decode(base64), {
+                  contentType: mimeType || 'application/octet-stream'
+              });
+
+          if (uploadError) throw uploadError;
+
+          const { data } = supabase.storage
+              .from('messages')
+              .getPublicUrl(path);
+
+          return data.publicUrl;
+      } catch (err: any) {
+          console.error('uploadMessageFile error:', err.message);
           throw err;
       }
   }, []);
@@ -1414,12 +1516,38 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
            alts.some(alt => effectivePermissions.includes(alt));
   }, [dbRolePermissions, currentUserRole, currentSchool?.id]);
 
+  useEffect(() => {
+    if (!currentSchool?.id) return;
+
+    // Realtime Messages Subscription
+    const messageChannel = supabase
+      .channel('messages_realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `school_id=eq.${currentSchool.id}`
+      }, (payload) => {
+        const newMessage = payload.new as ChatMessage;
+        setChatMessages(prev => {
+            const exists = prev.some(m => m.id === newMessage.id);
+            if (exists) return prev;
+            return [...prev, newMessage];
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messageChannel);
+    };
+  }, [currentSchool?.id]);
+
   return (
     <SchoolDataContext.Provider value={{ 
         users, setUsers, addUser, updateUser, deleteUser,
         announcements, meetings, platformSettings, schoolDetails, paymentConfig, paymentNotifications, studentPaymentLink, chatMessages,
         dbFees, dbTransactions, fetchStudentFees, fetchSchoolTransactions, initiateFeePayment, verifyFeeTransaction,
-        issueBulkFee, settleManualPayment,
+        issueBulkFee, settleManualPayment, sendInstitutionalReminders,
         addAnnouncement,
         deleteAnnouncement,
         fetchAnnouncements,
@@ -1437,9 +1565,10 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         fetchInstitutes,
         registerInstitute,
         sendChatMessage,
+        uploadMessageFile,
         
         dbRolePermissions,
-        fetchRolePermissions, hasPermission, clearInstitutionalData,
+        fetchRolePermissions, hasPermission,
         fetchMaterials, uploadMaterial, deleteMaterial,
 
         systemLogs,
@@ -1456,6 +1585,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         dbCameraNodes, fetchCameraNodes, registerCameraNode, deleteCameraNode,
         dbClasses, fetchClasses,
         fetchTeacherClasses, teacherClasses,
+        assignments, fetchAssignments, addAssignment, gradeAssignment,
         fetchUsers, fetchSchoolData,
         healthStatus,
         dbLatency,
@@ -1466,7 +1596,6 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         updateRegistrationStatus,
         deleteRegistrationMessage,
         syncBillingAudit,
-        clearInstitutionalData,
         isLiveSessionActive,
         setIsLiveSessionActive,
         activeSessionData,

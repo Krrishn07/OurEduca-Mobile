@@ -68,7 +68,8 @@ import {
   Grid,
   Play,
   MicOff,
-  Zap
+  Zap,
+  Star
 } from 'lucide-react-native';
 
 export const Icons = {
@@ -157,5 +158,6 @@ export const Icons = {
   Grid,
   Play,
   MicOff,
-  Radio
+  Radio,
+  Star
 };

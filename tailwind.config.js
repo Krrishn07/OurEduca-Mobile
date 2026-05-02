@@ -28,7 +28,8 @@ module.exports = {
       fontFamily: {
         'inter': ['Inter_400Regular'],
         'inter-medium': ['Inter_500Medium'],
-        'inter-bold': ['Inter_900Black'],
+        'inter-semibold': ['Inter_600SemiBold'],
+        'inter-bold': ['Inter_700Bold'],
         'inter-black': ['Inter_900Black'],
       },
     },

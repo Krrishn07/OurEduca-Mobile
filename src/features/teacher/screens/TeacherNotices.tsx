@@ -61,27 +61,45 @@ export const TeacherNotices: React.FC<TeacherNoticesProps> = ({
           />
 
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-10">
-            {staffAnnouncements.map((a, idx) => (
-              <AppRow
-                key={a.id}
-                title={a.title}
-                subtitle={a.message}
-                avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
-                avatarBg="#eef2ff"
-                meta={a.date || new Date(a.created_at).toLocaleDateString()}
-                showBorder={idx < staffAnnouncements.length - 1}
-                rightElement={
-                  a.sender_id === currentUser.id ? (
-                    <TouchableOpacity
-                      onPress={() => onDeleteNotice(a.id)}
-                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
-                    >
-                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
-                    </TouchableOpacity>
-                  ) : <Icons.ChevronRight size={13} color="#d1d5db" />
-                }
-              />
-            ))}
+            {staffAnnouncements.map((a, idx) => {
+              const timeAgo = (dateStr: string) => {
+                if (!dateStr) return 'Just now';
+                const now = new Date();
+                const past = new Date(dateStr);
+                if (isNaN(past.getTime())) return 'Recently';
+                const diffMs = now.getTime() - past.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                return past.toLocaleDateString();
+              };
+
+              const audienceLabel = a.audience === 'ALL' ? 'Global' : a.audience === 'STAFF' ? 'Staff Only' : 'Class Group';
+
+              return (
+                <AppRow
+                  key={a.id}
+                  title={a.title}
+                  subtitle={`${audienceLabel} • ${a.message}`}
+                  avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
+                  avatarBg="#eef2ff"
+                  meta={timeAgo(a.created_at || a.date)}
+                  showBorder={idx < staffAnnouncements.length - 1}
+                  rightElement={
+                    a.sender_id === currentUser.id ? (
+                      <TouchableOpacity
+                        onPress={() => onDeleteNotice(a.id)}
+                        className="bg-rose-50 border border-rose-100 px-4 py-2 rounded-xl active:bg-rose-100"
+                      >
+                        <Icons.Trash size={14} color="#ef4444" />
+                      </TouchableOpacity>
+                    ) : <Icons.ChevronRight size={13} color="#d1d5db" />
+                  }
+                />
+              );
+            })}
 
             {staffAnnouncements.length === 0 && (
               <View className="items-center py-20">

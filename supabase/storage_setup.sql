@@ -8,7 +8,8 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES 
     ('school-logos', 'school-logos', true),
     ('videos', 'videos', true),
-    ('thumbnails', 'thumbnails', true)
+    ('thumbnails', 'thumbnails', true),
+    ('messages', 'messages', true)
 ON CONFLICT (id) DO UPDATE SET public = excluded.public;
 
 -- 2. Drop existing policies to avoid conflicts

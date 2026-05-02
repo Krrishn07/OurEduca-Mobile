@@ -10,6 +10,9 @@ interface TeacherClassDetailProps {
   onBack: () => void;
   onUploadMaterial: () => void;
   onAddStudent: () => void;
+  assignments?: any[];
+  onGradeAssignment?: (assignment: any) => void;
+  onAddAssignment?: () => void;
 }
 
 export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
@@ -18,12 +21,16 @@ export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
   materials = [],
   onBack,
   onUploadMaterial,
-  onAddStudent
+  onAddStudent,
+  assignments = [],
+  onGradeAssignment,
+  onAddAssignment
 }) => {
-  const [activeTab, setActiveTab] = useState<'ROSTER' | 'MATERIALS'>('ROSTER');
+  const [activeTab, setActiveTab] = useState<'ROSTER' | 'MATERIALS' | 'ASSIGNMENTS'>('ROSTER');
 
   const classMaterials = materials.filter(m => m.class_id === selectedClass.class_id);
   const classStudents = students.filter(s => s.class_id === selectedClass.class_id && (s.section === selectedClass.section || !s.section));
+  const classAssignments = assignments.filter(a => a.class_id === selectedClass.class_id);
 
   return (
     <View className="flex-1 bg-gray-50/50">
@@ -67,6 +74,13 @@ export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
         >
             <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${activeTab === 'MATERIALS' ? 'text-white' : 'text-gray-500'}`}>Resources</Text>
         </TouchableOpacity>
+        <View className="w-3" />
+        <TouchableOpacity 
+            onPress={() => setActiveTab('ASSIGNMENTS')}
+            className={`flex-1 py-3 items-center rounded-2xl border ${activeTab === 'ASSIGNMENTS' ? 'bg-indigo-600 border-indigo-700 shadow-md shadow-indigo-100' : 'bg-white border-gray-100'}`}
+        >
+            <Text className={`text-[10px] font-black uppercase tracking-widest font-inter-black ${activeTab === 'ASSIGNMENTS' ? 'text-white' : 'text-gray-500'}`}>Grading</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1 px-4">
@@ -104,7 +118,7 @@ export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
                     )}
                 </AppCard>
             </View>
-        ) : (
+        ) : activeTab === 'MATERIALS' ? (
             <View>
                 <SectionHeader title="LECTURE MATERIALS" className="mb-4 px-2" />
                 <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-10">
@@ -123,6 +137,44 @@ export const TeacherClassDetail: React.FC<TeacherClassDetailProps> = ({
                         <View className="items-center py-20">
                             <Icons.FileText size={32} color="#cbd5e1" />
                             <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mt-4">No resources shared</Text>
+                        </View>
+                    )}
+                </AppCard>
+            </View>
+        ) : (
+            <View>
+                <SectionHeader 
+                    title="ASSIGNMENTS & EXAMS" 
+                    className="mb-4 px-2"
+                    rightElement={
+                        <TouchableOpacity onPress={onAddAssignment}>
+                            <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">+ New Assignment</Text>
+                        </TouchableOpacity>
+                    }
+                />
+                <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-10">
+                    {classAssignments.map((a, idx) => (
+                        <AppRow
+                            key={a.id || `assign-${idx}`}
+                            title={a.title}
+                            subtitle={`Max Marks: ${a.max_marks} • Due: ${a.due_date || 'No Deadline'}`}
+                            avatarIcon={<Icons.Edit size={15} color="#8b5cf6" />}
+                            avatarBg="#f5f3ff"
+                            showBorder={idx < classAssignments.length - 1}
+                            rightElement={
+                                <TouchableOpacity 
+                                    onPress={() => onGradeAssignment?.(a)}
+                                    className="bg-indigo-600 px-4 py-2 rounded-xl"
+                                >
+                                    <Text className="text-white text-[9px] font-black uppercase tracking-widest font-inter-black">Grade</Text>
+                                </TouchableOpacity>
+                            }
+                        />
+                    ))}
+                    {classAssignments.length === 0 && (
+                        <View className="items-center py-20">
+                            <Icons.Report size={32} color="#cbd5e1" />
+                            <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mt-4">No assignments tracked</Text>
                         </View>
                     )}
                 </AppCard>

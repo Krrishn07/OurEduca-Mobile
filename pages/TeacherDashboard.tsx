@@ -29,6 +29,7 @@ import { AnnouncementHistoryModal } from '../src/features/teacher/modals/Announc
 // GoLiveModal removed - implementation consolidated in TeacherVideos
 import { AddStudentModal } from '../src/features/teacher/modals/AddStudentModal';
 import { EditProfileModal } from '../src/features/teacher/modals/EditProfileModal';
+import { CreateAssignmentModal } from '../src/features/teacher/modals/CreateAssignmentModal';
 
 const isValidUrl = (value: string) => {
   try {
@@ -58,6 +59,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [showAllNotices, setShowAllNotices] = useState(false);
   const [showGrading, setShowGrading] = useState(false);
   const [showClassDetail, setShowClassDetail] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   
   // Videos State
   const [videoTab, setVideoTab] = useState<'PUBLIC' | 'PRIVATE' | 'MY_CONTENT'>('MY_CONTENT');
@@ -70,6 +72,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [isLiveStreamActive, setIsLiveStreamActive] = useState(false);
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
   const [gradingInitialClass, setGradingInitialClass] = useState<any>(null);
+  const [selectedAssignmentForGrading, setSelectedAssignmentForGrading] = useState<any>(null);
   const [uploadSaving, setUploadSaving] = useState(false);
   const [studentSaving, setStudentSaving] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -94,7 +97,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     dbCameraNodes, fetchCameraNodes,
     hasPermission,
     systemLogs,
-    fetchSystemLogs
+    fetchSystemLogs,
+    assignments,
+    fetchAssignments,
+    addAssignment,
+    gradeAssignment,
+    uploadMessageFile
   } = useSchoolData();
 
   // Teacher Profile
@@ -160,6 +168,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       setIsLoading(true);
       try {
           await syncActiveStream();
+          await fetchAssignments(currentSchool?.id || '');
           // 1. Fetch Teacher's Class Assignments
           const { data: rosterData, error: rosterError } = await supabase
               .from('class_roster')
@@ -177,7 +186,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               section: r.section || 'A',
               displayName: `${r.classes?.name || 'Class'} - Section ${r.section || 'A'}`,
               subject: r.subject || r.classes?.subject || 'Direct Instruction',
-              room_no: r.classes?.room_no || 'Room 302',
+              room_no: r.classes?.room_no || '302',
               rosterId: r.id
           }));
           setAssignedSections(flattenedSections);
@@ -292,6 +301,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       setTimeout(() => setToast({ show: false, message: '' }), 3000);
   };
 
+  const handleGradeAssignment = (assignment: any) => {
+      const cls = (assignedSections || []).find(s => s.class_id === assignment.class_id);
+      setGradingInitialClass(cls);
+      setSelectedAssignmentForGrading(assignment);
+      setShowGrading(true);
+  };
+
   const handleQuickAction = (action: string) => {
       switch (action) {
           case 'Upload Material':
@@ -302,26 +318,45 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               break;
           case 'GRADE':
           case 'Grade Quiz':
-              if (navigation?.navigate) {
-                  navigation.navigate("TeacherGrading", {
-                      classId: selectedClass?.id || selectedClass?.class_id,
-                      section: selectedClass?.section,
-                  });
-              } else {
-                  setShowGrading(true);
-              }
+              setGradingInitialClass(selectedClass);
+              setSelectedAssignmentForGrading(null);
+              setShowGrading(true);
               break;
           case 'REPORT':
           case 'View Report':
-              if (navigation?.navigate) {
-                  navigation.navigate("TeacherReports");
-              } else {
-                  setShowReports(true);
-              }
+              setGradingInitialClass(selectedClass); // Reuse state or create setReportInitialClass
+              setShowReports(true);
+              break;
+          case 'Create Assignment':
+              setShowAssignmentModal(true);
               break;
           default:
               console.log(`Action: ${action}`);
       }
+  };
+
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const handleCreateAssignment = async (assignment: any) => {
+    setAssignmentSaving(true);
+    try {
+      const targetSchoolId = currentSchool?.id || mockAuthUser?.school_id;
+      
+      if (!targetSchoolId) {
+        throw new Error("Institutional context missing");
+      }
+
+      await addAssignment({
+        ...assignment,
+        school_id: targetSchoolId
+      });
+      showToast("Assignment Broadcasted");
+      setShowAssignmentModal(false);
+    } catch (err: any) {
+      console.error('[ASSIGNMENT_CREATION] Failure:', err.message);
+      showToast(`Broadcast Failed: ${err.message}`);
+    } finally {
+      setAssignmentSaving(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -569,16 +604,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     }
   };
 
-  const handleSendMessage = async () => {
-      if (!msgInput.trim() || !selectedChat) return;
+  const handleSendMessage = async (type: 'TEXT' | 'IMAGE' | 'DOCUMENT' = 'TEXT', url?: string, name?: string, customContent?: string) => {
+      const finalContent = customContent || msgInput;
+      if (!finalContent.trim() && !url && !name) return;
       
       const schoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId;
       const senderId = teacherProfile.id || mockAuthUser?.id;
 
       if (schoolId && senderId) {
           try {
-              await sendChatMessage(schoolId, senderId, selectedChat, msgInput);
-              setMsgInput('');
+              await sendChatMessage(schoolId, senderId, selectedChat, finalContent, type, url, name);
+              if (!customContent) {
+                  setMsgInput('');
+              }
               // Success is handled by context Realtime listener
           } catch (err: any) {
               console.error('Teacher send error:', err.message);
@@ -602,7 +640,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   return (
     <View className="flex-1 bg-gray-50">
       {isLoading ? (
-          <View className="flex-1 items-center justify-center"><ActivityIndicator size="large" color="#4f46e5" /></View>
+          <View className="flex-1 items-center justify-center bg-white">
+              <View className="w-20 h-20 bg-indigo-50 rounded-[32px] items-center justify-center mb-6 border border-indigo-100 shadow-2xl shadow-indigo-100/20">
+                  <ActivityIndicator color="#4f46e5" size="small" />
+              </View>
+              <Text className="text-gray-900 font-black text-[13px] tracking-tight font-inter-black">Institutional Sync Active</Text>
+              <Text className="mt-1.5 text-gray-400 font-black uppercase tracking-[3px] text-[8px] font-inter-black">Synchronizing Faculty Hub...</Text>
+          </View>
       ) : (
           <>
             {activeTab === 'home' && (
@@ -631,8 +675,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               ) : showGrading ? (
                 <TeacherGrading 
                   assignedSections={assignedSections}
-                  onBack={() => { setShowGrading(false); setGradingInitialClass(null); }}
+                  onBack={() => { 
+                    setShowGrading(false); 
+                    setGradingInitialClass(null); 
+                    setSelectedAssignmentForGrading(null);
+                  }}
                   initialClass={gradingInitialClass}
+                  initialAssignment={selectedAssignmentForGrading}
                 />
               ) : showReports ? (
                 <TeacherReports 
@@ -640,6 +689,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   dbRoster={classStudents}
                   onBack={() => setShowReports(false)}
                   onShowToast={showToast}
+                  initialClassId={gradingInitialClass?.class_id || gradingInitialClass?.id}
                 />
               ) : (
                 <TeacherHome 
@@ -652,11 +702,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   meetings={meetings || []}
                   onQuickAction={handleQuickAction}
                   onNavigateToClass={(cls) => { 
+                    // Deep navigation: Pass full context including classId, section, and subject
                     setSelectedClass(cls);
-                    if (cls && Object.keys(cls).length > 0) setShowClassDetail(true);
-                    else setShowClassDetail(false);
+                    if (cls && Object.keys(cls).length > 0) {
+                      setShowClassDetail(true);
+                    } else {
+                      setShowClassDetail(false);
+                    }
                     onNavigate?.('classes'); 
                   }}
+                  onGradeAssignment={handleGradeAssignment}
+                  onAddAssignment={() => setShowAssignmentModal(true)}
+                  assignments={assignments}
                   onShowHistory={() => setShowAnnouncementHistoryModal(true)}
                   onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
                   onDeleteMaterial={async (id) => {
@@ -669,9 +726,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     }
                   }}
                   onStatPress={(target) => {
-                    if (target === 'materials') setShowAllMaterials(true);
-                    else if (target === 'notices') setShowAllNotices(true);
-                    else if (target === 'assignments') setShowGrading(true);
+                    // Context-Aware KPI Routing
+                    if (target === 'materials') {
+                      setShowAllMaterials(true);
+                    }
+                    else if (target === 'notices') {
+                      setShowAllNotices(true);
+                    }
+                    else if (target === 'assignments') {
+                      // Pass current class context to Grading if available
+                      setGradingInitialClass(selectedClass);
+                      setShowGrading(true);
+                    }
+                    else if (target === 'classes') {
+                        // If a class is already focused, keep it, otherwise show list
+                        if (!selectedClass) setShowClassDetail(false);
+                        onNavigate?.('classes');
+                    }
                     else onNavigate?.(target);
                   }}
                   currentSchool={currentSchool}
@@ -694,6 +765,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                         setShowUploadModal(true);
                     }}
                     onAddStudent={() => setShowAddStudentModal(true)}
+                    assignments={assignments}
+                    onGradeAssignment={handleGradeAssignment}
+                    onAddAssignment={() => setShowAssignmentModal(true)}
                   />
                 ) : (
                   <TeacherClasses 
@@ -704,6 +778,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                       setShowClassDetail(true);
                     }}
                     onShowUploadModal={() => setShowUploadModal(true)}
+                    onUploadToClass={(cls) => {
+                      setSelectedClass(cls);
+                      setShowUploadModal(true);
+                    }}
+                    onGradeClass={(cls) => {
+                      setSelectedClass(cls);
+                      setGradingInitialClass(cls);
+                      setShowGrading(true);
+                    }}
+                    onShowReports={(cls) => {
+                      setSelectedClass(cls);
+                      setShowReports(true);
+                    }}
                   />
                 )
               ) : (
@@ -744,8 +831,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                 <TeacherMessages 
                   selectedChat={selectedChat} setSelectedChat={setSelectedChat}
                   msgInput={msgInput} setMsgInput={setMsgInput}
-                  displayContacts={displayContacts} chatMessages={transformedChatMessages}
-                  currentUser={teacherProfile} handleSendMessage={handleSendMessage}
+                  displayContacts={displayContacts}                  chatMessages={transformedChatMessages} 
+                  currentUser={teacherProfile} 
+                  handleSendMessage={handleSendMessage}
+                  uploadMessageFile={uploadMessageFile}
+                  assignments={assignments}
                 />
               ) : (
                 <RestrictedAccessView 
@@ -867,6 +957,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             setPlayingVideo(null);
         }}
         video={playingVideo}
+      />
+
+      <CreateAssignmentModal 
+        visible={showAssignmentModal}
+        onClose={() => setShowAssignmentModal(false)}
+        onCreate={handleCreateAssignment}
+        assignedSections={assignedSections}
+        isCreating={assignmentSaving}
+        initialClassId={selectedClass?.class_id}
       />
     </View>
   );

@@ -4,23 +4,28 @@ import { Icons } from '../../../../components/Icons';
 import { AppCard, AppButton } from '../../../design-system';
 import { supabase } from '../../../../lib/supabase';
 import { useMockAuth } from '../../../../contexts/MockAuthContext';
+import { useSchoolData } from '../../../../contexts/SchoolDataContext';
 
 interface TeacherGradingProps {
   assignedSections: any[];
   onBack: () => void;
   initialClass?: any;
+  initialAssignment?: any;
 }
 
 export const TeacherGrading: React.FC<TeacherGradingProps> = ({
   assignedSections = [],
   onBack,
-  initialClass
+  initialClass,
+  initialAssignment
 }) => {
   const { currentUser } = useMockAuth();
+  const { gradeAssignment, addAssignment } = useSchoolData();
   const [selectedClass, setSelectedClass] = useState<any>(initialClass || null);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(initialAssignment || null);
   const [students, setStudents] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
-  const [grid, setGrid] = useState<{[key: string]: {[key: string]: string}}>({});
+  const [grid, setGrid] = useState<{[key: string]: string}>({});
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,7 +36,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
     if (selectedClass) {
         fetchGridData();
     }
-  }, [selectedClass]);
+  }, [selectedClass, selectedAssignment]);
 
   const fetchGridData = async () => {
     setLoading(true);
@@ -43,20 +48,23 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
         ]);
 
         if (rosterRes.data) setStudents(rosterDataNormalization(rosterRes.data));
-        if (assignmentRes.data) setAssignments(assignmentRes.data);
+        if (assignmentRes.data) {
+            setAssignments(assignmentRes.data);
+            if (!selectedAssignment && assignmentRes.data.length > 0) {
+                // Do not auto-select if we came from a specific assignment
+            }
+        }
 
-        if (assignmentRes.data && assignmentRes.data.length > 0) {
-            const assignmentIds = assignmentRes.data.map(a => a.id);
+        if (selectedAssignment) {
             const { data: gradesData } = await supabase
                 .from('grades')
                 .select('*')
-                .in('assignment_id', assignmentIds);
+                .eq('assignment_id', selectedAssignment.id);
             
             if (gradesData) {
                 const gradeMap: any = {};
                 gradesData.forEach(g => {
-                    if (!gradeMap[g.student_id]) gradeMap[g.student_id] = {};
-                    gradeMap[g.student_id][g.assignment_id] = g.marks.toString();
+                    gradeMap[g.student_id] = g.marks.toString();
                 });
                 setGrid(gradeMap);
             }
@@ -83,56 +91,56 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
     setSyncing(true);
     try {
         const classId = selectedClass.class_id || selectedClass.id;
-        const { data, error } = await supabase
-            .from('assignments')
-            .insert({
-                title: newAssignmentTitle.trim(),
-                class_id: classId,
-                created_by: currentUser?.id
-            })
-            .select()
-            .single();
+        const targetSchoolId = currentUser?.school_id;
 
-        if (error) throw error;
-        setAssignments(prev => [...prev, data]);
+        if (!targetSchoolId) {
+            throw new Error("Institutional context missing. Please re-login.");
+        }
+
+        const newA = await addAssignment({
+            title: newAssignmentTitle.trim(),
+            class_id: classId,
+            school_id: targetSchoolId,
+            max_marks: 100
+        });
+
+        setAssignments(prev => [...prev, newA]);
         setNewAssignmentTitle('');
         setShowAddAssignment(false);
+        Alert.alert("Success", "Assignment broadcasted to roster.");
     } catch (err: any) {
-        Alert.alert("Error", err.message);
+        console.error('[GRADBOOK_QUICK_ADD] Failure:', err.message);
+        Alert.alert("Error", `Broadcast Failed: ${err.message}`);
     } finally {
         setSyncing(false);
     }
   };
 
   const handleSaveAll = async () => {
+    if (!selectedAssignment) return;
     setSyncing(true);
     try {
         const classId = selectedClass.class_id || selectedClass.id;
-        const payload: any[] = [];
-        Object.entries(grid).forEach(([studentId, assignmentGrades]) => {
-            Object.entries(assignmentGrades).forEach(([assignmentId, marks]) => {
-                if (marks !== "") {
-                    payload.push({
-                        student_id: studentId,
-                        assignment_id: assignmentId,
-                        class_id: classId,
-                        marks: Number(marks),
-                    });
-                }
-            });
+        const promises: Promise<any>[] = [];
+        
+        Object.entries(grid).forEach(([studentId, marks]) => {
+            if (marks !== "") {
+                promises.push(gradeAssignment({
+                    student_id: studentId,
+                    assignment_id: selectedAssignment.id,
+                    class_id: classId,
+                    marks: Number(marks),
+                }));
+            }
         });
 
-        if (payload.length === 0) {
+        if (promises.length === 0) {
             setSyncing(false);
             return;
         }
 
-        const { error } = await supabase
-            .from('grades')
-            .upsert(payload, { onConflict: 'student_id,assignment_id' });
-
-        if (error) throw error;
-        Alert.alert("Success", "Grades saved successfully.");
+        await Promise.all(promises);
+        Alert.alert("Success", "Grades synchronized successfully.");
         fetchGridData();
     } catch (err: any) {
         Alert.alert("Error", err.message);
@@ -251,74 +259,105 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                         <Text className="text-white font-black text-[10px] uppercase tracking-widest font-inter-black">Create First Assignment</Text>
                     </TouchableOpacity>
                 </View>
-            ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ minWidth: '100%' }}>
-                        <View className="flex-row bg-white border-b border-gray-100 py-3 px-5">
-                            <Text style={{ width: 180 }} className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-inter-black">Student Name</Text>
-                            {assignments.map((a, idx) => (
-                                <View key={a.id} style={{ width: 100 }} className="items-center px-2">
-                                    <Text numberOfLines={1} className="text-[9px] font-black text-gray-900 uppercase tracking-widest font-inter-black text-center">{a.title}</Text>
-                                    <Text className="text-[7px] font-black text-indigo-400 uppercase tracking-widest font-inter-black mt-0.5">MAX 100</Text>
+            ) : !selectedAssignment ? (
+                <ScrollView className="flex-1 px-5 pt-6">
+                    <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] mb-4 font-inter-black">Select Assignment to Grade</Text>
+                    {assignments.map((a, idx) => (
+                        <TouchableOpacity 
+                            key={a.id} 
+                            onPress={() => setSelectedAssignment(a)}
+                            className="mb-3"
+                        >
+                            <AppCard className="p-4 bg-white border-white shadow-lg shadow-indigo-100/10 flex-row items-center">
+                                <View className="w-10 h-10 bg-indigo-50 rounded-xl items-center justify-center mr-4 border border-indigo-100">
+                                    <Icons.Edit size={16} color="#4f46e5" />
                                 </View>
-                            ))}
+                                <View className="flex-1">
+                                    <Text className="font-black text-gray-900 text-[14px] font-inter-black">{a.title}</Text>
+                                    <Text className="text-[8px] font-black text-indigo-400 uppercase tracking-widest font-inter-black">Max Marks: {a.max_marks}</Text>
+                                </View>
+                                <Icons.ChevronRight size={14} color="#cbd5e1" />
+                            </AppCard>
+                        </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity 
+                        onPress={() => setShowAddAssignment(true)}
+                        className="py-4 border border-dashed border-indigo-200 rounded-2xl items-center justify-center mt-2"
+                    >
+                        <Text className="text-indigo-600 font-black text-[9px] uppercase tracking-widest">+ Create New Assignment</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            ) : (
+                <View className="flex-1">
+                    <View className="bg-indigo-600 px-5 py-4 flex-row items-center justify-between">
+                        <View>
+                            <Text className="text-white font-black text-[14px] font-inter-black">{selectedAssignment.title}</Text>
+                            <Text className="text-indigo-200 font-black text-[8px] uppercase tracking-widest font-inter-black">Grading {filteredStudents.length} Students</Text>
                         </View>
+                        <TouchableOpacity 
+                            onPress={() => setSelectedAssignment(null)}
+                            className="bg-white/10 px-3 py-1.5 rounded-lg border border-white/20"
+                        >
+                            <Text className="text-white text-[8px] font-black uppercase tracking-widest font-inter-black">Change</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                        <ScrollView className="flex-1">
-                            {filteredStudents.map((student, sIdx) => {
-                                const sId = student.user_id || student.users?.id;
-                                return (
-                                    <View key={sId} className={`flex-row px-5 py-3 items-center border-b border-gray-50/50 ${sIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/10'}`}>
-                                        <View style={{ width: 180 }}>
-                                            <Text className="text-gray-900 font-black text-[12px] font-inter-black" numberOfLines={1}>{student.displayName}</Text>
-                                            <Text className="text-[8px] font-black text-gray-400 uppercase tracking-widest font-inter-black">Roll: {student.rollNumber}</Text>
-                                        </View>
+                    <ScrollView className="flex-1 px-4 pt-4">
+                        {filteredStudents.map((student, sIdx) => {
+                            const sId = student.user_id || student.users?.id;
+                            const isPassing = (grid[sId] ? Number(grid[sId]) : 0) >= 40;
 
-                                        {assignments.map((a, idx) => (
-                                            <View key={a.id} style={{ width: 100 }} className="px-2">
+                            return (
+                                <View key={sId} className="mb-4">
+                                    <AppCard className="p-4 bg-white border-white shadow-xl shadow-indigo-100/10">
+                                        <View className="flex-row items-center justify-between">
+                                            <View className="flex-1">
+                                                <Text className="text-gray-900 font-black text-[13px] font-inter-black" numberOfLines={1}>{student.displayName}</Text>
+                                                <Text className="text-[8px] font-black text-gray-400 uppercase tracking-widest font-inter-black">Roll: {student.rollNumber}</Text>
+                                            </View>
+                                            <View className="flex-row items-center">
                                                 <TextInput
                                                     style={{
-                                                        backgroundColor: "white",
+                                                        width: 70,
+                                                        backgroundColor: "#f8fafc",
                                                         borderWidth: 1,
-                                                        borderColor: grid[sId]?.[a.id] ? "#818cf8" : "#f1f5f9",
-                                                        borderRadius: 10,
-                                                        paddingVertical: 7,
+                                                        borderColor: grid[sId] ? (isPassing ? "#10b981" : "#ef4444") : "#e2e8f0",
+                                                        borderRadius: 12,
+                                                        paddingVertical: 10,
                                                         color: "#1e293b",
                                                         fontWeight: "900",
-                                                        fontSize: 13,
+                                                        fontSize: 16,
                                                         textAlign: "center"
                                                     }}
                                                     keyboardType="numeric"
                                                     placeholder="-"
                                                     placeholderTextColor="#cbd5e1"
-                                                    value={grid[sId]?.[a.id] || ""}
+                                                    value={grid[sId] || ""}
                                                     onChangeText={(val) => {
                                                         if (/^\d*$/.test(val)) {
                                                             setGrid(prev => ({
                                                                 ...prev,
-                                                                [sId]: {
-                                                                    ...prev[sId],
-                                                                    [a.id]: val
-                                                                }
+                                                                [sId]: val
                                                             }));
                                                         }
                                                     }}
                                                 />
+                                                <Text className="ml-2 text-gray-400 font-black text-[10px]">/ 100</Text>
                                             </View>
-                                        ))}
-                                    </View>
-                                );
-                            })}
-                            <View className="h-32" />
-                        </ScrollView>
-                    </View>
-                </ScrollView>
+                                        </View>
+                                    </AppCard>
+                                </View>
+                            );
+                        })}
+                        <View className="h-32" />
+                    </ScrollView>
+                </View>
             )}
 
-            {canSave && !loading && assignments.length > 0 && (
+            {canSave && !loading && selectedAssignment && (
                 <View className="absolute bottom-6 left-6 right-6">
                     <AppButton 
-                        label={syncing ? "Saving..." : "Save Gradebook"}
+                        label={syncing ? "Saving..." : "Save Grades"}
                         onPress={handleSaveAll}
                         disabled={syncing}
                         className="py-4 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-200"

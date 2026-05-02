@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Animated, Image, Text, TouchableOpacity, View, Linking } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Animated, Image, Text, TouchableOpacity, View, ScrollView, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
@@ -30,6 +30,9 @@ interface TeacherHomeProps {
   onDeleteNotice?: (id: string) => void;
   currentSchool?: any;
   systemLogs?: any[];
+  assignments?: any[];
+  onGradeAssignment?: (assignment: any) => void;
+  onAddAssignment?: () => void;
 }
 
 export const TeacherHome: React.FC<TeacherHomeProps> = ({
@@ -48,8 +51,29 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
   onDeleteMaterial,
   currentSchool,
   systemLogs = [],
+  assignments = [],
+  onGradeAssignment,
+  onAddAssignment
 }) => {
   const scrollY = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.6,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   const staffAnnouncements = (announcements || []).filter((a) => a.audience === 'ALL' || a.audience === 'STAFF');
   const displayAnnouncements = staffAnnouncements.slice(0, 3);
@@ -112,7 +136,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
     {
       label: 'Announcements',
       value: staffAnnouncements.length,
-      target: 'messages',
+      target: 'notices',
       toneClassName: 'bg-rose-50',
       icon: <Icons.Notifications size={22} color={AppTheme.colors.error} />,
       subtitle: 'Latest Updates',
@@ -211,12 +235,29 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           </Animated.View>
 
           <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-5">
-            <Text className="text-white/70 text-[9px] font-black uppercase tracking-[2px] mb-1 font-inter-black">Teacher Workflow</Text>
-            <Text className="text-white text-xl font-black tracking-tighter leading-6 font-inter-black">{getDynamicGreeting()}</Text>
-            <View className="flex-row items-center mt-0.5">
-              <Text className="text-2xl font-black text-[#fde047] tracking-tight leading-tight font-inter-black">
-                {formatGreetingName(currentUser?.name, 'Teacher')} ✦
-              </Text>
+            <View className="flex-row items-center justify-between mb-2">
+               <View>
+                  <Text className="text-white/70 text-[9px] font-black uppercase tracking-[2px] mb-1 font-inter-black">Teacher Workflow</Text>
+                  <Text className="text-white text-xl font-black tracking-tighter leading-6 font-inter-black">{getDynamicGreeting()}</Text>
+                  <Text className="text-2xl font-black text-[#fde047] tracking-tight leading-tight font-inter-black">
+                    {formatGreetingName(currentUser?.name, 'Teacher')} ✦
+                  </Text>
+               </View>
+            </View>
+
+            {/* Smart Priority Chips — TOP SIGNALS ONLY */}
+            <View className="flex-row gap-2 mt-4">
+              <View className="bg-white/20 px-3 py-1.5 rounded-full border border-white/30 flex-row items-center">
+                <Text className="text-[10px] font-black text-white font-inter-black">📝 {pendingGradesCount} to grade</Text>
+              </View>
+              <View className="bg-white/20 px-3 py-1.5 rounded-full border border-white/30 flex-row items-center">
+                <Text className="text-[10px] font-black text-white font-inter-black">📚 {assignedSections.length} classes</Text>
+              </View>
+              {staffAnnouncements.length > 0 && (
+                <View className="bg-rose-500/80 px-3 py-1.5 rounded-full border border-rose-400/50 flex-row items-center">
+                  <Text className="text-[10px] font-black text-white font-inter-black">⚠️ {staffAnnouncements.length} alert</Text>
+                </View>
+              )}
             </View>
           </Animated.View>
 
@@ -239,8 +280,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
             <TouchableOpacity
               key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`}
               className="w-[48%]"
-              activeOpacity={stat.target ? 0.9 : 1}
-              disabled={!stat.target}
+              activeOpacity={0.7}
               onPress={() => stat.target && onStatPress?.(stat.target)}
             >
               <StatCard
@@ -282,38 +322,34 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 <TouchableOpacity
                   key={item.rosterId || item.id || idx}
                   onPress={() => onNavigateToClass?.(item)}
-                  activeOpacity={0.92}
+                  activeOpacity={0.9}
+                  className="mb-1"
                 >
-                  <AppCard className="w-[280px] p-5 mr-4 border border-white shadow-xl shadow-indigo-100/40">
-                    <View className="flex-row justify-between items-start mb-5">
-                      <View className="flex-1 mr-3">
-                        <View className="flex-row items-center mb-2">
-                          <View className="bg-emerald-500 w-1.5 h-1.5 rounded-full mr-2 shadow-sm shadow-emerald-500/50" />
-                          <Text className="text-[9px] font-black text-emerald-600 uppercase tracking-widest font-inter-black">Live Session</Text>
+                  <AppCard className="w-[300px] p-6 mr-4 border border-white shadow-2xl shadow-indigo-100/20">
+                    <View className="flex-row justify-between items-start mb-4">
+                      <View className="flex-1">
+                        <View className="flex-row items-center mb-1">
+                          <Animated.View 
+                            style={{ opacity: pulseAnim }}
+                            className="bg-emerald-500 w-1.5 h-1.5 rounded-full mr-2" 
+                          />
+                          <Text className="text-[8px] font-bold text-emerald-600 uppercase tracking-[2px] font-inter-bold">Scheduled Session</Text>
                         </View>
-                        <Text className="font-black text-gray-900 text-[17px] tracking-tighter mb-1 font-inter-black" numberOfLines={1}>
-                          {item.subject}
+                        <Text className="font-bold text-gray-900 text-[18px] tracking-tight font-inter-bold" numberOfLines={1}>
+                          {item.subject} — {item.name}
                         </Text>
-                        <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-inter-black">{item.name} • {item.section}</Text>
-                      </View>
-
-                      <View className="bg-indigo-50 px-3 py-2 rounded-2xl border border-indigo-100 items-center justify-center">
-                        <Text className="text-[8px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1 font-inter-black">Hall</Text>
-                        <Text className="text-sm font-black text-indigo-700 leading-none font-inter-black">{item.room_no || '302'}</Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
-                      <View className="flex-row items-center">
-                        <View className="w-8 h-8 rounded-xl bg-gray-50 items-center justify-center mr-3 border border-gray-100">
-                          <Icons.Calendar size={14} color="#6366f1" />
+                        <View className="flex-row items-center mt-2">
+                           <View className="bg-gray-100 px-2 py-1 rounded-md mr-2">
+                              <Text className="text-[10px] font-bold text-gray-500 uppercase font-inter-bold">
+                                {item.room_no ? (item.room_no.toLowerCase().includes('room') ? item.room_no : `Room ${item.room_no}`) : 'Room 302'}
+                              </Text>
+                           </View>
+                           <Text className="text-[11px] font-bold text-indigo-500 uppercase tracking-widest font-inter-bold">{item.class_time || '10:00 AM'}</Text>
                         </View>
-                        <Text className="text-[10px] font-black text-gray-500 uppercase tracking-widest font-inter-black">
-                          {item.class_time || '09:00 AM'}
-                        </Text>
                       </View>
-                      <View className="bg-indigo-600 w-8 h-8 rounded-xl items-center justify-center shadow-md shadow-indigo-200">
-                        <Icons.ChevronRight size={14} color="white" />
+                      
+                      <View className="w-10 h-10 rounded-2xl bg-indigo-50 items-center justify-center border border-indigo-100">
+                        <Icons.ChevronRight size={18} color="#4f46e5" />
                       </View>
                     </View>
                   </AppCard>
@@ -345,27 +381,45 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
           />
 
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {displayAnnouncements.map((a: any, idx: number) => (
-              <AppRow
-                key={a.id}
-                title={a.title}
-                subtitle={a.message}
-                avatarIcon={<Icons.Notifications size={16} color="#4f46e5" />}
-                avatarBg="#eef2ff"
-                meta={a.date}
-                showBorder={idx < displayAnnouncements.length - 1}
-                rightElement={
-                  onDeleteNotice && a.sender_id === currentUser.id ? (
-                    <TouchableOpacity
-                      onPress={() => onDeleteNotice(a.id)}
-                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
-                    >
-                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
-                    </TouchableOpacity>
-                  ) : <Icons.ChevronRight size={13} color="#d1d5db" />
-                }
-              />
-            ))}
+            {displayAnnouncements.map((a: any, idx: number) => {
+              const timeAgo = (dateStr: string) => {
+                if (!dateStr) return 'Just now';
+                const now = new Date();
+                const past = new Date(dateStr);
+                if (isNaN(past.getTime())) return 'Recently';
+                const diffMs = now.getTime() - past.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                return past.toLocaleDateString();
+              };
+
+              const audienceLabel = a.audience === 'ALL' ? 'Global' : a.audience === 'STAFF' ? 'Staff Only' : 'Class Group';
+              
+              return (
+                <AppRow
+                  key={a.id}
+                  title={a.title}
+                  subtitle={`${audienceLabel} • ${a.message}`}
+                  avatarIcon={<Icons.Notifications size={16} color="#4f46e5" />}
+                  avatarBg="#eef2ff"
+                  meta={timeAgo(a.created_at || a.date)}
+                  showBorder={idx < displayAnnouncements.length - 1}
+                  rightElement={
+                    onDeleteNotice && a.sender_id === currentUser.id ? (
+                      <TouchableOpacity
+                        onPress={() => onDeleteNotice(a.id)}
+                        className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
+                      >
+                        <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
+                      </TouchableOpacity>
+                    ) : <Icons.ChevronRight size={13} color="#d1d5db" />
+                  }
+                />
+              );
+            })}
 
             {staffAnnouncements.length === 0 && (
               <View className="items-center py-12">
@@ -382,6 +436,54 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
               >
                 <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Faculty Briefings</Text>
+              </TouchableOpacity>
+            )}
+          </AppCard>
+        </View>
+
+        {/* ACTIVE ASSIGNMENTS */}
+        <View className="mb-8">
+          <SectionHeader
+            title="ACTIVE ASSIGNMENTS"
+            className="px-2"
+            rightElement={
+              <TouchableOpacity onPress={onAddAssignment} className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 active:bg-indigo-100">
+                <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">+ New</Text>
+              </TouchableOpacity>
+            }
+          />
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {assignments.slice(0, 3).map((a: any, idx: number) => (
+              <AppRow
+                key={a.id}
+                title={a.title}
+                subtitle={`Due: ${a.due_date || 'No Deadline'} • Max: ${a.max_marks}`}
+                avatarIcon={<Icons.Edit size={16} color="#8b5cf6" />}
+                avatarBg="#f5f3ff"
+                showBorder={idx < Math.min(assignments.length, 3) - 1}
+                onPress={() => onGradeAssignment?.(a)}
+                rightElement={
+                  <TouchableOpacity
+                    onPress={() => onGradeAssignment?.(a)}
+                    className="bg-indigo-600 px-4 py-2 rounded-xl active:bg-indigo-700"
+                  >
+                    <Text className="text-white text-[9px] font-black uppercase tracking-widest font-inter-black">Grade</Text>
+                  </TouchableOpacity>
+                }
+              />
+            ))}
+            {assignments.length === 0 && (
+              <View className="items-center py-10">
+                <Icons.Report size={24} color="#cbd5e1" />
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">No active assignments</Text>
+              </View>
+            )}
+            {assignments.length > 3 && (
+              <TouchableOpacity 
+                onPress={() => onStatPress?.('assignments')}
+                className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
+              >
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Assignments</Text>
               </TouchableOpacity>
             )}
           </AppCard>
@@ -405,6 +507,13 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 bg: 'bg-[#fff7ed]', 
                 text: 'text-amber-700',
                 action: 'Post Announcement' 
+              },
+              { 
+                label: 'New Assignment', 
+                icon: <Icons.Plus size={22} color="#8b5cf6" />, 
+                bg: 'bg-[#f5f3ff]', 
+                text: 'text-violet-700',
+                action: 'Create Assignment' 
               },
               { 
                 label: 'Grade Work', 
@@ -452,26 +561,26 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
               <AppRow
                 key={mat.id}
                 title={mat.title}
-                subtitle={`${mat.type} • ${mat.subject || 'Academic Node'}`}
+                subtitle={`${mat.type} • ${mat.subject || 'Class Resource'}`}
                 avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={16} color="#4f46e5" /> : <Icons.Globe size={16} color="#0ea5e9" />}
                 avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
                 meta={new Date(mat.created_at).toLocaleDateString()}
                 showBorder={idx < Math.min(teacherMaterials.length, 5) - 1}
                 onPress={() => {
                   if (!mat.url) {
-                    console.warn(`[TEACHER_HOME] Material Node ${mat.id} has no valid transmission URL.`);
+                    onStatPress?.('materials'); // Fallback to list
                     return;
                   }
                   const finalUrl = mat.url.startsWith('http') ? mat.url : `https://${mat.url}`;
-                  Linking.openURL(finalUrl).catch(err => console.error("Linking Error:", err));
+                  Linking.openURL(finalUrl).catch(err => console.error("Transmission Error:", err));
                 }}
                 rightElement={
                   onDeleteMaterial ? (
                     <TouchableOpacity
                       onPress={() => onDeleteMaterial(mat.id)}
-                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
+                      className="bg-rose-50 border border-rose-100 px-4 py-2 rounded-xl active:bg-rose-100"
                     >
-                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
+                      <Icons.Trash size={14} color="#ef4444" />
                     </TouchableOpacity>
                   ) : <Icons.ChevronRight size={13} color="#d1d5db" />
                 }
@@ -488,7 +597,7 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
                 onPress={() => onStatPress?.('materials')}
                 className="py-4 items-center border-t border-gray-50 active:bg-gray-50"
               >
-                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">View All Repository Nodes</Text>
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Academic Resources</Text>
               </TouchableOpacity>
             )}
           </AppCard>

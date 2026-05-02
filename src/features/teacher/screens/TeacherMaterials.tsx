@@ -99,18 +99,31 @@ export const TeacherMaterials: React.FC<TeacherMaterialsProps> = ({
             <AppRow
               key={mat.id}
               title={mat.title}
-              subtitle={`${mat.classes?.name || 'Academic Node'} • Section ${mat.section || 'General'}`}
+              subtitle={`${mat.classes?.name || 'Class Level'} • Section ${mat.section || 'General'}`}
               avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
               avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
-              meta={new Date(mat.created_at).toLocaleDateString()}
+              meta={(() => {
+                if (!mat.created_at) return 'Recently';
+                const d = new Date(mat.created_at);
+                return isNaN(d.getTime()) ? 'Recently' : d.toLocaleDateString();
+              })()}
               showBorder={idx < filtered.length - 1}
               onPress={() => handleOpen(mat.url)}
               rightElement={
                 <TouchableOpacity
-                  onPress={() => onDeleteMaterial(mat.id)}
-                  className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
+                  onPress={() => {
+                    Alert.alert(
+                      "Remove Resource",
+                      "Are you sure you want to delete this material from the repository?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Delete", style: "destructive", onPress: () => onDeleteMaterial(mat.id) }
+                      ]
+                    );
+                  }}
+                  className="bg-rose-50 border border-rose-100 px-4 py-2.5 rounded-xl active:bg-rose-100"
                 >
-                  <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
+                  <Icons.Trash size={15} color="#ef4444" />
                 </TouchableOpacity>
               }
             />

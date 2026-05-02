@@ -8,15 +8,17 @@ interface TeacherReportsProps {
   dbRoster: any[];
   onBack: () => void;
   onShowToast: (msg: string) => void;
+  initialClassId?: string | null;
 }
 
 export const TeacherReports: React.FC<TeacherReportsProps> = ({
   assignedSections = [],
   dbRoster = [],
   onBack,
-  onShowToast
+  onShowToast,
+  initialClassId = null
 }) => {
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(initialClassId);
   const [grades, setGrades] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,28 +60,30 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
 
   const totalStudents = currentStudents.length;
 
-  const allMarks = grades.map(g => Number(g.marks));
+  // Calculate stats based on students in current view
+  const studentIdsInView = currentStudents.map(s => s.user_id || s.users?.id);
+  const gradesInView = grades.filter(g => studentIdsInView.includes(g.student_id));
+
+  const allMarks = gradesInView.map(g => Number(g.marks));
   const avgScore = allMarks.length > 0 
     ? (allMarks.reduce((a, b) => a + b, 0) / allMarks.length).toFixed(1)
     : "0.0";
 
-  const studentGrades = grades.reduce((acc: any, g) => {
-    if (!acc[g.student_id]) acc[g.student_id] = [];
-    acc[g.student_id].push(Number(g.marks));
-    return acc;
-  }, {});
-
-  const weakStudentIds = Object.keys(studentGrades).filter(sId => {
-      const marks = studentGrades[sId];
-      const avg = marks.reduce((a: number, b: number) => a + b, 0) / marks.length;
-      return avg < 40;
+  // Per-student average calculation
+  const studentStats = currentStudents.map(s => {
+      const sId = s.user_id || s.users?.id;
+      const sGrades = gradesInView.filter(g => g.student_id === sId);
+      const totalMarks = sGrades.reduce((acc, g) => acc + Number(g.marks), 0);
+      const avg = sGrades.length > 0 ? totalMarks / sGrades.length : 0;
+      return { ...s, avg, count: sGrades.length };
   });
 
-  const weakStudentsData = currentStudents.filter(s => weakStudentIds.includes(s.user_id || s.users?.id));
+  const weakStudentsData = studentStats.filter(s => s.count > 0 && s.avg < 40);
+  const topStudentsData = studentStats.filter(s => s.count > 0 && s.avg >= 80).sort((a, b) => b.avg - a.avg).slice(0, 5);
 
   const totalPossibleGrades = totalStudents * (assignments.length || 1);
-  const syncProgress = assignments.length > 0 
-    ? Math.min(100, Math.round((grades.length / totalPossibleGrades) * 100))
+  const syncProgress = assignments.length > 0 && totalStudents > 0
+    ? Math.min(100, Math.round((gradesInView.length / totalPossibleGrades) * 100))
     : 0;
 
   const handleExport = async () => {
@@ -165,14 +169,36 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
                 </View>
             </View>
 
+            {/* Top Performers */}
+            {topStudentsData.length > 0 && (
+                <View className="px-5 pt-4">
+                    <Text className="text-[9px] font-black text-emerald-600 uppercase tracking-[3px] mb-4 font-inter-black text-center">Academic Excellence</Text>
+                    <View className="bg-emerald-50 p-5 rounded-[28px] border border-emerald-100 shadow-xl shadow-emerald-100/20 mb-6">
+                        {topStudentsData.map((s, i) => (
+                            <View key={i} className="flex-row items-center justify-between mb-4 pb-4 border-b border-emerald-100/30 last:border-b-0">
+                                <View className="flex-row items-center">
+                                    <View className="w-10 h-10 rounded-xl bg-white items-center justify-center mr-3 border border-emerald-200">
+                                        <Text className="text-[12px] font-black text-emerald-600 font-inter-black">#{i+1}</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="text-[14px] font-black text-gray-900 font-inter-black">{s.users?.name || 'Student'}</Text>
+                                        <Text className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Performance Master: {s.avg.toFixed(1)}%</Text>
+                                    </View>
+                                </View>
+                                <Icons.Star size={16} color="#10b981" />
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            )}
+
             {/* Student List */}
-            <View className="px-5 pt-8">
-                <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] mb-4 font-inter-black">Student Intervention List</Text>
+            <View className="px-5 pt-4">
+                <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] mb-4 font-inter-black text-center">Intervention Required</Text>
                 
                 <View className="bg-white p-5 rounded-[28px] border border-white shadow-xl shadow-indigo-100/20 mb-32">
                     {weakStudentsData.length > 0 ? (
                         <View>
-                            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-4 font-inter-black">Priority Action Required</Text>
                             {weakStudentsData.map((s, i) => (
                                 <View key={i} className="flex-row items-center justify-between mb-4 pb-4 border-b border-gray-50 last:border-b-0">
                                     <View className="flex-row items-center">
@@ -181,7 +207,7 @@ export const TeacherReports: React.FC<TeacherReportsProps> = ({
                                         </View>
                                         <View>
                                             <Text className="text-[14px] font-black text-gray-900 font-inter-black">{s.users?.name || 'Student'}</Text>
-                                            <Text className="text-[8px] font-black text-rose-400 uppercase tracking-widest">Below Academic Baseline</Text>
+                                            <Text className="text-[8px] font-black text-rose-400 uppercase tracking-widest">Avg: {s.avg.toFixed(1)}% • Action Needed</Text>
                                         </View>
                                     </View>
                                     <TouchableOpacity className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
