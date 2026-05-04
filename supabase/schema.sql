@@ -71,6 +71,7 @@ CREATE TABLE classes (
     room_no     TEXT,
     teacher_name TEXT,
     class_time  TEXT,
+    duration_minutes INTEGER DEFAULT 45,
     last_topic  TEXT,
     created_at  TIMESTAMPTZ DEFAULT now()
 );

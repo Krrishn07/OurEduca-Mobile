@@ -264,7 +264,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
     fetchStudentData();
     if (mockAuthUser?.school_id) {
         fetchSchoolDetails(mockAuthUser.school_id);
-        fetchAnnouncements(mockAuthUser.school_id);
+        fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STUDENT']);
         fetchMessages(mockAuthUser.school_id, true);
         fetchVideos(mockAuthUser.school_id);
         fetchLiveStreams(mockAuthUser.school_id);

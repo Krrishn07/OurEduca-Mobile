@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { Icons } from '../components/Icons';
 import { useSchoolData } from '../contexts/SchoolDataContext';
@@ -103,7 +103,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     fetchAssignments,
     addAssignment,
     gradeAssignment,
-    uploadMessageFile
+    uploadMessageFile,
+    logSystemActivity
   } = useSchoolData();
 
   // Teacher Profile
@@ -141,6 +142,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [assignedSections, setAssignedSections] = useState<any[]>([]);
   const [classStudents, setClassStudents] = useState<any[]>([]); // Resolved Students Roster
   const [dbPrincipals, setDbPrincipals] = useState<User[]>([]);
+  const [pendingGradesCount, setPendingGradesCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const syncActiveStream = useCallback(async () => {
     if (!mockAuthUser?.id) return;
@@ -173,7 +176,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
           // 1. Fetch Teacher's Class Assignments
           const { data: rosterData, error: rosterError } = await supabase
               .from('class_roster')
-              .select('id, class_id, section, subject, classes(name, subject, room_no, class_time)')
+              .select('id, class_id, section, subject, classes(name, subject, room_no, class_time, duration_minutes)')
               .eq('user_id', mockAuthUser.id)
               .in('role_in_class', ['teacher', 'mentor']);
           
@@ -219,6 +222,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   materialsPromise, studentCountPromise, studentsListPromise
               ]);
               
+              // 3. Fetch Pending Grades Count directly (Optimization)
+              const { count: pendingCount } = await supabase
+                  .from('class_roster')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('role_in_class', 'student')
+                  .is('grade_score', null)
+                  .in('class_id', classIds);
+              
+              setPendingGradesCount(pendingCount || 0);
+              
               setTeacherMaterials(matRes.data || []);
 
               // Store resolved student list for Roster View
@@ -240,6 +253,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               
               if (principalData) {
                 setDbPrincipals(principalData as User[]);
+              }
+              
+              const targetSchoolId = mockAuthUser.school_id || mockAuthUser.schoolId;
+              
+              if (targetSchoolId) {
+                fetchSystemLogs(targetSchoolId);
               }
           }
       } catch (err: any) {
@@ -287,10 +306,44 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     return Array.from(uniqueContactsMap.values()) as User[];
   }, [dbPrincipals, classStudents, chatMessages, mockAuthUser?.id]);
 
+  const teacherRecentActivity = useMemo(() => {
+    // TACTICAL SYNC: Merge institutional logs with teacher-specific ones
+    const logs = (systemLogs || []).filter(log => {
+      const isOwner = log.user_id === mockAuthUser?.id || log.userId === mockAuthUser?.id;
+      const isRelevantSystemLog = log.category === 'SYSTEM' && 
+                                  (log.title?.includes(mockAuthUser?.name || '') || 
+                                   log.title?.includes('Resource') || 
+                                   log.title?.includes('Graded'));
+      return isOwner || isRelevantSystemLog;
+    });
+    
+    return logs.slice(0, 5);
+  }, [systemLogs, mockAuthUser?.id, mockAuthUser?.name]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+        await fetchTeacherData();
+        if (mockAuthUser?.school_id) {
+            await Promise.all([
+                fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STAFF']),
+                fetchMessages(mockAuthUser.school_id, true),
+                fetchVideos(mockAuthUser.school_id),
+                fetchSystemLogs(mockAuthUser.school_id)
+            ]);
+        }
+        showToast("Dashboard synchronized with server");
+    } catch (err) {
+        showToast("Refresh failed. Check connection.");
+    } finally {
+        setRefreshing(false);
+    }
+  }, [fetchTeacherData, fetchAnnouncements, fetchMessages, fetchVideos, fetchSystemLogs, mockAuthUser?.school_id, mockAuthUser?.schoolId]);
+
   useEffect(() => {
       fetchTeacherData();
       if (mockAuthUser?.school_id) {
-        fetchAnnouncements(mockAuthUser.school_id);
+        fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STAFF']);
         fetchMessages(mockAuthUser.school_id, true);
         fetchVideos(mockAuthUser.school_id);
         fetchCameraNodes(mockAuthUser.school_id);
@@ -348,12 +401,24 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         throw new Error("Institutional context missing");
       }
 
-      await addAssignment({
-        ...assignment,
-        school_id: targetSchoolId
-      });
-      showToast("Assignment Broadcasted");
-      setShowAssignmentModal(false);
+        await addAssignment({
+          ...assignment,
+          school_id: targetSchoolId
+        });
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            targetSchoolId, 
+            `New Assignment: ${assignment.title}`, 
+            'FileText', 
+            '#4f46e5', 
+            mockAuthUser.id, 
+            'SYSTEM'
+        );
+
+        showToast("Assignment Broadcasted");
+        setShowAssignmentModal(false);
+        fetchTeacherData();
     } catch (err: any) {
       console.error('[ASSIGNMENT_CREATION] Failure:', err.message);
       showToast(`Broadcast Failed: ${err.message}`);
@@ -439,6 +504,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
 
         if (error) throw error;
         
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            mockAuthUser.school_id || mockAuthUser.schoolId, 
+            `Resource Published: ${uploadTitle}`, 
+            'FileText', 
+            '#4f46e5', 
+            mockAuthUser.id, 
+            'SYSTEM'
+        );
+
         showToast("Material Synchronized!");
         setShowUploadModal(false);
         setUploadTitle('');
@@ -642,7 +717,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
 
   return (
     <View className="flex-1 bg-gray-50">
-      {isLoading ? (
+      {isLoading && activeTab !== 'home' ? (
           <View className="flex-1 items-center justify-center bg-white">
               <View className="w-20 h-20 bg-indigo-50 rounded-[32px] items-center justify-center mb-6 border border-indigo-100 shadow-2xl shadow-indigo-100/20">
                   <ActivityIndicator color="#4f46e5" size="small" />
@@ -682,6 +757,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     setShowGrading(false); 
                     setGradingInitialClass(null); 
                     setSelectedAssignmentForGrading(null);
+                    fetchTeacherData(); // Refresh activity feed on return
                   }}
                   initialClass={gradingInitialClass}
                   initialAssignment={selectedAssignmentForGrading}
@@ -689,6 +765,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     setModalInitialClassId(cid || null);
                     setShowAssignmentModal(true);
                   }}
+                  logSystemActivity={logSystemActivity}
                 />
               ) : showReports ? (
                 <TeacherReports 
@@ -704,9 +781,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   assignedSections={assignedSections}
                   teacherMaterials={teacherMaterials || []}
                   totalStudents={(classStudents || []).length}
-                  dbRoster={classStudents || []}
+                  pendingGradesCount={pendingGradesCount}
                   announcements={announcements || []}
-                  meetings={meetings || []}
                   onQuickAction={handleQuickAction}
                   onNavigateToClass={(cls) => { 
                     // Deep navigation: Pass full context including classId, section, and subject
@@ -756,7 +832,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     else onNavigate?.(target);
                   }}
                   currentSchool={currentSchool}
-                  systemLogs={systemLogs}
+                  systemLogs={teacherRecentActivity}
+                  isLoading={isLoading}
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
                 />
               )
             )}
@@ -886,13 +965,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
           setAnnouncementError(null);
           setAnnouncementSaving(true);
           try {
+            const targetSchoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId;
+
             await addAnnouncement({ 
               ...data, 
-              school_id: mockAuthUser?.school_id,
+              school_id: targetSchoolId,
               sender_id: mockAuthUser?.id
             }); 
+
+            // Log activity for Recent Activity feed
+            await logSystemActivity(
+                targetSchoolId, 
+                `Notice Posted: ${data.title}`, 
+                'Bell', 
+                '#ea580c', 
+                mockAuthUser?.id, 
+                'SYSTEM'
+            );
+
             showToast("Notice Posted!"); 
             setShowAnnouncementModal(false);
+            fetchTeacherData();
           } catch (err: any) {
             setAnnouncementError(err.message ?? "Could not post notice.");
           } finally {

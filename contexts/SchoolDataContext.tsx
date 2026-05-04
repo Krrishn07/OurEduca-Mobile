@@ -359,14 +359,19 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       }
   }, [fetchAnnouncements, logSystemActivity]);
 
-  const fetchAnnouncements = useCallback(async (schoolId: string) => {
+  const fetchAnnouncements = useCallback(async (schoolId: string, roles?: string[]) => {
       if (!schoolId) return; // Guard: prevent UUID error from undefined schoolId
       try {
-          const { data, error } = await supabase
+          let query = supabase
               .from('announcements')
               .select('*')
-              .or(`school_id.eq.${schoolId},school_id.is.null`)
-              .order('created_at', { ascending: false });
+              .or(`school_id.eq.${schoolId},school_id.is.null`);
+          
+          if (roles && roles.length > 0) {
+              query = query.in('audience', roles);
+          }
+          
+          const { data, error } = await query.order('created_at', { ascending: false });
           
           if (error) throw error;
           
