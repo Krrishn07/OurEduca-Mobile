@@ -3,7 +3,6 @@ import { Animated, Image, Text, TouchableOpacity, View, ScrollView, Linking, Pla
 import * as Haptics from 'expo-haptics';
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icons } from '../../../../components/Icons';
 import { CalendarWidget } from '../../../../components/CalendarWidget';
@@ -13,7 +12,7 @@ import { formatGreetingName } from '../../../utils/nameUtils';
 import { formatAcademicTime } from '../../../utils/timeUtils';
 import { SwipeableRow } from '../components/SwipeableRow';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+const StyledLinearGradient = LinearGradient;
 
 const HEADER_MIN_HEIGHT = Platform.OS === 'ios' ? 100 : 80;
 
@@ -76,7 +75,7 @@ interface TeacherHomeProps {
   pendingGradesCount?: number;
 }
 
-export const TeacherHome: React.FC<TeacherHomeProps> = ({
+export const TeacherHome = React.memo<TeacherHomeProps>(({
   currentUser,
   assignedSections = [],
   teacherMaterials = [],
@@ -811,5 +810,5 @@ export const TeacherHome: React.FC<TeacherHomeProps> = ({
       </Animated.ScrollView>
     </View>
   );
-};
+});
 

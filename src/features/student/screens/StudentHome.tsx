@@ -1,14 +1,15 @@
 import React, { useMemo, useRef } from 'react';
 import { Animated, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { CalendarWidget } from '../../../../components/CalendarWidget';
 import { User } from '../../../../types';
 import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppTypography, StatusPill, AppRow } from '../../../design-system';
 import { formatGreetingName } from '../../../utils/nameUtils';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 const HEADER_MAX_HEIGHT = 280;
 const HEADER_MIN_HEIGHT = 100;

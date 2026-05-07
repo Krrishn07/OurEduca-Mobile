@@ -2,11 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Icons } from '../../../../components/Icons';
 import { useSchoolData } from '../../../../contexts/SchoolDataContext';
+import { useSystemStatus } from '../../../../contexts/SystemStatusContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { AppTheme, AppTypography, ModalShell, AppButton, AppRadius, AppShadows } from '../../../design-system';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 interface SystemHealthModalProps {
   visible: boolean;
@@ -17,7 +19,8 @@ export const SystemHealthModal: React.FC<SystemHealthModalProps> = ({
   visible,
   onClose,
 }) => {
-  const { healthStatus, dbLatency, users } = useSchoolData();
+  const { users } = useSchoolData();
+  const { systemStatus } = useSystemStatus();
 
   // Animation values for subtle motion
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
@@ -33,14 +36,14 @@ export const SystemHealthModal: React.FC<SystemHealthModalProps> = ({
     }
   }, [visible]);
 
-  const isOffline = healthStatus === 'Offline';
+  const isOffline = systemStatus.health === 'Offline';
   const baseTraffic = isOffline ? 0 : (users?.length || 0) * 0.35; 
   const activeTraffic = Math.max(0, baseTraffic + Math.sin(Date.now() / 5000) * 2).toFixed(1);
   const capacityPercent = isOffline ? 0 : Math.min(95, Math.max(5, ((users?.length || 0) / 100) * 100));
 
   const healthMetrics = [
-    { label: 'API Gateway', status: healthStatus === 'Optimal' ? 'Healthy' : 'Degraded', value: isOffline ? '∞' : `${(dbLatency * 0.8).toFixed(0)}ms`, icon: 'Signal', color: healthStatus === 'Optimal' ? '#10b981' : '#f59e0b' },
-    { label: 'DB Cluster', status: healthStatus === 'Optimal' ? 'Optimal' : 'Throttled', value: isOffline ? '∞' : `${dbLatency}ms`, icon: 'Database', color: healthStatus === 'Optimal' ? '#10b981' : '#f59e0b' },
+    { label: 'API Gateway', status: systemStatus.health === 'Optimal' ? 'Healthy' : 'Degraded', value: isOffline ? '∞' : `${(systemStatus.latency * 0.8).toFixed(0)}ms`, icon: 'Signal', color: systemStatus.health === 'Optimal' ? '#10b981' : '#f59e0b' },
+    { label: 'DB Cluster', status: systemStatus.health === 'Optimal' ? 'Optimal' : 'Throttled', value: isOffline ? '∞' : `${systemStatus.latency}ms`, icon: 'Database', color: systemStatus.health === 'Optimal' ? '#10b981' : '#f59e0b' },
     { label: 'Cache Node', status: isOffline ? 'Offline' : 'Healthy', value: isOffline ? '0%' : '12%', icon: 'Check', color: isOffline ? '#ef4444' : '#3b82f6' },
     { label: 'Auth Crypto', status: isOffline ? 'Offline' : 'Healthy', value: isOffline ? '∞' : '99ms', icon: 'Lock', color: isOffline ? '#ef4444' : '#8b5cf6' },
   ];
@@ -50,25 +53,25 @@ export const SystemHealthModal: React.FC<SystemHealthModalProps> = ({
       visible={visible}
       onClose={onClose}
       title="System Status"
-      subtitle={`Overall Health: ${healthStatus}`}
+      subtitle={`Overall Health: ${systemStatus.health}`}
       headerGradient={AppTheme.colors.gradients.brand}
     >
       {/* Status Sentinel - Platinum Alert/Success Plate */}
       <View className={`p-5 rounded-[24px] border-2 mb-8 flex-row items-center ${
-          healthStatus === 'Optimal' ? 'bg-white border-emerald-500/10' : 'bg-white border-rose-500/10'
+          systemStatus.health === 'Optimal' ? 'bg-white border-emerald-500/10' : 'bg-white border-rose-500/10'
       } shadow-sm`}>
           <Animated.View 
-              style={{ transform: [{ scale: healthStatus === 'Optimal' ? pulseAnim : 1 }] }}
-              className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${healthStatus === 'Optimal' ? 'bg-emerald-500' : 'bg-rose-500'} shadow-lg`}
+              style={{ transform: [{ scale: systemStatus.health === 'Optimal' ? pulseAnim : 1 }] }}
+              className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${systemStatus.health === 'Optimal' ? 'bg-emerald-500' : 'bg-rose-500'} shadow-lg`}
           >
               <Icons.Check size={20} color="white" />
           </Animated.View>
           <View className="flex-1">
               <Text className="text-[15px] font-black text-gray-900 tracking-tight">
-                System {healthStatus === 'Optimal' ? 'Operational' : 'Shift Detected'}
+                System {systemStatus.health === 'Optimal' ? 'Operational' : 'Shift Detected'}
               </Text>
-              <Text className={`text-[9px] font-black uppercase tracking-[1.5px] mt-1 ${healthStatus === 'Optimal' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {healthStatus === 'Optimal' ? 'All protocols executing at peak efficiency' : 'Partial service degradation in secondary nodes'}
+              <Text className={`text-[9px] font-black uppercase tracking-[1.5px] mt-1 ${systemStatus.health === 'Optimal' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {systemStatus.health === 'Optimal' ? 'All protocols executing at peak efficiency' : 'Partial service degradation in secondary nodes'}
               </Text>
           </View>
       </View>

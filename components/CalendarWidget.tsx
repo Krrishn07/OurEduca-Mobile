@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Modal, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from './Icons';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, {
+    className: {
+        target: 'style',
+    },
+});
+
+const StyledLinearGradient = LinearGradient;
 
 const formatDateKey = (year: number, month: number, day: number) => {
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

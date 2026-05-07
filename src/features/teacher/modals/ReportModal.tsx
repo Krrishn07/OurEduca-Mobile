@@ -33,15 +33,15 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         {/* Top-Tier Summary Metrics */}
         <View className="flex-row gap-3 mb-8">
           <View className="flex-1 bg-indigo-50/50 p-5 rounded-[24px] border border-indigo-100/30">
-            <Text className="text-[8px] font-inter-black uppercase text-indigo-500 tracking-widest mb-1">Attendance</Text>
+            <Text className="text-[8px] font-inter-black uppercase text-indigo-500 tracking-[1px] mb-1">Attendance</Text>
             <Text className="text-[20px] font-inter-black text-indigo-900">{`92%`}</Text>
           </View>
           <View className="flex-1 bg-emerald-50/50 p-5 rounded-[24px] border border-emerald-100/30">
-            <Text className="text-[8px] font-inter-black uppercase text-emerald-500 tracking-widest mb-1">Avg Grade</Text>
+            <Text className="text-[8px] font-inter-black uppercase text-emerald-500 tracking-[1px] mb-1">Avg Grade</Text>
             <Text className="text-[20px] font-inter-black text-emerald-900">B+</Text>
           </View>
           <View className="flex-1 bg-blue-50/50 p-5 rounded-[24px] border border-blue-100/30">
-            <Text className="text-[8px] font-inter-black uppercase text-blue-500 tracking-widest mb-1">Submission</Text>
+            <Text className="text-[8px] font-inter-black uppercase text-blue-500 tracking-[1px] mb-1">Submission</Text>
             <Text className="text-[20px] font-inter-black text-blue-900">{`80`}<Text className="text-[10px] text-blue-400">%</Text></Text>
           </View>
         </View>
@@ -91,7 +91,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   </View>
                   <View>
                     <Text className="font-inter-bold text-gray-900 text-xs">{node.name}</Text>
-                    <Text className={`text-[9px] font-inter-black uppercase tracking-widest mt-0.5 ${node.color}`}>{node.issue}</Text>
+                    <Text className={`text-[9px] font-inter-black uppercase tracking-[1px] mt-0.5 ${node.color}`}>{node.issue}</Text>
                   </View>
                 </View>
                 <TouchableOpacity className="bg-white w-9 h-9 rounded-xl border border-gray-50 shadow-sm items-center justify-center active:scale-90">

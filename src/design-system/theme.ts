@@ -45,7 +45,7 @@ export const AppSpacing = {
 };
 
 export const AppRadius = {
-  card: 'rounded-[20px]',
+  card: 'rounded-[16px]',
   panel: 'rounded-[16px]',
   control: 'rounded-[14px]',
   pill: 'rounded-full',
@@ -55,9 +55,9 @@ export const AppRadius = {
 export const AppTypography = {
   heroTitle: 'text-2xl tracking-[-1.5px] leading-7 font-inter-black',
   screenTitle: 'text-xl tracking-tight text-gray-900 font-inter-black',
-  sectionTitle: 'text-[15px] tracking-tight text-gray-900 font-inter-black',
+  sectionTitle: 'text-[15px] tracking-[0.3px] text-gray-900 font-inter-bold',
   cardTitle: 'text-[15px] tracking-tight text-gray-900 font-inter-black',
-  eyebrow: 'text-[10px] uppercase tracking-[2.5px] font-inter-black',
+  eyebrow: 'text-[10px] uppercase tracking-[1px] font-inter-black',
   meta: 'text-[9px] uppercase tracking-widest font-inter-black',
   statValue: 'text-xl tracking-tighter text-gray-900 font-inter-black',
   body: 'text-[13px] leading-relaxed text-gray-500 font-inter-medium',
@@ -76,7 +76,7 @@ export const AppTheme = {
   typography: AppTypography,
   shadows: AppShadows,
   card: {
-    base: `bg-white border border-gray-100 ${AppRadius.card} shadow-md shadow-indigo-100/20`,
-    interactive: `bg-white border border-gray-100 ${AppRadius.card} shadow-sm shadow-gray-100/50`,
+    base: `bg-white border border-transparent ${AppRadius.card} shadow-md shadow-indigo-100/20`,
+    interactive: `bg-white border border-transparent ${AppRadius.card} shadow-sm shadow-gray-100/50`,
   },
 };

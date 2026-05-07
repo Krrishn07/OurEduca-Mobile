@@ -7,54 +7,62 @@ import * as DocumentPicker from 'expo-document-picker';
 interface UploadMaterialModalProps {
   visible: boolean;
   onClose: () => void;
-  onUpload: () => void;
-  uploadTitle: string;
-  setUploadTitle: (text: string) => void;
-  uploadRosterId: string | null;
-  setUploadRosterId: (id: string) => void;
+  onUpload: (data: {
+    title: string;
+    rosterId: string;
+    type: 'PDF' | 'LINK';
+    url: string;
+    file: any;
+  }) => void;
   assignedSections: any[];
   isUploading: boolean;
-  uploadType: 'PDF' | 'LINK';
-  setUploadType: (type: 'PDF' | 'LINK') => void;
-  uploadUrl: string;
-  setUploadUrl: (url: string) => void;
-  selectedFile: any;
-  setSelectedFile: (file: any) => void;
   error?: string | null;
   status?: string | null;
+  initialRosterId?: string | null;
 }
 
 export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
   visible,
   onClose,
   onUpload,
-  uploadTitle,
-  setUploadTitle,
-  uploadRosterId,
-  setUploadRosterId,
   assignedSections,
   isUploading,
-  uploadType,
-  setUploadType,
-  uploadUrl,
-  setUploadUrl,
-  selectedFile,
-  setSelectedFile,
   error,
-  status
+  status,
+  initialRosterId
 }) => {
   const [currentStep, setCurrentStep] = React.useState(1);
+  const [title, setTitle] = React.useState('');
+  const [rosterId, setRosterId] = React.useState<string>(initialRosterId || '');
+  const [type, setType] = React.useState<'PDF' | 'LINK'>('PDF');
+  const [url, setUrl] = React.useState('');
+  const [selectedFile, setSelectedFile] = React.useState<any>(null);
+
+  // Sync initialRosterId when modal opens or prop changes
+  React.useEffect(() => {
+    if (visible && initialRosterId) {
+      setRosterId(initialRosterId);
+    }
+  }, [visible, initialRosterId]);
+
+  // RESET: Back to step 1 and clear data on modal close/open
+  React.useEffect(() => {
+    if (visible) {
+      setCurrentStep(1);
+      // We keep rosterId if it's passed in, otherwise clear it if it wasn't pre-set
+      if (!initialRosterId) setRosterId('');
+      setTitle('');
+      setUrl('');
+      setSelectedFile(null);
+      setType('PDF');
+    }
+  }, [visible]);
 
   // ARMOR: State hygiene to prevent data pollution between modes
   React.useEffect(() => {
-    if (uploadType === 'PDF') setUploadUrl('');
+    if (type === 'PDF') setUrl('');
     else setSelectedFile(null);
-  }, [uploadType]);
-
-  // RESET: Back to step 1 on modal visibility change
-  React.useEffect(() => {
-    if (visible) setCurrentStep(1);
-  }, [visible]);
+  }, [type]);
 
   const pickDocument = async () => {
     try {
@@ -65,7 +73,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedFile(result.assets[0]);
-        if (!uploadTitle) setUploadTitle(result.assets[0].name);
+        if (!title) setTitle(result.assets[0].name);
       }
     } catch (err) {
       console.error('DocumentPicker error:', err);
@@ -78,24 +86,30 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
   };
 
   const isNextDisabled = () => {
-    if (currentStep === 1) return !uploadRosterId;
+    if (currentStep === 1) return !rosterId;
     if (currentStep === 2) {
-        if (!uploadTitle.trim()) return true;
-        if (uploadType === 'PDF') return !selectedFile;
-        if (uploadType === 'LINK') return !uploadUrl.trim() || !isUrlValid(uploadUrl);
+        if (!title.trim()) return true;
+        if (type === 'PDF') return !selectedFile;
+        if (type === 'LINK') return !url.trim() || !isUrlValid(url);
     }
     return false;
   };
 
   const canSubmit =
-    uploadTitle.trim().length > 0 &&
-    uploadRosterId &&
+    title.trim().length > 0 &&
+    rosterId &&
     (
-      (uploadType === "PDF" && !!selectedFile) ||
-      (uploadType === "LINK" && uploadUrl.trim().length > 0)
+      (type === "PDF" && !!selectedFile) ||
+      (type === "LINK" && url.trim().length > 0)
     );
 
-  const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === uploadRosterId);
+  const handleFinalUpload = () => {
+    if (canSubmit) {
+      onUpload({ title, rosterId, type, url, file: selectedFile });
+    }
+  };
+
+  const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === rosterId);
 
   return (
     <ModalShell
@@ -119,28 +133,28 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
           ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} className="max-h-[500px]">
+      <View className="min-h-[350px]">
         {currentStep === 1 && (
             <View>
                 <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-black">Resource Strategy</Text>
                 <View className="flex-row bg-gray-100/50 p-1.5 rounded-[24px] mb-10 border border-gray-100/80 shadow-inner">
                     <TouchableOpacity 
-                        onPress={() => setUploadType('PDF')}
-                        className={`flex-1 py-4 rounded-[20px] items-center flex-row justify-center ${uploadType === 'PDF' ? 'bg-white shadow-md border border-gray-100' : ''}`}
+                        onPress={() => setType('PDF')}
+                        className={`flex-1 py-4 rounded-[20px] items-center flex-row justify-center ${type === 'PDF' ? 'bg-white shadow-md border border-gray-100' : ''}`}
                     >
-                        <Icons.Classes size={16} color={uploadType === 'PDF' ? '#4f46e5' : '#94a3b8'} />
-                        <Text className={`text-[10px] font-black uppercase tracking-wider ml-2 font-inter-black ${uploadType === 'PDF' ? 'text-indigo-600' : 'text-gray-400'}`}>PDF DOC</Text>
+                        <Icons.Classes size={16} color={type === 'PDF' ? '#4f46e5' : '#94a3b8'} />
+                        <Text className={`text-[10px] font-black uppercase tracking-wider ml-2 font-inter-black ${type === 'PDF' ? 'text-indigo-600' : 'text-gray-400'}`}>PDF DOC</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                        onPress={() => setUploadType('LINK')}
-                        className={`flex-1 py-4 rounded-[20px] items-center flex-row justify-center ${uploadType === 'LINK' ? 'bg-white shadow-md border border-gray-100' : ''}`}
+                        onPress={() => setType('LINK')}
+                        className={`flex-1 py-4 rounded-[20px] items-center flex-row justify-center ${type === 'LINK' ? 'bg-white shadow-md border border-gray-100' : ''}`}
                     >
-                        <Icons.Globe size={16} color={uploadType === 'LINK' ? '#4f46e5' : '#94a3b8'} />
-                        <Text className={`text-[10px] font-black uppercase tracking-wider ml-2 font-inter-black ${uploadType === 'LINK' ? 'text-indigo-600' : 'text-gray-400'}`}>WEB LINK</Text>
+                        <Icons.Globe size={16} color={type === 'LINK' ? '#4f46e5' : '#94a3b8'} />
+                        <Text className={`text-[10px] font-black uppercase tracking-wider ml-2 font-inter-black ${type === 'LINK' ? 'text-indigo-600' : 'text-gray-400'}`}>WEB LINK</Text>
                     </TouchableOpacity>
                 </View>
 
-                {uploadType === "PDF" && (
+                {type === "PDF" && (
                   <View className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100/50">
                     <Text className="text-[10px] font-medium text-gray-500 leading-relaxed italic">
                       PDF mode uploads a document file and creates a class material entry in the institutional repository.
@@ -152,11 +166,11 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                 <View className="flex-row flex-wrap gap-3 mb-6">
                     {assignedSections.map(r => {
                         const uniqueId = r.id || r.rosterId;
-                        const isSelected = uploadRosterId === uniqueId;
+                        const isSelected = rosterId === uniqueId;
                         return (
                             <TouchableOpacity 
                                 key={uniqueId}
-                                onPress={() => setUploadRosterId(uniqueId)}
+                                onPress={() => setRosterId(uniqueId)}
                                 className={`px-5 py-4 rounded-2xl border ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-200' : 'bg-white border-gray-100 shadow-sm'}`}
                             >
                                 <Text className={`text-[10px] font-black uppercase tracking-wider font-inter-black ${isSelected ? 'text-white' : 'text-gray-400'}`}>
@@ -176,30 +190,30 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                     <View className="bg-gray-50 border border-gray-100 rounded-[28px] px-6 py-5 shadow-inner">
                         <TextInput 
                             placeholder="e.g. Calculus Quarter 1 Notes" 
-                            value={uploadTitle}
-                            onChangeText={setUploadTitle}
+                            value={title}
+                            onChangeText={setTitle}
                             className="text-gray-900 font-black text-[14px] font-inter-black p-0"
                             placeholderTextColor="#94a3b8"
                         />
                     </View>
                 </View>
 
-                {uploadType === 'LINK' ? (
+                {type === 'LINK' ? (
                     <View className="mb-8">
                         <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2.5 px-1 font-inter-black">Institutional URL</Text>
                         <View className="bg-gray-50 border border-gray-100 rounded-[28px] px-6 py-5 shadow-inner">
                             <TextInput 
                                 placeholder="https://resource.edu/notes.pdf" 
-                                value={uploadUrl}
-                                onChangeText={setUploadUrl}
+                                value={url}
+                                onChangeText={setUrl}
                                 autoCapitalize="none"
                                 keyboardType="url"
                                 className="text-gray-900 font-black text-[14px] font-inter-black p-0"
                                 placeholderTextColor="#94a3b8"
                             />
                         </View>
-                        {uploadUrl.length > 0 && !isUrlValid(uploadUrl) && (
-                            <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-3 ml-2 italic">Malformed Transmission Link Detected</Text>
+                        {url.length > 0 && !isUrlValid(url) && (
+                            <Text className="text-[9px] font-black text-rose-500 uppercase tracking-[1px] mt-3 ml-2 italic">Malformed Transmission Link Detected</Text>
                         )}
                     </View>
                 ) : (
@@ -216,7 +230,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                             onPress={pickDocument}
                             className="bg-indigo-600 px-6 py-3.5 rounded-xl active:scale-95 shadow-lg shadow-indigo-200"
                         >
-                            <Text className="text-[10px] font-black text-white uppercase tracking-widest font-inter-black">{selectedFile ? 'Swap' : 'Browse'}</Text>
+                            <Text className="text-[10px] font-black text-white uppercase tracking-[1px] font-inter-black">{selectedFile ? 'Swap' : 'Browse'}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -232,25 +246,25 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                             <Icons.FileText size={24} color="#4f46e5" />
                         </View>
                         <View className="flex-1">
-                            <Text className="text-gray-900 font-black text-lg tracking-tight font-inter-black" numberOfLines={1}>{uploadTitle}</Text>
-                            <Text className="text-[10px] font-black text-indigo-500 uppercase tracking-widest font-inter-black">{uploadType} NODE</Text>
+                            <Text className="text-gray-900 font-black text-lg tracking-tight font-inter-black" numberOfLines={1}>{title}</Text>
+                            <Text className="text-[10px] font-black text-indigo-500 uppercase tracking-[1px] font-inter-black">{type} NODE</Text>
                         </View>
                     </View>
                     
                     <View className="pt-6 border-t border-gray-50">
                         <View className="flex-row justify-between mb-3">
-                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-inter-black">Target Class</Text>
+                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] font-inter-black">Target Class</Text>
                             <Text className="text-[10px] font-black text-gray-900 font-inter-black">{selectedRoster?.displayName || 'Unknown'}</Text>
                         </View>
                         <View className="flex-row justify-between">
-                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-inter-black">Transmission</Text>
+                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] font-inter-black">Transmission</Text>
                             <Text className="text-[10px] font-black text-indigo-600 italic font-inter-black" numberOfLines={1}>Encrypted institutional tunnel</Text>
                         </View>
                     </View>
                 </View>
             </View>
         )}
-      </ScrollView>
+      </View>
 
       <View className="mt-4 gap-4">
           {currentStep < 3 ? (
@@ -262,7 +276,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
               />
           ) : (
               <TouchableOpacity
-                onPress={onUpload}
+                onPress={handleFinalUpload}
                 disabled={!canSubmit || isUploading}
                 activeOpacity={0.9}
                 className={`py-5 rounded-2xl shadow-xl border items-center justify-center mb-4 ${
@@ -280,7 +294,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                 onPress={() => setCurrentStep(currentStep - 1)}
                 className="py-4 items-center"
               >
-                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-inter-black">Return to previous node</Text>
+                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] font-inter-black">Return to previous node</Text>
               </TouchableOpacity>
           )}
 
@@ -289,7 +303,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                onPress={onClose}
                className="py-4 items-center"
              >
-                 <Text className="text-[10px] font-black text-rose-400 uppercase tracking-widest font-inter-black">Abort Transmission</Text>
+                 <Text className="text-[10px] font-black text-rose-400 uppercase tracking-[1px] font-inter-black">Abort Transmission</Text>
              </TouchableOpacity>
           )}
       </View>

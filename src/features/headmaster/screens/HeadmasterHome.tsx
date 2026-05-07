@@ -1,14 +1,15 @@
 import React, { useRef } from 'react';
 import { Animated, Image, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { UserRole } from '../../../../types';
 import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill } from '../../../design-system';
 import { PlatformStatusBadge } from '../../platform/components/PlatformStatusBadge';
 import { formatGreetingName } from '../../../utils/nameUtils';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 const HEADER_MAX_HEIGHT = 220;
 const HEADER_MIN_HEIGHT = 100;

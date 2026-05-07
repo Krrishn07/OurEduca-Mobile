@@ -34,7 +34,8 @@
  *   FIX-26  Absolute save button replaced with ScrollView paddingBottom approach
  */
 
-import React, {
+import * as React from 'react';
+import {
   useState,
   useEffect,
   useCallback,
@@ -45,6 +46,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   TextInput,
   KeyboardAvoidingView,
@@ -54,8 +56,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
 import { Icons } from '../../../../components/Icons';
+import { triggerHaptic, ImpactFeedbackStyle } from '../../../utils/haptics';
 import {
   AppCard,
   AppButton,
@@ -133,7 +135,7 @@ const ledgerKey = (assignmentId: string) => `ledger_${assignmentId}`;
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const TeacherGrading: React.FC<TeacherGradingProps> = ({
+export const TeacherGrading = React.memo<TeacherGradingProps>(({
   assignedSections = [],
   onBack,
   initialClass,
@@ -163,12 +165,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
   const insets = useSafeAreaInsets();
 
   // ── Haptics helper ─────────────────────────────────────────────────────────
-  const triggerHaptic = useCallback(
-    (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
-      if (Platform.OS !== 'web') Haptics.impactAsync(style);
-    },
-    [],
-  );
+  // triggerHaptic now imported from utils
 
   // ── Derived / memoised values ──────────────────────────────────────────────
 
@@ -341,7 +338,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
    */
   const handleSaveAll = useCallback(async () => {
     if (!selectedAssignment || !selectedClass) return;
-    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+    triggerHaptic(ImpactFeedbackStyle.Medium);
 
     const classId      = selectedClass.class_id ?? selectedClass.id ?? '';
     const unsyncedIds  = Object.keys(grid).filter(
@@ -384,7 +381,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
       // Log activity for Recent Activity feed
       if (logSystemActivity) {
           await logSystemActivity(
-              selectedClass.school_id || null,
+          (selectedClass as any).school_id || null,
               `Graded: ${selectedAssignment.title} (${unsyncedIds.length} students)`,
               'BarChart2',
               '#10b981',
@@ -393,7 +390,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
           );
       }
 
-      triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+      triggerHaptic(ImpactFeedbackStyle.Heavy);
       Alert.alert(
         'Grades Saved ✓',
         `${unsyncedIds.length} grade${unsyncedIds.length !== 1 ? 's' : ''} synchronised successfully.`,
@@ -440,7 +437,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      className="flex-1 bg-gray-50/50"
+      className="flex-1 bg-[#f8faff]"
     >
       {/* ── HEADER ── */}
       <PlatinumHeader
@@ -454,21 +451,22 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
         rightAction={
           <View className="flex-row items-center gap-2">
 
-            {/* FIX-15: Search icon focuses the TextInput instead of doing nothing */}
-            <TouchableOpacity
-              onPress={() => searchRef.current?.focus()}
-              className="p-2 bg-gray-50 rounded-full border border-gray-100"
-              activeOpacity={0.7}
-            >
-              <Icons.Search size={18} color="#6b7280" />
-            </TouchableOpacity>
+            {selectedClass && (
+              <TouchableOpacity
+                onPress={() => searchRef.current?.focus()}
+                className="p-2 bg-gray-50 rounded-full border border-gray-100 active:scale-95"
+                activeOpacity={0.7}
+              >
+                <Icons.Search size={18} color="#6b7280" />
+              </TouchableOpacity>
+            )}
 
             {selectedClass && (
               /* FIX-16: Distinct styling for Sync vs Add states */
               <TouchableOpacity
                 onPress={() => {
                   if (canSave) {
-                    triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+                    triggerHaptic(ImpactFeedbackStyle.Heavy);
                     handleSaveAll();
                   } else if (onAddAssignment) {
                     onAddAssignment(getClassId(selectedClass));
@@ -503,7 +501,11 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
               returnKeyType="search"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
+              <TouchableOpacity 
+                onPress={() => setSearchQuery('')} 
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Icons.Close size={14} color="#94a3b8" />
               </TouchableOpacity>
             )}
@@ -514,10 +516,15 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
       {/* FIX-13: Error banner with retry */}
       {fetchError && (
         <View className="mx-4 mt-2 mb-1 bg-red-50 rounded-2xl p-4 border border-red-100 flex-row items-center gap-3">
-          <Icons.AlertCircle size={18} color="#ef4444" />
+          <Icons.Alert size={18} color="#ef4444" />
           <View className="flex-1">
             <Text className="text-red-700 text-[13px] font-inter-black">{fetchError}</Text>
-            <TouchableOpacity onPress={fetchGridData} className="mt-1" activeOpacity={0.7}>
+            <TouchableOpacity 
+              onPress={fetchGridData} 
+              className="mt-1" 
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Text className="text-red-500 text-[11px] font-inter-bold underline">Tap to retry</Text>
             </TouchableOpacity>
           </View>
@@ -529,22 +536,24 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
       {/* ── STEP 1: Class selection ── */}
       {!selectedClass ? (
         <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false}>
-          <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] mb-4 px-2 font-inter-black">
+          <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[1px] mb-4 px-2 font-inter-black">
             All Classes
           </Text>
-          {assignedSections.map(item => (
+          {assignedSections.map((item, idx) => (
             // FIX-23: Stable key — class_id > id > fallback index
-            <TouchableOpacity
-              key={item.class_id ?? item.id ?? item.name}
+            <Pressable
+              key={`${item.class_id ?? item.id ?? item.name}-${idx}`}
               onPress={() => {
                 triggerHaptic();
                 setSelectedClass(item);
                 setSelectedAssignment(null);
               }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}
               className="mb-3"
-              activeOpacity={0.75}
             >
-              <AppCard className="p-4 bg-white border-white shadow-lg shadow-indigo-100/20 flex-row items-center">
+              <AppCard 
+                className="p-4 bg-white border-white shadow-lg shadow-indigo-100/20 flex-row items-center"
+              >
                 <View className="w-11 h-11 bg-indigo-50 rounded-xl items-center justify-center mr-4 border border-indigo-100">
                   <Icons.Classes size={20} color="#4f46e5" />
                 </View>
@@ -552,13 +561,13 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   <Text className="font-black text-gray-900 text-base font-inter-black">
                     {item.subject}
                   </Text>
-                  <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-inter-black">
+                  <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[1px] font-inter-black">
                     {item.name} • SEC {item.section ?? 'A'}
                   </Text>
                 </View>
                 <Icons.ChevronRight size={16} color="#cbd5e1" />
               </AppCard>
-            </TouchableOpacity>
+            </Pressable>
           ))}
 
           {assignedSections.length === 0 && (
@@ -567,7 +576,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
               <Text className="text-gray-900 font-black text-base mt-4 font-inter-black">
                 No Classes Assigned
               </Text>
-              <Text className="text-gray-400 text-[10px] mt-1 font-inter-black uppercase tracking-widest text-center">
+              <Text className="text-gray-400 text-[10px] mt-1 font-inter-black uppercase tracking-[1px] text-center">
                 Contact your administrator to be assigned classes
               </Text>
             </View>
@@ -607,7 +616,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   className="mt-6 bg-indigo-600 px-6 py-3 rounded-2xl active:bg-indigo-700"
                   activeOpacity={0.8}
                 >
-                  <Text className="text-white font-black text-[11px] uppercase tracking-widest font-inter-black">
+                  <Text className="text-white font-black text-[11px] uppercase tracking-[1px] font-inter-black">
                     Create First Assignment
                   </Text>
                 </TouchableOpacity>
@@ -621,21 +630,23 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 32 }}
             >
-              <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] mb-4 font-inter-black">
+              <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[1px] mb-4 font-inter-black">
                 Select Assignment to Grade
               </Text>
 
-              {assignments.map(a => (
-                <TouchableOpacity
-                  key={a.id}
+              {assignments.map((a, idx) => (
+                <Pressable
+                  key={`${a.id}-${idx}`}
                   onPress={() => {
                     triggerHaptic();
                     setSelectedAssignment(a);
                   }}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}
                   className="mb-3"
-                  activeOpacity={0.75}
                 >
-                  <AppCard className="p-4 bg-white border-white shadow-lg shadow-indigo-100/10 flex-row items-center">
+                  <AppCard 
+                    className="p-4 bg-white border-white shadow-lg shadow-indigo-100/10 flex-row items-center"
+                  >
                     <View className="w-10 h-10 bg-indigo-50 rounded-xl items-center justify-center mr-4 border border-indigo-100">
                       <Icons.Edit size={16} color="#4f46e5" />
                     </View>
@@ -643,7 +654,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                       <Text className="font-black text-gray-900 text-[14px] font-inter-black">
                         {a.title}
                       </Text>
-                      <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-widest font-inter-black mt-0.5">
+                      <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[1px] font-inter-black mt-0.5">
                         {/* FIX-09: Max marks dynamic */}
                         Max: {a.max_marks} marks
                         {a.due_date ? ` • Due ${a.due_date}` : ''}
@@ -651,7 +662,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                     </View>
                     <Icons.ChevronRight size={14} color="#cbd5e1" />
                   </AppCard>
-                </TouchableOpacity>
+                </Pressable>
               ))}
 
               {/* FIX-22: Only render Add button if callback exists */}
@@ -661,7 +672,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   className="py-4 border border-dashed border-indigo-200 rounded-2xl items-center justify-center mt-2 active:bg-indigo-50"
                   activeOpacity={0.8}
                 >
-                  <Text className="text-indigo-600 font-black text-[9px] uppercase tracking-widest">
+                  <Text className="text-indigo-600 font-black text-[9px] uppercase tracking-[1px]">
                     + Create New Assignment
                   </Text>
                 </TouchableOpacity>
@@ -680,7 +691,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   >
                     {selectedAssignment.title}
                   </Text>
-                  <Text className="text-indigo-200 font-black text-[9px] uppercase tracking-widest font-inter-black mt-0.5">
+                  <Text className="text-indigo-200 font-black text-[9px] uppercase tracking-[1px] font-inter-black mt-0.5">
                     {/* FIX-09: Dynamic max marks */}
                     {filteredStudents.length} Students • Max {selectedAssignment.max_marks} marks
                   </Text>
@@ -690,7 +701,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   className="bg-white/10 px-3 py-1.5 rounded-lg border border-white/20 active:bg-white/20"
                   activeOpacity={0.8}
                 >
-                  <Text className="text-white text-[8px] font-black uppercase tracking-widest font-inter-black">
+                  <Text className="text-white text-[8px] font-black uppercase tracking-[1px] font-inter-black">
                     Change
                   </Text>
                 </TouchableOpacity>
@@ -707,13 +718,13 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                 {filteredStudents.length === 0 && searchQuery.length > 0 && (
                   <View className="items-center py-10">
                     <Icons.Search size={24} color="#cbd5e1" />
-                    <Text className="text-gray-400 text-[11px] font-inter-black mt-2 uppercase tracking-widest">
+                    <Text className="text-gray-400 text-[11px] font-inter-black mt-2 uppercase tracking-[1px]">
                       No students match "{searchQuery}"
                     </Text>
                   </View>
                 )}
 
-                {filteredStudents.map(student => {
+                {filteredStudents.map((student, idx) => {
                   const sId = student.user_id;
                   const marksRaw = grid[sId] ?? '';
                   const marksNum = marksRaw !== '' ? Number(marksRaw) : null;
@@ -727,7 +738,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   const isSynced    = syncedGrades[sId] === true;
 
                   return (
-                    <View key={sId} className="mb-3">
+                    <View key={`${sId}-${student.displayName}-${idx}`} className="mb-3">
                       <AppCard className="p-4 bg-white border-white shadow-lg shadow-indigo-100/10">
                         <View className="flex-row items-center justify-between">
                           {/* Student info */}
@@ -738,7 +749,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                             >
                               {student.displayName}
                             </Text>
-                            <Text className="text-[9px] text-gray-400 uppercase tracking-widest font-inter-bold mt-0.5">
+                            <Text className="text-[9px] text-gray-400 uppercase tracking-[1px] font-inter-bold mt-0.5">
                               Roll No: {student.rollNumber}
                             </Text>
 
@@ -750,7 +761,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                                 }`}
                               >
                                 <Text
-                                  className={`text-[8px] font-inter-black uppercase tracking-widest ${
+                                  className={`text-[8px] font-inter-black uppercase tracking-[1px] ${
                                     isPassing ? 'text-emerald-600' : 'text-red-500'
                                   }`}
                                 >
@@ -827,7 +838,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                         : `Save ${unsyncedCount} Grade${unsyncedCount !== 1 ? 's' : ''}`
                     }
                     onPress={() => {
-                      triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+                      triggerHaptic(ImpactFeedbackStyle.Heavy);
                       handleSaveAll();
                     }}
                     disabled={syncing}
@@ -836,7 +847,7 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
                   {syncing && (
                     <View className="flex-row items-center justify-center mt-2 gap-2">
                       <ActivityIndicator size="small" color="#6366f1" />
-                      <Text className="text-indigo-400 text-[10px] font-inter-bold uppercase tracking-widest">
+                      <Text className="text-indigo-400 text-[10px] font-inter-bold uppercase tracking-[1px]">
                         Synchronising with server…
                       </Text>
                     </View>
@@ -849,4 +860,4 @@ export const TeacherGrading: React.FC<TeacherGradingProps> = ({
       )}
     </KeyboardAvoidingView>
   );
-};
+});

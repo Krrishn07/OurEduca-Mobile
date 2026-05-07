@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert, TextInput, Pressable, RefreshControl, InteractionManager } from 'react-native';
 import { Icons } from '../components/Icons';
 import { useSchoolData } from '../contexts/SchoolDataContext';
 import { supabase } from '../lib/supabase';
 import { useMockAuth } from '../contexts/MockAuthContext';
-import { UserRole, User, ChatMessage } from '../types';
+import { UserRole, User, ChatMessage, LiveStream as LiveStreamType } from '../types';
 import { RestrictedAccessView } from '../components/RestrictedAccessView';
 
 // Modular Screens
@@ -89,7 +89,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   
   // --- Context & Supabase ---
-  const { currentUser: mockAuthUser, currentSchool } = useMockAuth();
+  const { currentUser: mockAuthUser, currentSchool, setSession } = useMockAuth();
   const { 
     announcements, meetings, addAnnouncement, fetchAnnouncements, deleteAnnouncement, 
     chatMessages, sendChatMessage, fetchMessages,
@@ -108,27 +108,34 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   } = useSchoolData();
 
   // Teacher Profile
-  const teacherProfile = mockAuthUser ? {
-      ...mockAuthUser,
-      office: mockAuthUser.office || 'Staff Room 2',
-      phone: mockAuthUser.phone || '+1 555-0199',
-  } as User : { id: 'T-0', name: 'Loading...', role: UserRole.TEACHER } as User;
+  const teacherProfile = useMemo(() => {
+    if (!mockAuthUser) return { id: 'T-0', name: 'Loading...', role: UserRole.TEACHER } as User;
+    return {
+        ...mockAuthUser,
+        role: (mockAuthUser.role as unknown) as UserRole,
+        office: mockAuthUser.office || 'Staff Room 2',
+        phone: mockAuthUser.phone || '+1 555-0199',
+    } as unknown as User;
+  }, [mockAuthUser]);
   
   // Form States
-  const [uploadRosterId, setUploadRosterId] = useState<string | null>(null);
-  const [uploadClassId, setUploadClassId] = useState('');
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadType, setUploadType] = useState<'PDF' | 'LINK'>('PDF');
-  const [uploadUrl, setUploadUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [modalInitialRosterId, setModalInitialRosterId] = useState<string | null>(null);
 
-  // Student Registration State
-  const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState('');
 
-  const [editProfileName, setEditProfileName] = useState(teacherProfile.name);
-  const [editProfilePhone, setEditProfilePhone] = useState(teacherProfile.phone || '');
-  const [editProfileOffice, setEditProfileOffice] = useState(teacherProfile.office || '');
+  const [editProfileName, setEditProfileName] = useState('');
+  const [editProfileEmail, setEditProfileEmail] = useState('');
+  const [editProfilePhone, setEditProfilePhone] = useState('');
+  const [editProfileOffice, setEditProfileOffice] = useState('');
+
+  // Hydration Guard: Keep edit state in sync with loaded profile
+  useEffect(() => {
+    if (teacherProfile && teacherProfile.id !== 'T-0') {
+      setEditProfileName(teacherProfile.name || '');
+      setEditProfileEmail(teacherProfile.email || '');
+      setEditProfilePhone(teacherProfile.phone || '');
+      setEditProfileOffice(teacherProfile.office || '');
+    }
+  }, [teacherProfile.id, teacherProfile.name, teacherProfile.email, teacherProfile.phone, teacherProfile.office]);
 
   // Message State
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
@@ -204,7 +211,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   .from('materials')
                   .select('*, classes(name)')
                   .in('class_id', classIds)
-                  .order('created_at', { ascending: false });
+                  .eq('created_by', mockAuthUser.id)
+                  .order('created_at', { ascending: false })
+                  .limit(100);
 
               const studentCountPromise = supabase
                   .from('class_roster')
@@ -216,7 +225,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   .from('class_roster')
                   .select('class_id, section, users!inner(id, name, role, avatar)')
                   .in('class_id', classIds)
-                  .eq('role_in_class', 'student');
+                  .eq('role_in_class', 'student')
+                  .limit(500); // Institutional cap for a teacher's total active student view
 
               const [matRes, countRes, listRes] = await Promise.all([
                   materialsPromise, studentCountPromise, studentsListPromise
@@ -271,10 +281,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   // STABILIZATION GATE: Safely handle initial class selection for the Upload Modal
   // This occurs once assignedSections are loaded, preventing the "Select -> Re-fetch" infinite loop.
   useEffect(() => {
-    if (assignedSections.length > 0 && (!uploadRosterId || !uploadClassId)) {
+    if (assignedSections.length > 0 && !modalInitialRosterId) {
         const firstSection = assignedSections[0];
-        setUploadRosterId(firstSection.id || firstSection.rosterId);
-        setUploadClassId(firstSection.class_id);
+        setModalInitialRosterId(firstSection.id || firstSection.rosterId);
         console.log(`[TEACHER_DASHBOARD] Default Upload Context Locked: ${firstSection.name}`);
     }
   }, [assignedSections]);
@@ -309,7 +318,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const teacherRecentActivity = useMemo(() => {
     // TACTICAL SYNC: Merge institutional logs with teacher-specific ones
     const logs = (systemLogs || []).filter(log => {
-      const isOwner = log.user_id === mockAuthUser?.id || log.userId === mockAuthUser?.id;
+      const isOwner = log.user_id === mockAuthUser?.id;
       const isRelevantSystemLog = log.category === 'SYSTEM' && 
                                   (log.title?.includes(mockAuthUser?.name || '') || 
                                    log.title?.includes('Resource') || 
@@ -341,29 +350,52 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   }, [fetchTeacherData, fetchAnnouncements, fetchMessages, fetchVideos, fetchSystemLogs, mockAuthUser?.school_id, mockAuthUser?.schoolId]);
 
   useEffect(() => {
-      fetchTeacherData();
-      if (mockAuthUser?.school_id) {
-        fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STAFF']);
-        fetchMessages(mockAuthUser.school_id, true);
-        fetchVideos(mockAuthUser.school_id);
-        fetchCameraNodes(mockAuthUser.school_id);
-        fetchSystemLogs(mockAuthUser.school_id);
-      }
+      let isMounted = true;
+      
+      const initializeData = async () => {
+        if (!isMounted) return;
+        
+        try {
+          await fetchTeacherData();
+          
+          if (mockAuthUser?.school_id && isMounted) {
+            // Institutional Feed Handshake
+            await Promise.allSettled([
+              fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STAFF']),
+              fetchMessages(mockAuthUser.school_id, true),
+              fetchVideos(mockAuthUser.school_id),
+              fetchCameraNodes(mockAuthUser.school_id),
+              fetchSystemLogs(mockAuthUser.school_id)
+            ]);
+          }
+        } catch (err) {
+          console.error('[TEACHER_INIT_ERROR] Data hydration failed:', err);
+        }
+      };
+
+      InteractionManager.runAfterInteractions(() => {
+        initializeData();
+      });
+
+      return () => {
+        isMounted = false;
+      };
   }, [fetchTeacherData, fetchAnnouncements, fetchMessages, fetchVideos, fetchCameraNodes, mockAuthUser?.school_id]);
+
 
   const showToast = (msg: string) => {
       setToast({ show: true, message: msg });
       setTimeout(() => setToast({ show: false, message: '' }), 3000);
   };
 
-  const handleGradeAssignment = (assignment: any) => {
+  const handleGradeAssignment = useCallback((assignment: any) => {
       const cls = (assignedSections || []).find(s => s.class_id === assignment.class_id);
       setGradingInitialClass(cls);
       setSelectedAssignmentForGrading(assignment);
       setShowGrading(true);
-  };
+  }, [assignedSections]);
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = useCallback((action: string) => {
       switch (action) {
           case 'Upload Material':
               setShowUploadModal(true);
@@ -379,7 +411,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               break;
           case 'REPORT':
           case 'View Report':
-              setGradingInitialClass(selectedClass); // Reuse state or create setReportInitialClass
+              setGradingInitialClass(selectedClass); 
               setShowReports(true);
               break;
           case 'Create Assignment':
@@ -389,10 +421,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
           default:
               console.log(`Action: ${action}`);
       }
-  };
+  }, [selectedClass]);
 
   const [assignmentSaving, setAssignmentSaving] = useState(false);
-  const handleCreateAssignment = async (assignment: any) => {
+  const handleCreateAssignment = useCallback(async (assignment: any) => {
     setAssignmentSaving(true);
     try {
       const targetSchoolId = currentSchool?.id || mockAuthUser?.school_id;
@@ -412,7 +444,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             `New Assignment: ${assignment.title}`, 
             'FileText', 
             '#4f46e5', 
-            mockAuthUser.id, 
+            mockAuthUser?.id, 
             'SYSTEM'
         );
 
@@ -425,15 +457,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     } finally {
       setAssignmentSaving(false);
     }
-  };
+  }, [currentSchool?.id, mockAuthUser?.id, addAssignment, logSystemActivity, fetchTeacherData]);
 
-  const handleUpload = async () => {
+
+  const handleUpload = useCallback(async (data: {
+    title: string;
+    rosterId: string;
+    type: 'PDF' | 'LINK';
+    url: string;
+    file: any;
+  }) => {
     setUploadError(null);
-    const selectedRoster = (assignedSections || []).find(s => (s.id || s.rosterId) === uploadRosterId);
-    const targetClassId = selectedRoster?.class_id || uploadClassId;
+    const selectedRoster = (assignedSections || []).find(s => (s.id || s.rosterId) === data.rosterId);
+    const targetClassId = selectedRoster?.class_id;
     const targetSection = selectedRoster?.section;
 
-    if (!uploadTitle.trim()) {
+    if (!data.title.trim()) {
         setUploadError("Please enter a title.");
         return;
     }
@@ -443,12 +482,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         return;
     }
 
-    if (uploadType === 'PDF' && !selectedFile) {
+    if (data.type === 'PDF' && !data.file) {
         setUploadError("Please choose a PDF file.");
         return;
     }
 
-    if (uploadType === 'LINK' && (!uploadUrl.trim() || !isValidUrl(uploadUrl))) {
+    if (data.type === 'LINK' && (!data.url.trim() || !isValidUrl(data.url))) {
         setUploadError("Please enter a valid web link.");
         return;
     }
@@ -458,27 +497,28 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     setUploadSaving(true);
     setUploadStatus("Preparing Node...");
     try {
-        let finalUrl = uploadUrl;
-        if (uploadType === 'LINK' && uploadUrl && !uploadUrl.startsWith('http')) {
-            finalUrl = `https://${uploadUrl}`;
+        let finalUrl = data.url;
+        if (data.type === 'LINK' && data.url && !data.url.startsWith('http')) {
+            finalUrl = `https://${data.url}`;
         }
-        if (uploadType === 'PDF' && selectedFile) {
-            const fileExt = selectedFile.name.split('.').pop();
+        if (data.type === 'PDF' && data.file) {
+            const fileExt = data.file.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `materials/${mockAuthUser.id}/${fileName}`;
 
             // React Native File Upload
-            const formData = new FormData();
-            formData.append('file', {
-                uri: selectedFile.uri,
-                name: selectedFile.name,
-                type: 'application/pdf'
-            } as any);
-
             setUploadStatus("Uploading Document...");
+            
+            // OPTION B: fetch + blob (Memory Efficient)
+            const response = await fetch(data.file.uri);
+            const blob = await response.blob();
+
             const { error: uploadError } = await supabase.storage
-                .from('videos') 
-                .upload(filePath, formData);
+                .from('materials') // Fixed: Should go to materials bucket
+                .upload(filePath, blob, {
+                    contentType: 'application/pdf',
+                    upsert: false
+                });
 
             if (uploadError) throw uploadError;
 
@@ -489,25 +529,50 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             finalUrl = publicUrl;
         }
 
-        // --- Step 2: Insert Database Record ---
-        setUploadStatus("Synchronizing Database...");
-        const { error } = await supabase.from('materials').insert({
-            title: uploadTitle, 
+        // --- Step 2: Insert Database Record (Optimistic) ---
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMaterial = {
+            id: tempId,
+            title: data.title,
+            class_id: targetClassId,
+            school_id: mockAuthUser.school_id,
+            section: targetSection,
+            subject: selectedRoster?.subject || 'Lecture',
+            type: data.type,
+            url: finalUrl,
+            created_by: mockAuthUser.id,
+            created_at: new Date().toISOString()
+        };
+        
+        // LayoutAnimation.configureNext removed
+        setTeacherMaterials(prev => [optimisticMaterial, ...prev]);
+        setShowUploadModal(false);
+
+        const { data: dbData, error } = await supabase.from('materials').insert({
+            title: data.title, 
             class_id: targetClassId, 
             school_id: mockAuthUser.school_id,
             section: targetSection,
             subject: selectedRoster?.subject || 'Lecture', 
-            type: uploadType,
+            type: data.type,
             url: finalUrl, 
             created_by: mockAuthUser.id
-        });
+        }).select();
 
-        if (error) throw error;
+        if (error) {
+            // Rollback
+            setTeacherMaterials(prev => prev.filter(m => m.id !== tempId));
+            throw error;
+        }
         
+        if (dbData && dbData[0]) {
+            setTeacherMaterials(prev => prev.map(m => m.id === tempId ? dbData[0] : m));
+        }
+
         // Log activity for Recent Activity feed
         await logSystemActivity(
             mockAuthUser.school_id || mockAuthUser.schoolId, 
-            `Resource Published: ${uploadTitle}`, 
+            `Resource Published: ${data.title}`, 
             'FileText', 
             '#4f46e5', 
             mockAuthUser.id, 
@@ -515,11 +580,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         );
 
         showToast("Material Synchronized!");
-        setShowUploadModal(false);
-        setUploadTitle('');
-        setUploadUrl('');
-        setSelectedFile(null);
-        fetchTeacherData();
     } catch (err: any) {
         console.error('Upload Error:', err.message);
         setUploadError(err.message ?? "Upload failed.");
@@ -527,24 +587,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         setUploadSaving(false); 
         setUploadStatus(null);
     }
-  };
+  }, [assignedSections, mockAuthUser, logSystemActivity, showToast]);
+
 
   const handleCloseUploadModal = () => {
     setShowUploadModal(false);
-    setUploadTitle('');
-    setUploadUrl('');
-    setSelectedFile(null);
-    // Keep uploadRosterId as it's useful to persist selection for next time unless explicitly asked otherwise
   };
 
-  const handleAddStudent = async () => {
+  const handleAddStudent = useCallback(async (data: { name: string; email: string }) => {
     setStudentError(null);
     const targetClass = selectedClass;
-    if (!studentName.trim()) {
+    if (!data.name.trim()) {
         setStudentError("Student name is required.");
         return;
     }
-    if (!studentEmail.trim()) {
+    if (!data.email.trim()) {
         setStudentError("Student email is required.");
         return;
     }
@@ -555,7 +612,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     
     setStudentSaving(true);
     try {
-        const email = studentEmail.trim();
+        const email = data.email.trim();
         
         // Institutional Registry Sync
         setStudentStatus("Checking Registry...");
@@ -572,7 +629,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             const { data: newUser, error: createError } = await supabase
                 .from('users')
                 .insert({
-                    name: studentName.trim(),
+                    name: data.name.trim(),
                     email: email,
                     role: 'student',
                     school_id: mockAuthUser.school_id,
@@ -599,8 +656,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         
         showToast("Student Registered & Synchronized!");
         setShowAddStudentModal(false);
-        setStudentName('');
-        setStudentEmail('');
         fetchTeacherData();
     } catch (err: any) {
         console.error('Registration Error:', err.message);
@@ -609,11 +664,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         setStudentSaving(false);
         setStudentStatus(null);
     }
-  };
+  }, [selectedClass, mockAuthUser?.school_id, fetchTeacherData]);
 
-  const handleSaveProfile = async () => {
+
+  const handleSaveProfile = useCallback(async (data: { name: string; email: string; phone: string; office: string }) => {
     setProfileError(null);
-    if (!editProfileName.trim()) {
+    if (!data.name.trim()) {
         setProfileError("Display name is required");
         return;
     }
@@ -624,13 +680,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         const { error } = await supabase
             .from('users')
             .update({
-                name: editProfileName.trim(),
-                phone: editProfilePhone.trim(),
-                office: editProfileOffice.trim()
+                name: data.name.trim(),
+                email: data.email.trim(),
+                phone: data.phone.trim(),
+                office: data.office.trim()
             })
             .eq('id', teacherProfile.id);
 
         if (error) throw error;
+
+        // GLOBAL SYNC: Refresh the auth context so changes reflect everywhere immediately
+        await setSession(teacherProfile.id);
 
         showToast("Identity Updates Synchronized");
         setShowEditProfileModal(false);
@@ -641,9 +701,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         setProfileSaving(false);
         setProfileStatus(null);
     }
-  };
+  }, [teacherProfile.id, setSession, fetchTeacherData]);
 
-  const handleToggleLiveStream = async (title: string, rosterId?: string, selectedCameraUrl?: string) => {
+
+  const handleToggleLiveStream = useCallback(async (title: string, rosterId?: string, selectedCameraUrl?: string) => {
     const schoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId;
     if (!schoolId) return;
 
@@ -668,7 +729,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                 class_id: selectedRoster?.class_id,
                 section: selectedRoster?.section,
                 subject: selectedRoster?.subject || 'Classroom Instruction',
-                stream_url: selectedCameraUrl || ''
+                stream_url: selectedCameraUrl || '',
+                source: 'CAMERA'
             });
 
             if (streamId) {
@@ -680,18 +742,29 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             showToast("Failed to start stream");
         }
     }
-  };
+  }, [mockAuthUser, isLiveStreamActive, activeStreamId, assignedSections, endLiveStream, startLiveStream]);
 
-  const handleSendMessage = async (type: 'TEXT' | 'IMAGE' | 'DOCUMENT' = 'TEXT', url?: string, name?: string, customContent?: string) => {
+
+  const handleMessageStudentFromReport = useCallback((studentId: string, template?: string) => {
+    if (!studentId) return;
+    setSelectedChat(studentId);
+    if (template) setMsgInput(template);
+    onNavigate?.('messages');
+    setShowReports(false);
+    showToast("Intervention template prepared...");
+  }, [onNavigate]);
+
+
+  const handleSendMessage = useCallback(async (type?: string, url?: string, name?: string, customContent?: string) => {
       const finalContent = customContent || msgInput;
       if (!finalContent.trim() && !url && !name) return;
       
       const schoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId;
       const senderId = teacherProfile.id || mockAuthUser?.id;
 
-      if (schoolId && senderId) {
+      if (schoolId && senderId && selectedChat) {
           try {
-              await sendChatMessage(schoolId, senderId, selectedChat, finalContent, type, url, name);
+              await sendChatMessage(schoolId, senderId, selectedChat, finalContent, type as any, url, name);
               if (!customContent) {
                   setMsgInput('');
               }
@@ -703,9 +776,34 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       } else {
           showToast('Identification error. Try role-switching again.');
       }
-  };
+  }, [msgInput, mockAuthUser, teacherProfile.id, selectedChat, sendChatMessage]);
+  const handleDeleteMaterial = useCallback(async (id: string) => {
+    const originalMaterials = [...teacherMaterials];
+    // LayoutAnimation.configureNext removed
+    setTeacherMaterials(prev => prev.filter(m => m.id !== id));
+    try {
+      const { error } = await supabase.from('materials').delete().eq('id', id);
+      if (error) throw error;
+      showToast("Material Removed");
+    } catch (err) {
+      setTeacherMaterials(originalMaterials);
+      showToast("Delete Failed");
+    }
+  }, [teacherMaterials, showToast]);
 
-  const transformedChatMessages: any[] = (chatMessages || []).map(msg => ({
+  const handleNavigateToClass = useCallback((cls: any) => { 
+    // Deep navigation: Pass full context including classId, section, and subject
+    setSelectedClass(cls);
+    if (cls && Object.keys(cls).length > 0) {
+      setShowClassDetail(true);
+    } else {
+      setShowClassDetail(false);
+    }
+    onNavigate?.('classes'); 
+  }, [onNavigate]);
+
+
+  const transformedChatMessages = useMemo(() => (chatMessages || []).map((msg: any) => ({
       ...msg,
       senderId: msg.sender_id,
       receiverId: msg.receiver_id,
@@ -713,39 +811,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       timestamp: msg.created_at 
           ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : 'Just now'
-  }));
+  })), [chatMessages]);
+
 
   return (
     <View className="flex-1 bg-gray-50">
-      {isLoading && activeTab !== 'home' ? (
-          <View className="flex-1 items-center justify-center bg-white">
-              <View className="w-20 h-20 bg-indigo-50 rounded-[32px] items-center justify-center mb-6 border border-indigo-100 shadow-2xl shadow-indigo-100/20">
-                  <ActivityIndicator color="#4f46e5" size="small" />
-              </View>
-              <Text className="text-gray-900 font-black text-[13px] tracking-tight font-inter-black">Institutional Sync Active</Text>
-              <Text className="mt-1.5 text-gray-400 font-black uppercase tracking-[3px] text-[8px] font-inter-black">Synchronizing Faculty Hub...</Text>
-          </View>
-      ) : (
-          <>
-            {activeTab === 'home' && (
+      <>
+        {activeTab === 'home' && (
               showAllMaterials ? (
                 <TeacherMaterials 
                   materials={teacherMaterials}
-                  onDeleteMaterial={async (id) => {
-                    try {
-                      await supabase.from('materials').delete().eq('id', id);
-                      showToast("Material Removed");
-                      fetchTeacherData();
-                    } catch (err) {
-                      showToast("Delete Failed");
-                    }
-                  }}
+                  isLoading={isLoading}
+                  onDeleteMaterial={handleDeleteMaterial}
                   onShowUploadModal={() => setShowUploadModal(true)}
                   onBack={() => setShowAllMaterials(false)}
                 />
+
               ) : showAllNotices ? (
                 <TeacherNotices 
-                  announcements={announcements}
+                  announcements={announcements as any}
                   currentUser={teacherProfile}
                   onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
                   onBack={() => setShowAllNotices(false)}
@@ -765,15 +849,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     setModalInitialClassId(cid || null);
                     setShowAssignmentModal(true);
                   }}
-                  logSystemActivity={logSystemActivity}
+                  logSystemActivity={logSystemActivity as any}
                 />
               ) : showReports ? (
                 <TeacherReports 
                   assignedSections={assignedSections}
-                  dbRoster={classStudents}
                   onBack={() => setShowReports(false)}
                   onShowToast={showToast}
                   initialClassId={gradingInitialClass?.class_id || gradingInitialClass?.id}
+                  onMessageStudent={handleMessageStudentFromReport}
                 />
               ) : (
                 <TeacherHome 
@@ -784,19 +868,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                   pendingGradesCount={pendingGradesCount}
                   announcements={announcements || []}
                   onQuickAction={handleQuickAction}
-                  onNavigateToClass={(cls) => { 
-                    // Deep navigation: Pass full context including classId, section, and subject
-                    setSelectedClass(cls);
-                    if (cls && Object.keys(cls).length > 0) {
-                      setShowClassDetail(true);
-                    } else {
-                      setShowClassDetail(false);
-                    }
-                    onNavigate?.('classes'); 
-                  }}
+                  onNavigateToClass={handleNavigateToClass}
+
                   onGradeAssignment={handleGradeAssignment}
-                  onAddAssignment={(cid) => {
-                    setModalInitialClassId(cid || null);
+                  onAddAssignment={() => {
+                    setModalInitialClassId(null);
                     setShowAssignmentModal(true);
                   }}
                   assignments={assignments}
@@ -847,10 +923,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     students={classStudents}
                     materials={teacherMaterials}
                     onBack={() => setShowClassDetail(false)}
+                    schoolName={currentSchool?.name || 'Academy'}
                     onUploadMaterial={() => {
                         // Pre-fill target based on selected class
-                        setUploadRosterId(selectedClass.rosterId || selectedClass.id);
-                        setUploadClassId(selectedClass.class_id);
+                        setModalInitialRosterId(selectedClass.rosterId || selectedClass.id);
                         setShowUploadModal(true);
                     }}
                     onAddStudent={() => setShowAddStudentModal(true)}
@@ -860,29 +936,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                       setModalInitialClassId(cid || null);
                       setShowAssignmentModal(true);
                     }}
+                    onRefresh={handleRefresh}
+                    refreshing={refreshing}
                   />
                 ) : (
                   <TeacherClasses 
                     assignedSections={assignedSections}
                     dbRoster={classStudents}
-                    onNavigateToClass={(cls) => {
+                    onNavigateToClass={(cls: any) => {
                       setSelectedClass(cls);
                       setShowClassDetail(true);
                     }}
                     onShowUploadModal={() => setShowUploadModal(true)}
-                    onUploadToClass={(cls) => {
-                      setSelectedClass(cls);
-                      setShowUploadModal(true);
-                    }}
-                    onGradeClass={(cls) => {
-                      setSelectedClass(cls);
-                      setGradingInitialClass(cls);
-                      setShowGrading(true);
-                    }}
-                    onShowReports={(cls) => {
-                      setSelectedClass(cls);
-                      setShowReports(true);
-                    }}
+                    isLoading={isLoading}
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
                   />
                 )
               ) : (
@@ -940,20 +1008,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             {activeTab === 'profile' && (
               <TeacherProfile currentUser={teacherProfile} onLogout={() => {}} onEdit={() => setShowEditProfileModal(true)} />
             )}
-          </>
-      )}
+        </>
 
       {/* Modals */}
       <UploadMaterialModal 
-        visible={showUploadModal} onClose={handleCloseUploadModal}
-        onUpload={handleUpload} uploadTitle={uploadTitle} setUploadTitle={setUploadTitle}
-        uploadRosterId={uploadRosterId} setUploadRosterId={setUploadRosterId}
-        assignedSections={assignedSections} isUploading={uploadSaving}
-        uploadType={uploadType} setUploadType={setUploadType}
-        uploadUrl={uploadUrl} setUploadUrl={setUploadUrl}
-        selectedFile={selectedFile} setSelectedFile={setSelectedFile}
+        visible={showUploadModal} 
+        onClose={handleCloseUploadModal}
+        onUpload={handleUpload} 
+        assignedSections={assignedSections} 
+        isUploading={uploadSaving}
         error={uploadError}
         status={uploadStatus}
+        initialRosterId={modalInitialRosterId}
       />
 
       <AnnouncementModal 
@@ -1029,26 +1095,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       <EditProfileModal 
         visible={showEditProfileModal} 
         onClose={() => setShowEditProfileModal(false)} 
-        name={editProfileName} 
-        setName={setEditProfileName} 
-        phone={editProfilePhone} 
-        setPhone={setEditProfilePhone} 
-        office={editProfileOffice} 
-        setOffice={setEditProfileOffice} 
+        initialName={teacherProfile.name}
+        initialEmail={teacherProfile.email || ''}
+        initialPhone={teacherProfile.phone || ''}
+        initialOffice={teacherProfile.office || ''}
         onSave={handleSaveProfile} 
         error={profileError}
-        loading={profileSaving}
-        status={profileStatus}
       />
       
 
       <AddStudentModal 
         visible={showAddStudentModal} 
         onClose={() => setShowAddStudentModal(false)} 
-        studentName={studentName} 
-        setStudentName={setStudentName} 
-        studentEmail={studentEmail} 
-        setStudentEmail={setStudentEmail} 
         onAdd={handleAddStudent} 
         error={studentError}
         loading={studentSaving}

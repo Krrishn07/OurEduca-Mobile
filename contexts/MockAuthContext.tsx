@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../types';
 import { dbRoleToUserRole, DbRole } from '../src/utils/roleUtils';
@@ -70,7 +70,7 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     loadSession();
   }, []);
 
-  const setSession = async (userId: string, persist: boolean = true) => {
+  const setSession = useCallback(async (userId: string, persist: boolean = true) => {
     setIsLoading(true);
     try {
       // 1. Fetch the user record live from Supabase
@@ -120,9 +120,9 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const clearSession = async () => {
+  const clearSession = useCallback(async () => {
     setCurrentUser(null);
     setCurrentSchool(null);
     try {
@@ -132,7 +132,7 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     } catch (err: any) {
       console.warn('Simulation session storage restricted:', err.message);
     }
-  };
+  }, []);
 
   // Helper to map DB role to existing UI enum
   const currentUserRole = useMemo(() => {
@@ -142,7 +142,7 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     return dbRoleToUserRole(currentUser.role);
   }, [currentUser]);
 
-  const setMockUser = async (role: string) => {
+  const setMockUser = useCallback(async (role: string) => {
     setIsLoading(true);
     try {
       // 1. First, try to find a user with this role who ALSO has a roster entry
@@ -179,9 +179,9 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setSession, clearSession]);
 
-  const updatePushToken = async (token: string) => {
+  const updatePushToken = useCallback(async (token: string) => {
     if (!currentUser) return;
     try {
       const { error } = await supabase
@@ -196,19 +196,22 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     } catch (err) {
       console.warn('[MOCK_AUTH] Push Token Sync Failed:', err);
     }
-  };
+  }, [currentUser?.id]);
+
+  const contextValue = useMemo(() => ({
+    currentUser,
+    currentSchool,
+    isLoading,
+    setSession,
+    setMockUser,
+    updatePushToken,
+    clearSession,
+    currentUserRole
+  }), [currentUser, currentSchool, isLoading, setSession, setMockUser, updatePushToken, clearSession, currentUserRole]);
+
 
   return (
-    <MockAuthContext.Provider value={{ 
-      currentUser, 
-      currentSchool, 
-      isLoading, 
-      setSession, 
-      setMockUser,
-      updatePushToken,
-      clearSession,
-      currentUserRole 
-    }}>
+    <MockAuthContext.Provider value={contextValue}>
       {children}
     </MockAuthContext.Provider>
   );

@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { HardwareStreamPlayer } from '../../../../components/HardwareStreamPlayer';
 import { useSchoolData } from '../../../../contexts/SchoolDataContext';
 import { CameraNode } from '../../../../types';
 import { AppTheme, AppCard, AppTypography, SectionHeader } from '../../../design-system';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 interface MentorMonitorProps {
     assignedClassId: string | null;

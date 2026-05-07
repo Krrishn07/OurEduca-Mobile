@@ -118,3 +118,26 @@ export interface CameraNode {
   status: 'ONLINE' | 'OFFLINE' | 'MAINTENANCE';
   created_at?: string;
 }
+
+export interface LiveStream {
+  id: string;
+  school_id: string;
+  created_by: string;
+  class_id?: string;
+  section?: string;
+  title: string;
+  subject?: string;
+  stream_url: string;
+  source: 'CAMERA' | 'CCTV' | 'SCREEN';
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface RosterSection {
+  id?: string;
+  rosterId?: string;
+  class_id: string;
+  name: string;
+  subject: string;
+  section?: string;
+}

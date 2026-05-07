@@ -3,9 +3,10 @@ import { View, Text, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, P
 import { Icons } from '../../../../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PlatformColors, PlatformRadius, PlatformTheme, PlatformShadows } from '../../platform/theme';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 interface AddInstituteModalProps {
   visible: boolean;

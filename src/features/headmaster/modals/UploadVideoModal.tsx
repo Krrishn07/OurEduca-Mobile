@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Icons } from '../../../../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
+import { ModalShell, AppButton, AppTheme } from '../../../design-system';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 interface UploadVideoModalProps {
     visible: boolean;
@@ -41,6 +43,19 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
     
     const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+
+    // RESET: Back to defaults on modal visibility change
+    useEffect(() => {
+        if (visible) {
+            setTitle('');
+            setSubject('');
+            setVideoUrl('');
+            setLocalVideoUri(null);
+            setLocalThumbUri(null);
+            setSelectedRosterId(null);
+            setUploadMode('FILE');
+        }
+    }, [visible]);
 
     // Selection Logic: Initialize with null to allow user to pick their own target
     useEffect(() => {
@@ -115,29 +130,17 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
             localThumbUri: localThumbUri || undefined
         });
         
-        // Reset state
-        setTitle('');
-        setSubject('');
-        setVideoUrl('');
-        setLocalVideoUri(null);
-        setLocalThumbUri(null);
         onClose();
     };
 
     return (
-        <Modal visible={visible} animationType="slide" transparent={true}>
-            <View className="flex-1 bg-black/60 justify-end">
-                <View className="bg-white h-[85%] rounded-t-[40px] shadow-2xl">
-                    <ScrollView showsVerticalScrollIndicator={false} className="p-6">
-                        <View className="flex-row justify-between items-center mb-8">
-                            <View>
-                                <Text className="text-2xl font-black text-gray-900">Upload Video</Text>
-                                <Text className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">E-Learning Content</Text>
-                            </View>
-                            <TouchableOpacity onPress={onClose} className="bg-gray-50 p-2 rounded-full">
-                                <Icons.Close size={20} color="#6b7280" />
-                            </TouchableOpacity>
-                        </View>
+        <ModalShell
+            visible={visible}
+            onClose={onClose}
+            title="Upload Video"
+            subtitle="E-Learning Content"
+        >
+            <ScrollView showsVerticalScrollIndicator={false} className="max-h-[600px]">
 
                         <View className="space-y-6">
                             {/* Source Mode Switcher */}
@@ -287,8 +290,6 @@ export const UploadVideoModal: React.FC<UploadVideoModalProps> = ({
                             </TouchableOpacity>
                         </View>
                     </ScrollView>
-                </View>
-            </View>
-        </Modal>
+        </ModalShell>
     );
 };

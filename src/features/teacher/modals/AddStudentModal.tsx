@@ -6,11 +6,7 @@ import { ModalShell } from '../../../design-system';
 interface AddStudentModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: () => void;
-  studentName: string;
-  setStudentName: (text: string) => void;
-  studentEmail: string;
-  setStudentEmail: (text: string) => void;
+  onAdd: (data: { name: string; email: string }) => void;
   error?: string | null;
   loading?: boolean;
   status?: string | null;
@@ -20,15 +16,26 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   visible,
   onClose,
   onAdd,
-  studentName,
-  setStudentName,
-  studentEmail,
-  setStudentEmail,
   error,
   loading,
   status
 }) => {
-  const canSave = studentName.trim().length > 0 && studentEmail.trim().length > 0;
+  const [name, setName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+
+  // Reset local state when modal opens to ensure fresh entry
+  React.useEffect(() => {
+    if (visible) {
+      setName('');
+      setEmail('');
+    }
+  }, [visible]);
+
+  const canSave = name.trim().length > 0 && email.trim().length > 0;
+
+  const handleAdd = () => {
+    if (canSave) onAdd({ name, email });
+  };
 
   return (
     <ModalShell
@@ -47,8 +54,8 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
           <View className="bg-white border border-gray-100 rounded-[20px] px-5 py-4 shadow-sm">
             <TextInput 
               placeholder="e.g. Bart Simpson" 
-              value={studentName}
-              onChangeText={setStudentName}
+              value={name}
+              onChangeText={setName}
               className="text-gray-900 font-inter-black text-[14px] p-0"
               placeholderTextColor="#cbd5e1"
             />
@@ -60,8 +67,8 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
           <View className="bg-white border border-gray-100 rounded-[20px] px-5 py-4 shadow-sm">
             <TextInput 
               placeholder="e.g. bart@springfield.edu" 
-              value={studentEmail}
-              onChangeText={setStudentEmail}
+              value={email}
+              onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               className="text-gray-900 font-inter-black text-[14px] p-0"
@@ -80,7 +87,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
         </View>
 
         <TouchableOpacity 
-          onPress={onAdd}
+          onPress={handleAdd}
           disabled={!canSave || loading}
           className={`w-full py-4 rounded-2xl shadow-lg flex-row items-center justify-center mt-4 ${
             !canSave || loading ? "bg-indigo-300" : "bg-indigo-600 shadow-indigo-200"

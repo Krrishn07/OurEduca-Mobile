@@ -11,3 +11,5 @@ export * from './components/AppFilterBar';
 export * from './components/AppRow';
 export * from './components/Skeleton';
 export * from './components/PlatinumHeader';
+export * from './components/AvatarShimmer';
+export * from './components/FloatingInput';

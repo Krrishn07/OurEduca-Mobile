@@ -3,18 +3,21 @@ import {
   Modal,
   View,
   Text,
+  Pressable,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icons } from '../../../components/Icons';
 import { AppTheme } from '../theme';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 interface ModalShellProps {
   visible: boolean;
@@ -38,15 +41,25 @@ export const ModalShell: React.FC<ModalShellProps> = ({
   const insets = useSafeAreaInsets(); // Dynamically get device notch padding
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      transparent
+      onRequestClose={onClose}
+    >
+      <StatusBar barStyle="light-content" />
       {/* 
         Wrap everything in a KeyboardAvoidingView at the ROOT of the modal, 
         not inside the background overlay.
       */}
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 justify-end bg-black/60"
       >
+        <Pressable 
+          className="absolute inset-0" 
+          onPress={onClose} 
+        />
         <View
           className="w-full bg-white rounded-t-[40px] overflow-hidden"
           style={{ maxHeight, paddingBottom: insets.bottom }} // Add bottom notch clearance here
@@ -56,9 +69,9 @@ export const ModalShell: React.FC<ModalShellProps> = ({
             colors={headerGradient || AppTheme.colors.gradients.brand}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            className="px-6 pt-10 pb-8 flex-shrink-0"
+            className="px-6 pt-7 pb-5 flex-shrink-0"
           >
-            <View className="flex-row justify-between items-center">
+            <View className="flex-row justify-between items-start">
               <View className="flex-1 mr-4">
                 <Text className="text-2xl font-inter-black text-white tracking-tighter leading-7">
                   {title}
@@ -71,9 +84,9 @@ export const ModalShell: React.FC<ModalShellProps> = ({
               </View>
               <TouchableOpacity
                 onPress={onClose}
-                className="bg-white/10 p-3 rounded-full border border-white/10 active:scale-95"
+                className="bg-white/5 p-2.5 rounded-full border border-white/5 active:scale-95 mt-1"
               >
-                <Icons.Close size={20} color="white" />
+                <Icons.Close size={18} color="white" />
               </TouchableOpacity>
             </View>
           </StyledLinearGradient>

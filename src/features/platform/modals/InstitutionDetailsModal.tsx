@@ -3,9 +3,10 @@ import { View, Text, Modal, TouchableOpacity, ScrollView, Image } from 'react-na
 import { Icons } from '../../../../components/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PlatformColors, PlatformRadius, PlatformTheme, PlatformShadows } from '../theme';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 interface InstitutionDetailsModalProps {
     visible: boolean;

@@ -144,7 +144,7 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
                   onPress={() => setAudience(aud.key as any)}
                   className={`p-5 rounded-[24px] border flex-1 items-center ${audience === aud.key ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-200' : 'bg-white border-gray-100 shadow-sm'}`}
                 >
-                  <Text className={`font-black text-[11px] tracking-widest uppercase font-inter-black ${audience === aud.key ? 'text-white' : 'text-gray-500'}`}>{aud.label}</Text>
+                  <Text className={`font-black text-[11px] tracking-[1px] uppercase font-inter-black ${audience === aud.key ? 'text-white' : 'text-gray-500'}`}>{aud.label}</Text>
                   <Text className={`text-[9px] font-black mt-1 uppercase tracking-tighter ${audience === aud.key ? 'text-indigo-100' : 'text-gray-400'}`}>{aud.sub}</Text>
                 </TouchableOpacity>
               ))}

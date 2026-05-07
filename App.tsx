@@ -1,4 +1,9 @@
-import React, { useState, Component, ErrorInfo } from 'react';
+import 'react-native-gesture-handler';
+import 'react-native-reanimated';
+import * as React from 'react';
+import { useState, Component, ErrorInfo } from 'react';
+import "./global.css";
+import "./src/design-system/nativewind-interop";
 import { View, Text, StatusBar, ScrollView } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +23,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { UserRole } from './types';
 import { SchoolDataProvider, useSchoolData } from './contexts/SchoolDataContext';
 import { MockAuthProvider, useMockAuth } from './contexts/MockAuthContext';
+import { SystemStatusProvider } from './contexts/SystemStatusContext';
 import { DevSimulationOverlay } from './components/DevSimulationOverlay';
 
 class GlobalErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: any, info: any}> {
@@ -51,7 +57,6 @@ class GlobalErrorBoundary extends Component<{children: React.ReactNode}, {hasErr
 }
 
 import { NotificationService } from './src/features/platform/services/NotificationService';
-import * as Notifications from 'expo-notifications';
 
 // ============================================================
 // Inner app — has access to MockAuthContext
@@ -61,8 +66,8 @@ function AppInner() {
   const { clearInstitutionalData } = useSchoolData();
   const [activeTab, setActiveTab] = useState('home');
   const [expoPushToken, setExpoPushToken] = useState('');
-  const notificationListener = React.useRef<any>();
-  const responseListener = React.useRef<any>();
+  const notificationListener = React.useRef<any>(null);
+  const responseListener = React.useRef<any>(null);
 
   // Global Notification Handshake
   React.useEffect(() => {
@@ -83,8 +88,8 @@ function AppInner() {
     });
 
     return () => {
-      if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
-      if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
@@ -148,6 +153,8 @@ function AppInner() {
   );
 }
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 // ============================================================
 // Root — provides all context providers
 // ============================================================
@@ -165,14 +172,18 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-        <GlobalErrorBoundary>
-            <MockAuthProvider>
-                <SchoolDataProvider>
-                    <AppInner />
-                </SchoolDataProvider>
-            </MockAuthProvider>
-        </GlobalErrorBoundary>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+          <GlobalErrorBoundary>
+              <MockAuthProvider>
+                  <SystemStatusProvider>
+                      <SchoolDataProvider>
+                          <AppInner />
+                      </SchoolDataProvider>
+                  </SystemStatusProvider>
+              </MockAuthProvider>
+          </GlobalErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

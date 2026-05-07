@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, ActivityIndicator, Linking, Text } from 'react-native';
+import { View, ActivityIndicator, Linking, Text, InteractionManager } from 'react-native';
 import { UserRole, User, ChatMessage } from '../types';
 import { useSchoolData } from '../contexts/SchoolDataContext';
 import { supabase } from '../lib/supabase';
@@ -261,15 +261,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
   };
 
   useEffect(() => {
-    fetchStudentData();
-    if (mockAuthUser?.school_id) {
-        fetchSchoolDetails(mockAuthUser.school_id);
-        fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STUDENT']);
-        fetchMessages(mockAuthUser.school_id, true);
-        fetchVideos(mockAuthUser.school_id);
-        fetchLiveStreams(mockAuthUser.school_id);
-    }
+    const hydrate = async () => {
+        fetchStudentData();
+        if (mockAuthUser?.school_id) {
+            fetchSchoolDetails(mockAuthUser.school_id);
+            fetchAnnouncements(mockAuthUser.school_id, ['ALL', 'STUDENT']);
+            fetchMessages(mockAuthUser.school_id, true);
+            fetchVideos(mockAuthUser.school_id);
+            fetchLiveStreams(mockAuthUser.school_id);
+        }
+    };
+
+    hydrate();
   }, [fetchStudentData, fetchAnnouncements, fetchSchoolDetails, fetchMessages, fetchVideos, fetchLiveStreams, mockAuthUser?.school_id]);
+
 
 
 

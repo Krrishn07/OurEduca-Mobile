@@ -1,14 +1,16 @@
 import React from 'react';
 import { Animated, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { useSchoolData } from '../../../../contexts/SchoolDataContext';
+import { useSystemStatus } from '../../../../contexts/SystemStatusContext';
 import { Icons } from '../../../../components/Icons';
 import { SystemHealthModal } from '../modals/SystemHealthModal';
 import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppRow, StatusPill, inferPillType } from '../../../design-system';
 import { formatGreetingName } from '../../../utils/nameUtils';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 interface PlatformHomeProps {
   institutes: any[];
@@ -30,7 +32,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
   onReview,
   onNavigate,
 }) => {
-  const { systemLogs, fetchSystemLogs, healthStatus, dbLatency } = useSchoolData();
+  const { systemLogs, fetchSystemLogs } = useSchoolData();
+  const { systemStatus } = useSystemStatus();
   const [isHealthModalVisible, setIsHealthModalVisible] = React.useState(false);
 
   const HEADER_MAX_HEIGHT = 290;
@@ -100,7 +103,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
     return isTemporallyOverdue ? acc + 1 : acc;
   }, 0);
 
-  const systemStatusLabel = healthStatus === 'Optimal' ? 'Stable' : 'Attention';
+  const systemStatusLabel = systemStatus.health === 'Optimal' ? 'Stable' : 'Attention';
   const onboardingSubtitle = pendingInstitutes.length > 0 ? `${pendingInstitutes.length} pending review` : 'Queue is clear';
 
   const stats = [
@@ -146,17 +149,17 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Signal size={22} color={AppTheme.colors.success} />,
       onPress: () => setIsHealthModalVisible(true),
-      subtitle: healthStatus || 'Optimal',
-      subtitleTone: healthStatus === 'Optimal' ? 'success' as const : 'warning' as const,
+      subtitle: systemStatus.health || 'Optimal',
+      subtitleTone: systemStatus.health === 'Optimal' ? 'success' as const : 'warning' as const,
     },
     {
       label: 'DB Latency',
-      value: `${dbLatency || 0}ms`,
+      value: `${systemStatus.latency || 0}ms`,
       toneClassName: 'bg-indigo-50',
       icon: <Icons.Activity size={22} color={AppTheme.colors.primary} />,
       onPress: () => setIsHealthModalVisible(true),
-      subtitle: (dbLatency || 0) < 100 ? 'Peak' : 'Fair',
-      subtitleTone: (dbLatency || 0) < 100 ? 'success' as const : 'warning' as const,
+      subtitle: (systemStatus.latency || 0) < 100 ? 'Peak' : 'Fair',
+      subtitleTone: (systemStatus.latency || 0) < 100 ? 'success' as const : 'warning' as const,
     },
   ];
 
@@ -188,9 +191,9 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
             <Text className="text-white text-xl font-black tracking-tighter leading-6 font-inter-black">Welcome back,</Text>
             <Text className="text-2xl font-black text-white tracking-tight leading-tight mt-0.5 font-inter-black">{formatGreetingName(currentUser?.name, 'Admin')} ✦</Text>
             <View className="flex-row items-center bg-white/10 self-start px-3 py-1 rounded-full border border-white/20 mt-3">
-              <View className={`w-1.5 h-1.5 rounded-full mr-2 ${healthStatus === 'Optimal' ? 'bg-emerald-400' : 'bg-amber-300'}`} />
+              <View className={`w-1.5 h-1.5 rounded-full mr-2 ${systemStatus.health === 'Optimal' ? 'bg-emerald-400' : 'bg-amber-300'}`} />
               <Text className="text-white text-[10px] font-bold font-inter-medium">
-                System Status: <Text className={healthStatus === 'Optimal' ? 'text-emerald-300' : 'text-amber-200'}>{systemStatusLabel}</Text>
+                System Status: <Text className={systemStatus.health === 'Optimal' ? 'text-emerald-300' : 'text-amber-200'}>{systemStatusLabel}</Text>
               </Text>
             </View>
           </Animated.View>

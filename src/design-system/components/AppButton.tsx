@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
 import { AppRadius, AppTypography } from '../theme';
+import { triggerHaptic } from '../../utils/haptics';
 
 interface AppButtonProps extends TouchableOpacityProps {
   label: string;
@@ -21,7 +22,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
   ...props
 }) => {
   const variantClasses = {
-    primary: 'bg-indigo-600 border border-indigo-500/50 shadow-md shadow-indigo-200',
+    primary: 'bg-indigo-600 border border-indigo-500/50 shadow-sm shadow-indigo-100/40',
     secondary: 'bg-indigo-50 border border-indigo-100',
     outline: 'bg-white border border-gray-200',
     danger: 'bg-rose-600 border border-rose-500/50 shadow-md shadow-rose-200',
@@ -39,6 +40,10 @@ export const AppButton: React.FC<AppButtonProps> = ({
       activeOpacity={0.92}
       disabled={disabled || isLoading}
       className={`px-5 py-3.5 flex-row items-center justify-center ${AppRadius.control} ${variantClasses} ${disabled || isLoading ? 'opacity-50' : 'active:scale-[0.98]'} ${className}`}
+      onPress={(e) => {
+        triggerHaptic();
+        props.onPress?.(e);
+      }}
       {...props}
     >
       {isLoading ? (

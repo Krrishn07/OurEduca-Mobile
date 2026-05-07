@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Animated, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 interface HeadmasterMessagesProps {
   selectedChat: string | null;

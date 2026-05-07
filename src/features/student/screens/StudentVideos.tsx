@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { Video, LiveStream, useSchoolData } from '../../../../contexts/SchoolDataContext';
 import { AppTheme, AppCard, AppTypography, SectionHeader, StatusPill, AppRow } from '../../../design-system';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 interface StudentVideosProps {
   studentMaterials: Video[];

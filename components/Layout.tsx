@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View, InteractionManager } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from './Icons';
 import { UserRole } from '../types';
 import { SCHOOL_CONFIG } from '../constants';
 import { GlobalAIChat } from './GlobalAIChat';
 import { useSchoolData } from '../contexts/SchoolDataContext';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { AppCard } from '../src/design-system';
 import { useIsConnected } from '../src/utils/connectivity';
 import { Animated } from 'react-native';
@@ -27,8 +28,13 @@ const ConnectivityBanner = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-20)).current;
 
+  const [isRendered, setIsRendered] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (statusMode) {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      setIsRendered(true);
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true })
@@ -37,11 +43,22 @@ const ConnectivityBanner = () => {
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
         Animated.timing(slideAnim, { toValue: -20, duration: 400, useNativeDriver: true })
-      ]).start();
+      ]).start(() => {
+          // Extra safety: only set to false if statusMode is still null
+          setIsRendered(false);
+      });
+      
+      // Fallback timer if animation callback doesn't fire
+      hideTimeoutRef.current = setTimeout(() => {
+        setIsRendered(false);
+      }, 500);
     }
+    return () => {
+        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
   }, [statusMode]);
 
-  if (!statusMode && fadeAnim._value === 0) return null;
+  if (!isRendered) return null;
 
   return (
     <Animated.View 
@@ -95,11 +112,25 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, role, activeTab, onTabChange, onLogout, currentSchool }) => {
-  const { platformSettings, hasPermission, isLiveSessionActive } = useSchoolData();
+  const { platformSettings, hasPermission } = useSchoolData();
+  const { isLiveSessionActive } = useSystemStatus();
   const [showHelp, setShowHelp] = useState(false);
+  const [localActiveTab, setLocalActiveTab] = useState(activeTab);
 
-  const getNavItems = (activeRole: UserRole): NavItem[] => {
-    switch (activeRole) {
+  // Sync local tab with prop when it changes externally
+  useEffect(() => {
+    setLocalActiveTab(activeTab);
+  }, [activeTab]);
+
+  const handleTabChange = (tabId: string) => {
+    // Immediate UI update for both local state and parent state
+    setLocalActiveTab(tabId);
+    onTabChange(tabId);
+  };
+
+
+  const navItems = React.useMemo((): NavItem[] => {
+    switch (role) {
       case UserRole.STUDENT:
       case UserRole.PARENT:
         return [
@@ -147,9 +178,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, role, activeTab, onTab
       default:
         return [];
     }
-  };
+  }, [role]);
 
-  const navItems = getNavItems(role);
   const isPlatformAdmin = role === UserRole.PLATFORM_ADMIN;
   const isHeadmaster = role === UserRole.SUPER_ADMIN;
   const isStudentOrParent = role === UserRole.STUDENT || role === UserRole.PARENT;
@@ -187,10 +217,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, role, activeTab, onTab
           <View className="flex-row items-center space-x-1.5">
             {(isPlatformAdmin || isHeadmaster || isStudentOrParent) && hasPermission('Messaging', role, currentSchool?.id) && (
               <TouchableOpacity
-                onPress={() => onTabChange('messages')}
-                className={`w-9 h-9 items-center justify-center rounded-xl ${activeTab === 'messages' ? 'bg-indigo-50 border border-indigo-100' : ''}`}
+                onPress={() => handleTabChange('messages')}
+                className={`w-9 h-9 items-center justify-center rounded-xl ${localActiveTab === 'messages' ? 'bg-indigo-50 border border-indigo-100' : ''}`}
               >
-                <Icons.Messages size={18} color={activeTab === 'messages' ? '#4f46e5' : '#94a3b8'} />
+                <Icons.Messages size={18} color={localActiveTab === 'messages' ? '#4f46e5' : '#94a3b8'} />
                 {isStudentOrParent ? <View className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" /> : null}
               </TouchableOpacity>
             )}
@@ -217,14 +247,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, role, activeTab, onTab
             {navItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                onPress={() => onTabChange(item.id)}
-                className={`w-full flex-row items-center px-4 py-3.5 mb-2 rounded-[20px] border ${activeTab === item.id ? 'bg-indigo-50 border-indigo-100 shadow-sm shadow-indigo-100/40' : 'border-transparent'}`}
+                onPress={() => handleTabChange(item.id)}
+                className={`w-full flex-row items-center px-4 py-3.5 mb-2 rounded-[20px] border ${localActiveTab === item.id ? 'bg-indigo-50 border-indigo-100 shadow-sm shadow-indigo-100/40' : 'border-transparent'}`}
               >
-                <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${activeTab === item.id ? 'bg-white border border-indigo-100' : 'bg-slate-50 border border-gray-100'}`}>
-                  <item.icon size={18} color={activeTab === item.id ? '#4f46e5' : '#4b5563'} />
+                <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${localActiveTab === item.id ? 'bg-white border border-indigo-100' : 'bg-slate-50 border border-gray-100'}`}>
+                  <item.icon size={18} color={localActiveTab === item.id ? '#4f46e5' : '#4b5563'} />
                 </View>
                 <View className="flex-1 flex-row items-center justify-between">
-                  <Text className={`text-sm font-black tracking-tight font-inter-black ${activeTab === item.id ? 'text-indigo-700' : 'text-gray-700'}`}>
+                  <Text className={`text-sm font-black tracking-tight font-inter-black ${localActiveTab === item.id ? 'text-indigo-700' : 'text-gray-700'}`}>
                     {item.label}
                   </Text>
                   {!hasPermission(item.id, role, currentSchool?.id) ? <Icons.Lock size={12} color="#9ca3af" /> : null}
@@ -241,17 +271,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, role, activeTab, onTab
 
       <View className="md:hidden bg-white border-t border-gray-200 flex-row justify-around items-center h-16 z-20 shadow-lg px-2" style={{ paddingBottom: Platform.OS === 'ios' ? 10 : 0 }}>
         {navItems.filter((item) => !(role === UserRole.SUPER_ADMIN && item.id === 'messages')).map((item) => (
-          <TouchableOpacity key={item.id} onPress={() => onTabChange(item.id)} className="flex-1 items-center justify-center space-y-1 h-full">
+          <TouchableOpacity key={item.id} onPress={() => handleTabChange(item.id)} className="flex-1 items-center justify-center space-y-1 h-full">
             <View className="relative">
-              <item.icon size={24} color={activeTab === item.id ? '#4f46e5' : '#9ca3af'} />
+              <item.icon size={24} color={localActiveTab === item.id ? '#4f46e5' : '#9ca3af'} />
               {!hasPermission(item.id, role, currentSchool?.id) ? <View className="absolute -top-1 -right-1 bg-white rounded-full"><Icons.Lock size={10} color="#6b7280" /></View> : null}
             </View>
-            <Text className={`text-[10px] font-medium mt-1 font-inter-medium ${activeTab === item.id ? 'text-indigo-600' : 'text-gray-400'}`}>{item.label}</Text>
+            <Text className={`text-[10px] font-medium mt-1 font-inter-medium ${localActiveTab === item.id ? 'text-indigo-600' : 'text-gray-400'}`}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {!isLiveSessionActive ? <GlobalAIChat role={role} /> : null}
+      {!isLiveSessionActive && activeTab !== 'messages' ? <GlobalAIChat role={role} /> : null}
 
       <Modal visible={showHelp} transparent animationType="slide">
         <View className="flex-1 bg-black/60 justify-center items-center px-6">

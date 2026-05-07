@@ -3,11 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, Image }
 import { Icons } from '../../../../components/Icons';
 import { CalendarWidget } from '../../../../components/CalendarWidget';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { formatGreetingName } from '../../../utils/nameUtils';
 import { AppTheme, AppCard, AppTypography, SectionHeader, StatCard, ActionTile, AppRow, StatusPill } from '../../../design-system';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const HEADER_MAX_HEIGHT = 290;

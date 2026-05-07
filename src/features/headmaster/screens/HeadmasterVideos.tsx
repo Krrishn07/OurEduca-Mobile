@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { Video, useSchoolData, User } from '../../../../contexts/SchoolDataContext';
 import { PlatformRadius, PlatformTypography } from '../../platform/theme';
 import { PlatformCard } from '../../platform/components/PlatformCard';
 
-const StyledLinearGradient = styled(LinearGradient);
+cssInterop(LinearGradient, { className: 'style' });
+const StyledLinearGradient = LinearGradient;
 
 interface HeadmasterVideosProps {
   videoList: Video[];

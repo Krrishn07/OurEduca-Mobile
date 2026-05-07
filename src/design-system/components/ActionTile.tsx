@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
 import { AppTheme, AppTypography } from '../theme';
+import { triggerHaptic } from '../../utils/haptics';
 
 interface ActionTileProps extends TouchableOpacityProps {
   label?: string;
@@ -94,6 +95,10 @@ export const ActionTile: React.FC<ActionTileProps> = ({
     <TouchableOpacity
       activeOpacity={0.92}
       className={`flex-1 flex-col items-center justify-center py-5 px-3 rounded-[32px] border shadow-xl active:scale-[0.98] ${styles.container} ${className}`}
+      onPress={(e) => {
+        triggerHaptic();
+        props.onPress?.(e);
+      }}
       {...props}
     >
       <View className={`w-11 h-11 rounded-2xl items-center justify-center mb-3 border ${styles.shell}`}>

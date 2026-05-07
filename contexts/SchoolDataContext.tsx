@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { User, UserRole, Fee, FeeTransaction, CameraNode } from '../types';
 import { supabase } from '../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -14,6 +13,7 @@ export interface Announcement {
   message: string;
   date: string;
   sender: string;
+  sender_id?: string;
   audience: 'ALL' | 'STUDENT' | 'STAFF';
 }
 
@@ -107,6 +107,7 @@ export interface LiveStream {
   title: string;
   subject?: string;
   stream_url: string;
+  source: 'CAMERA' | 'CCTV' | 'SCREEN';
   is_active: boolean;
   created_at: string;
 }
@@ -147,6 +148,9 @@ export interface SchoolDataContextType {
   updateUser: (user: User) => void;
   deleteUser: (userId: string) => void;
   announcements: Announcement[];
+  addAnnouncement: (announcement: any) => Promise<void>;
+  fetchAnnouncements: (schoolId: string, roles?: string[]) => Promise<void>;
+  deleteAnnouncement: (id: string, schoolId: string) => Promise<void>;
   meetings: Meeting[];
   platformSettings: PlatformSettings;
   updatePlatformSettings: (settings: PlatformSettings) => void;
@@ -160,6 +164,7 @@ export interface SchoolDataContextType {
   isLoadingInstitutes: boolean;
   fetchInstitutes: () => Promise<void>;
   registerInstitute: (details: { name: string, phone: string, email: string, institute_name: string, address: string }) => Promise<void>;
+  chatMessages: ChatMessage[];
   sendChatMessage: (schoolId: string, senderId: string, receiverId: string, content: string, type?: 'TEXT' | 'IMAGE' | 'DOCUMENT', attachmentUrl?: string, attachmentName?: string) => Promise<void>;
   uploadMessageFile: (schoolId: string, fileUri: string, fileName: string, mimeType?: string) => Promise<string>;
   syncBillingAudit: (overdueSchoolIds: string[]) => Promise<void>;
@@ -187,25 +192,6 @@ export interface SchoolDataContextType {
   fetchMessages: (schoolId: string, force?: boolean) => Promise<void>;
   logSystemActivity: (schoolId: string | null | undefined, title: string, icon: string, color: string, userId?: string, category?: SystemLog['category']) => Promise<void>;
   
-  // Health Monitoring
-  healthStatus: 'Optimal' | 'Degraded' | 'Offline';
-  dbLatency: number;
-  checkSystemHealth: () => Promise<void>;
-  
-  // Roster Management (Supabase Sync)
-  dbRoster: any[];
-  fetchRoster: (schoolId: string) => Promise<void>;
-  setGlobalMentorRoster: (roster: any[]) => void;
-  mentorAttendanceMap: Record<string, string>;
-  setGlobalAttendanceMap: (map: Record<string, string>) => void;
-  mentorMaterials: any[];
-  setGlobalMentorMaterials: (mats: any[]) => void;
-  mentorVideos: any[];
-  setGlobalMentorVideos: (vids: any[]) => void;
-  mentorAssignedClassId: string | null;
-  mentorAssignedSection: string | null;
-  setGlobalMentorAssignedClassId: (id: string | null, section?: string | null) => void;
-
   // Video Management Methods
   dbVideos: Video[];
   teacherClasses: any[];
@@ -223,12 +209,6 @@ export interface SchoolDataContextType {
   startLiveStream: (data: Omit<LiveStream, 'id' | 'created_at' | 'is_active'>) => Promise<string | undefined>;
   endLiveStream: (streamId: string, schoolId: string) => Promise<void>;
   
-  // Session Persistence
-  isLiveSessionActive: boolean;
-  setIsLiveSessionActive: (active: boolean) => void;
-  activeSessionData: any;
-  setActiveSessionData: (data: any) => void;
-  
   // Classes
   dbClasses: any[];
   fetchClasses: (schoolId: string) => Promise<void>;
@@ -240,9 +220,19 @@ export interface SchoolDataContextType {
   addAssignment: (assignment: Partial<Assignment>) => Promise<any>;
   gradeAssignment: (gradeData: { student_id: string, assignment_id: string, class_id: string, marks: number, feedback?: string }) => Promise<any>;
 
-  // Centralized User Fetching
-  fetchUsers: (role: UserRole, school_id?: string) => Promise<void>;
-  fetchSchoolData: (schoolId: string) => Promise<void>;
+  // Roster Management (Supabase Sync)
+  dbRoster: any[];
+  fetchRoster: (schoolId: string) => Promise<void>;
+  setGlobalMentorRoster: (roster: any[]) => void;
+  mentorAttendanceMap: Record<string, string>;
+  setGlobalAttendanceMap: (map: Record<string, string>) => void;
+  mentorMaterials: any[];
+  setGlobalMentorMaterials: (mats: any[]) => void;
+  mentorVideos: any[];
+  setGlobalMentorVideos: (vids: any[]) => void;
+  mentorAssignedClassId: string | null;
+  mentorAssignedSection: string | null;
+  setGlobalMentorAssignedClassId: (id: string | null, section?: string | null) => void;
 
   // Material Management
   fetchMaterials: (schoolId: string, classId?: string) => Promise<void>;
@@ -254,10 +244,6 @@ export interface SchoolDataContextType {
   fetchRolePermissions: (role: string, schoolId?: string | null) => Promise<void>;
   hasPermission: (permissionName: string, role?: string, schoolId?: string | null) => boolean;
   clearInstitutionalData: () => void;
-  isLiveSessionActive: boolean;
-  setIsLiveSessionActive: (active: boolean) => void;
-  activeSessionData: any;
-  setActiveSessionData: (data: any) => void;
 }
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
@@ -312,6 +298,159 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
   const [dbRolePermissions, setDbRolePermissions] = useState<DbRolePermission[]>([]);
   const [isLiveSessionActive, setIsLiveSessionActive] = useState(false);
   const [activeSessionData, setActiveSessionData] = useState<any>(null);
+  const sessionEndedAt = useRef<number>(0);
+
+  const fetchRegistrationMessages = useCallback(async () => {
+    setIsLoadingInquiries(true);
+    try {
+        const { data, error } = await supabase
+            .from('registration_inquiries')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        setRegistrationMessages(data || []);
+    } catch (err: any) {
+        console.error('fetchRegistrationMessages error:', err.message);
+    } finally {
+        setIsLoadingInquiries(false);
+    }
+  }, []);
+
+  const fetchInstitutes = useCallback(async () => {
+      setIsLoadingInstitutes(true);
+      try {
+          const { data, error } = await supabase
+              .from('institutes')
+              .select('*')
+              .order('name', { ascending: true });
+          if (error) throw error;
+          setInstitutes(data || []);
+      } catch (err: any) {
+          console.error('fetchInstitutes error:', err.message);
+      } finally {
+          setIsLoadingInstitutes(false);
+      }
+  }, []);
+
+  const registerInstitute = useCallback(async (details: any) => {
+      try {
+          const { error } = await supabase
+              .from('institutes')
+              .insert({
+                  name: details.name,
+                  phone: details.phone,
+                  email: details.email,
+                  institute_name: details.institute_name,
+                  address: details.address,
+                  status: 'PENDING'
+              });
+          
+          if (error) throw error;
+          fetchInstitutes();
+      } catch (err: any) {
+          console.error('registerInstitute error:', err.message);
+          throw err;
+      }
+  }, [fetchInstitutes]);
+
+  const fetchSystemLogs = useCallback(async (schoolId?: string) => {
+    try {
+        let query = supabase
+            .from('system_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+        
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        setSystemLogs(data || []);
+    } catch (err: any) {
+        console.error('fetchSystemLogs error:', err.message);
+    }
+  }, []);
+
+  const logSystemActivity = useCallback(async (
+      schoolId: string | null | undefined, 
+      title: string, 
+      icon: string, 
+      color: string, 
+      userId?: string,
+      category: SystemLog['category'] = 'SYSTEM'
+  ) => {
+    try {
+        await supabase
+            .from('system_logs')
+            .insert({ 
+                school_id: schoolId || null, 
+                user_id: userId || null,
+                category,
+                title, 
+                icon, 
+                color 
+            });
+        fetchSystemLogs(schoolId || undefined);
+    } catch (err: any) {
+        console.error('logSystemActivity error:', err.message);
+    }
+  }, [fetchSystemLogs]);
+
+  const syncBillingAudit = useCallback(async (overdueSchoolIds: string[]) => {
+    if (overdueSchoolIds.length === 0) return;
+    
+    try {
+        const { error } = await supabase
+            .from('schools')
+            .update({ billing_status: 'Overdue' })
+            .in('id', overdueSchoolIds);
+
+        if (error) throw error;
+        
+        await logSystemActivity(null, `Bulk Audit Complete: ${overdueSchoolIds.length} schools flagged`, 'Shield', '#e11d48', undefined, 'BILLING');
+        await fetchInstitutes();
+    } catch (err: any) {
+        console.error('syncBillingAudit error:', err.message);
+        throw err;
+    }
+  }, [fetchInstitutes, logSystemActivity]);
+
+  const fetchAnnouncements = useCallback(async (schoolId: string, roles?: string[]) => {
+      if (!schoolId) return; // Guard: prevent UUID error from undefined schoolId
+      try {
+          let query = supabase
+              .from('announcements')
+              .select('*')
+              .or(`school_id.eq.${schoolId},school_id.is.null`);
+          
+          if (roles && roles.length > 0) {
+              query = query.in('audience', roles);
+          }
+          
+          const { data, error } = await query.order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          
+          const mapped = (data || []).map((a: any) => ({
+              id: a.id,
+              title: a.title,
+              message: a.message,
+              date: new Date(a.created_at).toLocaleDateString(),
+              sender: 'Administration',
+              audience: a.audience
+          }));
+
+          // TACTICAL DEDUPLICATION: Ensure unique announcement IDs
+          const uniqueData = Array.from(new Map(mapped.map(item => [item.id, item])).values());
+          setAnnouncements(uniqueData);
+      } catch (err: any) {
+          console.error('fetchAnnouncements error:', err.message);
+      }
+  }, []);
+
+  // Original fetchSystemLogs and logSystemActivity position (moved up to fix hoisting)
 
   const addUser = useCallback((user: User) => {
       setUsers(prev => [...prev, user]);
@@ -359,38 +498,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       }
   }, [fetchAnnouncements, logSystemActivity]);
 
-  const fetchAnnouncements = useCallback(async (schoolId: string, roles?: string[]) => {
-      if (!schoolId) return; // Guard: prevent UUID error from undefined schoolId
-      try {
-          let query = supabase
-              .from('announcements')
-              .select('*')
-              .or(`school_id.eq.${schoolId},school_id.is.null`);
-          
-          if (roles && roles.length > 0) {
-              query = query.in('audience', roles);
-          }
-          
-          const { data, error } = await query.order('created_at', { ascending: false });
-          
-          if (error) throw error;
-          
-          const mapped = (data || []).map((a: any) => ({
-              id: a.id,
-              title: a.title,
-              message: a.message,
-              date: new Date(a.created_at).toLocaleDateString(),
-              sender: 'Administration',
-              audience: a.audience
-          }));
-
-          // TACTICAL DEDUPLICATION: Ensure unique announcement IDs
-          const uniqueData = Array.from(new Map(mapped.map(item => [item.id, item])).values());
-          setAnnouncements(uniqueData);
-      } catch (err: any) {
-          console.error('fetchAnnouncements error:', err.message);
-      }
-  }, []);
+  // Original fetchAnnouncements position (removed to fix hoisting)
 
   const fetchSchoolDetails = useCallback(async (schoolId: string) => {
     try {
@@ -419,50 +527,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       }
   }, [fetchSchoolDetails]);
 
-  const fetchSystemLogs = useCallback(async (schoolId?: string) => {
-    try {
-        let query = supabase
-            .from('system_logs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
-        
-        if (schoolId) {
-            query = query.eq('school_id', schoolId);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-        setSystemLogs(data || []);
-    } catch (err: any) {
-        console.error('fetchSystemLogs error:', err.message);
-    }
-  }, []);
-
-  const logSystemActivity = useCallback(async (
-      schoolId: string | null | undefined, 
-      title: string, 
-      icon: string, 
-      color: string, 
-      userId?: string,
-      category: SystemLog['category'] = 'SYSTEM'
-  ) => {
-    try {
-        await supabase
-            .from('system_logs')
-            .insert({ 
-                school_id: schoolId || null, 
-                user_id: userId || null,
-                category,
-                title, 
-                icon, 
-                color 
-            });
-        fetchSystemLogs(schoolId || undefined);
-    } catch (err: any) {
-        console.error('logSystemActivity error:', err.message);
-    }
-  }, [fetchSystemLogs]);
+  // Original fetchSystemLogs and logSystemActivity position (removed to fix hoisting)
 
   const fetchMessages = useCallback(async (schoolId: string, force = false) => {
     if (!schoolId) return;
@@ -512,26 +577,41 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!error && data) setAssignments(data);
   }, []);
 
-  const addAssignment = async (assignment: Partial<Assignment>) => {
-    const { data, error } = await supabase
-      .from('assignments')
-      .insert([assignment])
-      .select();
-    if (!error && data) {
-      setAssignments(prev => [data[0], ...prev]);
-      return data[0];
-    }
-    throw error;
-  };
+  const addAssignment = useCallback(async (assignment: Partial<Assignment>) => {
+    // Optimistic UI: Pre-emptively update state
+    const tempId = `temp-${Date.now()}`;
+    const optimisticEntry = { ...assignment, id: tempId, created_at: new Date().toISOString() } as Assignment;
+    
+    setAssignments(prev => [optimisticEntry, ...prev]);
 
-  const gradeAssignment = async (gradeData: { student_id: string, assignment_id: string, class_id: string, marks: number, feedback?: string }) => {
+    try {
+      const { data, error } = await supabase
+        .from('assignments')
+        .insert([assignment])
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        // Replace temp entry with real server data
+        setAssignments(prev => prev.map(a => a.id === tempId ? data[0] : a));
+        return data[0];
+      }
+    } catch (err: any) {
+      // Rollback on failure
+      setAssignments(prev => prev.filter(a => a.id !== tempId));
+      throw err;
+    }
+  }, []);
+
+  const gradeAssignment = useCallback(async (gradeData: { student_id: string, assignment_id: string, class_id: string, marks: number, feedback?: string }) => {
     const { data, error } = await supabase
       .from('grades')
       .upsert([gradeData], { onConflict: 'student_id,assignment_id' })
       .select();
     if (error) throw error;
     return data;
-  };
+  }, []);
 
   const fetchPlatformSettings = useCallback(async () => {
       try {
@@ -587,21 +667,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       setStudentPaymentLink(link);
   }, []);
 
-  const fetchRegistrationMessages = useCallback(async () => {
-    setIsLoadingInquiries(true);
-    try {
-        const { data, error } = await supabase
-            .from('registration_inquiries')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        setRegistrationMessages(data || []);
-    } catch (err: any) {
-        console.error('fetchRegistrationMessages error:', err.message);
-    } finally {
-        setIsLoadingInquiries(false);
-    }
-  }, []);
+  // Original fetchRegistrationMessages position (moved up)
 
   const updateRegistrationStatus = useCallback(async (id: string, status: 'NEW' | 'REVIEWED' | 'CONTACTED' | 'ONBOARDED') => {
       try {
@@ -631,65 +697,13 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       }
   }, [fetchRegistrationMessages]);
 
-  const syncBillingAudit = useCallback(async (overdueSchoolIds: string[]) => {
-    if (overdueSchoolIds.length === 0) return;
-    
-    try {
-        const { error } = await supabase
-            .from('schools')
-            .update({ billing_status: 'Overdue' })
-            .in('id', overdueSchoolIds);
 
-        if (error) throw error;
-        
-        await logSystemActivity(null, `Bulk Audit Complete: ${overdueSchoolIds.length} schools flagged`, 'Shield', '#e11d48', undefined, 'BILLING');
-        await fetchInstitutes();
-    } catch (err: any) {
-        console.error('syncBillingAudit error:', err.message);
-        throw err;
-    }
-  }, [fetchInstitutes]);
 
-  const fetchInstitutes = useCallback(async () => {
-      setIsLoadingInstitutes(true);
-      try {
-          const { data, error } = await supabase
-              .from('schools')
-              .select('*')
-              .order('created_at', { ascending: false });
-          if (error) throw error;
-          setInstitutes(data || []);
-      } catch (err: any) {
-          console.error('fetchInstitutes error:', err.message);
-      } finally {
-          setIsLoadingInstitutes(false);
-      }
-  }, []);
 
-  const registerInstitute = useCallback(async (details: { name: string, phone: string, email: string, institute_name: string, address: string }) => {
-      try {
-          // 1. Create the inquiry record (Stage 1)
-          const { error } = await supabase
-              .from('registration_inquiries')
-              .insert({
-                  institute_name: details.institute_name,
-                  name: details.name,
-                  phone: details.phone,
-                  email: details.email,
-                  address: details.address,
-                  status: 'NEW'
-              });
-          
-          if (error) throw error;
 
-          // Sync local state
-          await fetchRegistrationMessages();
-          await logSystemActivity(null, `New Inquiry Received: ${details.institute_name}`, 'Inbox', '#4f46e5', undefined, 'INSTITUTION');
-      } catch (err: any) {
-          console.error('registerInstitute error:', err.message);
-          throw err;
-      }
-  }, [fetchRegistrationMessages]);
+
+
+
 
 
   const sendChatMessage = useCallback(async (
@@ -801,7 +815,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
-  const initiateFeePayment = async (feeId: string, studentId: string, amount: number, schoolId: string) => {
+  const initiateFeePayment = useCallback(async (feeId: string, studentId: string, amount: number, schoolId: string) => {
     try {
         console.log(`[RAZORPAY_GATEWAY] Creating order for Fee: ${feeId} (₹${amount})`);
         
@@ -860,9 +874,9 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         console.error('initiateFeePayment error:', err.message);
         throw err;
     }
-  };
+  }, []);
 
-  const verifyFeeTransaction = async (transactionId: string, feeId: string, verifierId: string) => {
+  const verifyFeeTransaction = useCallback(async (transactionId: string, feeId: string, verifierId: string) => {
     try {
         // 1. Update Transaction
         const { error: txError } = await supabase
@@ -891,7 +905,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         console.error('verifyFeeTransaction error:', err.message);
         throw err;
     }
-  };
+  }, [schoolDetails?.id, logSystemActivity, fetchSchoolTransactions]);
 
   const issueBulkFee = useCallback(async (schoolId: string, studentIds: string[], title: string, amount: number, dueDate: string) => {
     try {
@@ -1056,9 +1070,13 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const startLiveStream = useCallback(async (data: Omit<LiveStream, 'id' | 'created_at' | 'is_active'>) => {
     try {
+        // Institutional Guard: We only send columns that are GUARANTEED to exist in the standard schema
+        // source and subject might be missing if the user hasn't run the latest migrations
+        const { source, subject, ...dbPayload } = data;
+
         const { data: newStream, error } = await supabase
             .from('live_streams')
-            .insert({ ...data, is_active: true })
+            .insert({ ...dbPayload, is_active: true })
             .select()
             .single();
         
@@ -1068,7 +1086,17 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         const type = data.class_id ? 'Classroom feed' : 'General announcement';
         await logSystemActivity(data.school_id, `LIVE NOW: ${data.title} (${type})`, 'Radio', '#dc2626', data.created_by, 'SYSTEM');
         
-        return newStream.id;
+        // Update local session state for immediate recovery persistence (We KEEP source/subject here!)
+        setActiveSessionData({
+            id: newStream.id,
+            title: data.title,
+            subject: data.subject || 'General',
+            source: data.source || 'CAMERA',
+            startTime: Date.now()
+        });
+        setIsLiveSessionActive(true);
+
+        return newStream;
     } catch (err: any) {
         console.error('startLiveStream error:', err.message);
         throw err;
@@ -1077,18 +1105,40 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const endLiveStream = useCallback(async (streamId: string, schoolId: string) => {
     try {
-        const { error } = await supabase
-            .from('live_streams')
-            .update({ is_active: false })
-            .eq('id', streamId);
+        // Mark the time so the recovery effect knows not to resurrect this session
+        sessionEndedAt.current = Date.now();
+
+        // Primary: End the specific stream
+        if (streamId) {
+            await supabase
+                .from('live_streams')
+                .update({ is_active: false })
+                .eq('id', streamId);
+        }
+
+        // Safety sweep: Also end ALL active streams created by the current user
+        // This catches any orphaned streams from past failed terminations
+        if (currentUser?.id) {
+            await supabase
+                .from('live_streams')
+                .update({ is_active: false })
+                .eq('created_by', currentUser.id)
+                .eq('is_active', true);
+        }
+
+        // Clear global session state 
+        setActiveSessionData(null);
+        setIsLiveSessionActive(false);
+        setLiveStreams(prev => prev.filter(s => s.id !== streamId));
         
-        if (error) throw error;
-        await fetchLiveStreams(schoolId);
+        if (schoolId) await fetchLiveStreams(schoolId);
     } catch (err: any) {
         console.error('endLiveStream error:', err.message);
-        throw err;
+        // Even if DB fails, clear local state so the UI doesn't get stuck
+        setActiveSessionData(null);
+        setIsLiveSessionActive(false);
     }
-  }, [fetchLiveStreams]);
+  }, [fetchLiveStreams, currentUser?.id]);
 
   const fetchClasses = useCallback(async (schoolId: string) => {
     if (!schoolId) return;
@@ -1306,44 +1356,6 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     setMentorAssignedSection(section);
   };
 
-  const [healthStatus, setHealthStatus] = useState<'Optimal' | 'Degraded' | 'Offline'>('Optimal');
-  const [dbLatency, setDbLatency] = useState<number>(0);
-
-  const checkSystemHealth = useCallback(async () => {
-    const start = Date.now();
-    try {
-        // Lightweight heartbeat check: just ping the schools table for a count
-        const { error } = await supabase.from('schools').select('id', { count: 'exact', head: true }).limit(1);
-        const end = Date.now();
-        setDbLatency(end - start);
-        
-        if (error) throw error;
-        setHealthStatus('Optimal');
-    } catch (err: any) {
-        console.warn('[HEALTH_CHECK_FAILED]', err);
-        const isNetworkError = err?.message?.toLowerCase().includes('fetch') || 
-                               err?.message?.toLowerCase().includes('network') ||
-                               !err;
-        setHealthStatus(isNetworkError ? 'Offline' : 'Degraded');
-        setDbLatency(Date.now() - start);
-    }
-  }, []);
-
-  // Periodic Heartbeat & Live Sync
-  useEffect(() => {
-    checkSystemHealth();
-    if (currentSchool?.id) {
-        fetchLiveStreams(currentSchool.id);
-    }
-    const interval = setInterval(() => {
-        checkSystemHealth();
-        if (currentSchool?.id) {
-            fetchLiveStreams(currentSchool.id);
-        }
-    }, 30000); // Sync every 30s
-    return () => clearInterval(interval);
-  }, [checkSystemHealth, fetchLiveStreams, currentSchool?.id]);
-
   const fetchUsers = useCallback(async (role: UserRole, schoolId?: string) => {
     try {
         // Use loose comparison to handle potential casing/enum mismatches
@@ -1356,9 +1368,6 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
         const { data, error } = await query;
         if (error) {
-            const isNetworkError = error?.message?.toLowerCase().includes('fetch') || 
-                                   error?.message?.toLowerCase().includes('network');
-            setHealthStatus(isNetworkError ? 'Offline' : 'Degraded');
             throw error;
         }
 
@@ -1371,13 +1380,8 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         } as User));
 
         setUsers(mapped);
-        setHealthStatus('Optimal');
     } catch (err: any) {
         console.error('fetchUsers error:', err.message);
-        const isNetworkError = err?.message?.toLowerCase().includes('fetch') || 
-                               err?.message?.toLowerCase().includes('network') ||
-                               !err;
-        setHealthStatus(isNetworkError ? 'Offline' : 'Degraded');
     }
   }, []);
 
@@ -1548,65 +1552,75 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     };
   }, [currentSchool?.id]);
 
-  return (
-    <SchoolDataContext.Provider value={{ 
-        users, setUsers, addUser, updateUser, deleteUser,
-        announcements, meetings, platformSettings, schoolDetails, paymentConfig, paymentNotifications, studentPaymentLink, chatMessages,
-        dbFees, dbTransactions, fetchStudentFees, fetchSchoolTransactions, initiateFeePayment, verifyFeeTransaction,
-        issueBulkFee, settleManualPayment, sendInstitutionalReminders,
-        addAnnouncement,
-        deleteAnnouncement,
-        fetchAnnouncements,
-        fetchSchoolDetails,
-        updateSchoolDetails,
-        clearInstitutionalData,
-        scheduleMeeting,
-        updatePlatformSettings,
-        fetchPlatformSettings,
-        updatePaymentConfig,
-        addPaymentNotification,
-        updateStudentPaymentLink,
-        institutes,
-        isLoadingInstitutes,
-        fetchInstitutes,
-        registerInstitute,
-        sendChatMessage,
-        uploadMessageFile,
-        
-        dbRolePermissions,
-        fetchRolePermissions, hasPermission,
-        fetchMaterials, uploadMaterial, deleteMaterial,
+  const contextValue = useMemo(() => ({
+      users, setUsers, addUser, updateUser, deleteUser,
+      announcements, meetings, platformSettings, schoolDetails, paymentConfig, paymentNotifications, studentPaymentLink, chatMessages,
+      dbFees, dbTransactions, fetchStudentFees, fetchSchoolTransactions, initiateFeePayment, verifyFeeTransaction,
+      issueBulkFee, settleManualPayment, sendInstitutionalReminders,
+      addAnnouncement,
+      deleteAnnouncement,
+      fetchAnnouncements,
+      fetchSchoolDetails,
+      updateSchoolDetails,
+      clearInstitutionalData,
+      scheduleMeeting,
+      updatePlatformSettings,
+      fetchPlatformSettings,
+      updatePaymentConfig,
+      addPaymentNotification,
+      updateStudentPaymentLink,
+      institutes,
+      isLoadingInstitutes,
+      fetchInstitutes,
+      registerInstitute,
+      sendChatMessage,
+      uploadMessageFile,
+      
+      dbRolePermissions,
+      fetchRolePermissions, hasPermission,
+      fetchMaterials, uploadMaterial, deleteMaterial,
 
-        systemLogs,
-        fetchSystemLogs,
-        fetchMessages,
-        logSystemActivity,
-        dbRoster, fetchRoster, setGlobalMentorRoster,
-        mentorAttendanceMap, setGlobalAttendanceMap,
-        mentorMaterials, setGlobalMentorMaterials,
-        mentorVideos, setGlobalMentorVideos,
-        mentorAssignedClassId, mentorAssignedSection, setGlobalMentorAssignedClassId,
-        dbVideos, fetchVideos, uploadVideo, deleteVideo,
-        liveStreams, fetchLiveStreams, startLiveStream, endLiveStream,
-        dbCameraNodes, fetchCameraNodes, registerCameraNode, deleteCameraNode,
-        dbClasses, fetchClasses,
-        fetchTeacherClasses, teacherClasses,
-        assignments, fetchAssignments, addAssignment, gradeAssignment,
-        fetchUsers, fetchSchoolData,
-        healthStatus,
-        dbLatency,
-        checkSystemHealth,
-        registrationMessages,
-        isLoadingInquiries,
-        fetchRegistrationMessages,
-        updateRegistrationStatus,
-        deleteRegistrationMessage,
-        syncBillingAudit,
-        isLiveSessionActive,
-        setIsLiveSessionActive,
-        activeSessionData,
-        setActiveSessionData
-    }}>
+      systemLogs,
+      fetchSystemLogs,
+      fetchMessages,
+      logSystemActivity,
+      dbRoster, fetchRoster, setGlobalMentorRoster,
+      mentorAttendanceMap, setGlobalAttendanceMap,
+      mentorMaterials, setGlobalMentorMaterials,
+      mentorVideos, setGlobalMentorVideos,
+      mentorAssignedClassId, mentorAssignedSection, setGlobalMentorAssignedClassId,
+      dbVideos, fetchVideos, uploadVideo, deleteVideo,
+      liveStreams, fetchLiveStreams, startLiveStream, endLiveStream,
+      dbCameraNodes, fetchCameraNodes, registerCameraNode, deleteCameraNode,
+      dbClasses, fetchClasses,
+      fetchTeacherClasses, teacherClasses,
+      assignments, fetchAssignments, addAssignment, gradeAssignment,
+      fetchUsers, fetchSchoolData,
+      isLiveSessionActive, setIsLiveSessionActive, activeSessionData, setActiveSessionData, sessionEndedAt,
+      registrationMessages,
+      isLoadingInquiries,
+      fetchRegistrationMessages,
+      updateRegistrationStatus,
+      deleteRegistrationMessage,
+      syncBillingAudit
+  }), [
+      users, announcements, meetings, platformSettings, schoolDetails, paymentConfig, paymentNotifications, studentPaymentLink, chatMessages,
+      dbFees, dbTransactions, institutes, isLoadingInstitutes, dbRolePermissions, systemLogs,
+      dbRoster, mentorAttendanceMap, mentorMaterials, mentorVideos, mentorAssignedClassId, mentorAssignedSection,
+      dbVideos, liveStreams, dbCameraNodes, dbClasses, teacherClasses, assignments,
+      registrationMessages, isLoadingInquiries,
+      fetchRegistrationMessages, updateRegistrationStatus, deleteRegistrationMessage, syncBillingAudit,
+      fetchAnnouncements, addAnnouncement, deleteAnnouncement, fetchSchoolDetails, updateSchoolDetails,
+      fetchPlatformSettings, updatePlatformSettings, updatePaymentConfig, updateStudentPaymentLink,
+      fetchInstitutes, registerInstitute, sendChatMessage, uploadMessageFile, fetchMessages, logSystemActivity,
+      fetchTeacherClasses, fetchAssignments, addAssignment, gradeAssignment, fetchUsers, fetchSchoolData,
+      fetchMaterials, uploadMaterial, deleteMaterial, fetchRolePermissions, fetchVideos, uploadVideo, deleteVideo,
+      fetchLiveStreams, startLiveStream, endLiveStream, fetchCameraNodes, registerCameraNode, deleteCameraNode,
+      setIsLiveSessionActive, setActiveSessionData
+  ]);
+
+  return (
+    <SchoolDataContext.Provider value={contextValue}>
       {children}
     </SchoolDataContext.Provider>
   );

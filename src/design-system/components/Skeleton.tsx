@@ -14,47 +14,69 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   borderRadius = 8, 
   className = '' 
 }) => {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      })
     ).start();
-  }, [opacity]);
+  }, []);
+
+  const translateX = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-150, 300],
+  });
 
   return (
-    <Animated.View
-      style={[
-        { width, height, borderRadius, backgroundColor: '#e2e8f0', opacity },
-      ]}
+    <View
+      style={{ width, height, borderRadius, backgroundColor: '#e2e8f0', overflow: 'hidden' } as any}
       className={className}
-    />
+    >
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: 80,
+          backgroundColor: 'rgba(255, 255, 255, 0.4)',
+          transform: [{ translateX }, { skewX: '-20deg' }],
+        }}
+      />
+    </View>
   );
 };
 
-export const SkeletonCard: React.FC<{ className?: string }> = ({ className = '' }) => (
+export const SkeletonCard: React.FC<{ 
+  className?: string;
+  width?: number | string;
+  height?: number | string;
+}> = ({ className = '', width, height }) => (
   <View 
-    className={`bg-white rounded-[20px] p-5 border border-gray-100 shadow-sm ${className}`}
+    style={[{ width, height } as any]}
+    className={`bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex-row items-center justify-between mb-3 ${className}`}
   >
-    <View className="flex-row items-center mb-4">
-      <Skeleton width={40} height={40} borderRadius={12} className="mr-3" />
+    {/* LEFT SECTION */}
+    <View className="flex-row items-center flex-1">
+      <Skeleton width={56} height={56} borderRadius={12} className="mr-4" />
       <View className="flex-1">
-        <Skeleton width="60%" height={14} className="mb-2" />
-        <Skeleton width="40%" height={10} />
+        <Skeleton width="70%" height={16} className="mb-2" />
+        <View className="flex-row items-center">
+          <Skeleton width={40} height={10} className="mr-2" />
+          <Skeleton width={30} height={10} />
+        </View>
       </View>
     </View>
-    <Skeleton width="100%" height={60} borderRadius={14} />
+
+    {/* RIGHT SECTION */}
+    <View className="items-center">
+      <Skeleton width={50} height={24} borderRadius={12} className="mb-2" />
+      <Skeleton width={40} height={8} />
+    </View>
   </View>
 );
 

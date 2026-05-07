@@ -17,13 +17,13 @@ interface StatusPillProps extends ViewProps {
 }
 
 const PILL_STYLES: Record<PillType, { bg: string; border: string; text: string }> = {
-  success:    { bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700' },
-  warning:    { bg: 'bg-amber-50',   border: 'border-amber-100',   text: 'text-amber-700'   },
-  danger:     { bg: 'bg-rose-50',    border: 'border-rose-100',    text: 'text-rose-700'    },
-  info:       { bg: 'bg-blue-50',    border: 'border-blue-100',    text: 'text-blue-700'    },
-  enterprise: { bg: 'bg-amber-50',   border: 'border-amber-100',   text: 'text-amber-600'   },
-  pro:        { bg: 'bg-indigo-50',  border: 'border-indigo-100',  text: 'text-indigo-600'  },
-  neutral:    { bg: 'bg-gray-50',    border: 'border-gray-200',    text: 'text-gray-500'    },
+  success:    { bg: 'bg-emerald-50/80', border: 'border-emerald-100', text: 'text-emerald-700' },
+  warning:    { bg: 'bg-amber-50/80',   border: 'border-amber-100',   text: 'text-amber-700'   },
+  danger:     { bg: 'bg-rose-50/80',    border: 'border-rose-100',    text: 'text-rose-700'    },
+  info:       { bg: 'bg-blue-50/80',    border: 'border-blue-100',    text: 'text-blue-700'    },
+  enterprise: { bg: 'bg-amber-50/80',   border: 'border-amber-100',   text: 'text-amber-600'   },
+  pro:        { bg: 'bg-indigo-50/80',  border: 'border-indigo-100',  text: 'text-indigo-600'  },
+  neutral:    { bg: 'bg-gray-50/80',    border: 'border-gray-200',    text: 'text-gray-500'    },
 };
 
 export const StatusPill: React.FC<StatusPillProps> = ({
@@ -35,7 +35,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   const { bg, border, text } = PILL_STYLES[type];
   return (
     <View
-      className={`px-2 py-0.5 rounded-full border self-start ${bg} ${border} ${className}`}
+      className={`px-2 py-0.5 rounded-full border self-start shadow-sm shadow-indigo-100/40 ${bg} ${border} ${className}`}
       {...props}
     >
       <Text className={`text-[8px] font-black uppercase tracking-widest ${text} font-inter-black`}>

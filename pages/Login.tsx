@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, Modal, ScrollView, 
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert, 
-  LayoutAnimation, Animated, Dimensions, Image 
+  Animated, Dimensions, Image 
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UserRole, User } from '../types';
@@ -82,7 +82,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   }, [step]);
 
   const transitionTo = (newStep: typeof step) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // LayoutAnimation.configureNext removed
     setStep(newStep);
   };
 

@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Pressable, Image, Linking, FlatList, Platform } from 'react-native';
+import * as React from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Pressable, Image, Linking, FlatList, Platform, Animated, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../../../lib/supabase';
@@ -8,7 +9,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from '../../../../components/Icons';
-import { User, ChatMessage } from '../../../../types';
+import { User, ChatMessage, UserRole } from '../../../../types';
 import { AppTheme, AppCard, AppTypography, AppRow, StatusPill, SectionHeader, PlatinumHeader } from '../../../design-system';
 import { formatAcademicTime } from '../../../utils/timeUtils';
 
@@ -20,18 +21,18 @@ interface TeacherMessagesProps {
   displayContacts: User[];
   chatMessages: ChatMessage[];
   currentUser: User;
-  handleSendMessage: (type?: string, url?: string, name?: string, customContent?: string) => void;
+  handleSendMessage: (type?: string, url?: string, name?: string, customContent?: string) => void | Promise<void>;
   uploadMessageFile: (schoolId: string, uri: string, name: string) => Promise<string>;
   assignments?: any[];
 }
 
 import NetInfo from '@react-native-community/netinfo';
 
-const AttachmentModal: React.FC<{
+const AttachmentModal = ({ visible, onClose, onSelect }: {
     visible: boolean;
     onClose: () => void;
     onSelect: (type: string) => void;
-}> = ({ visible, onClose, onSelect }) => {
+}) => {
     const insets = useSafeAreaInsets();
     return (
         <Modal
@@ -93,7 +94,7 @@ const AttachmentModal: React.FC<{
     );
 };
 
-export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
+export const TeacherMessages = React.memo<TeacherMessagesProps>(({
   selectedChat,
   setSelectedChat,
   msgInput,
@@ -114,15 +115,59 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
   const [linkInput, setLinkInput] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
 
+  // Keyboard Avoidance Logic
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showSub = Animated.timing(keyboardHeight, {
+      toValue: Platform.OS === 'ios' ? 340 : 0, // Fallback for estimation if needed, but listeners are better
+      duration: 250,
+      useNativeDriver: false,
+    });
+
+    const hideSub = Animated.timing(keyboardHeight, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    });
+
+    const showListener = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideListener = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const s = (event: any) => {
+      Animated.timing(keyboardHeight, {
+        toValue: event.endCoordinates.height - (Platform.OS === 'ios' ? insets.bottom : 0),
+        duration: event.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const h = (event: any) => {
+      Animated.timing(keyboardHeight, {
+        toValue: 0,
+        duration: event.duration || 200,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const sSub = Keyboard.addListener(showListener, s);
+    const hSub = Keyboard.addListener(hideListener, h);
+
+    return () => {
+      sSub.remove();
+      hSub.remove();
+    };
+  }, [insets.bottom]);
+
   const filteredContacts = useMemo(() => {
     if (!searchQuery.trim()) return displayContacts || [];
-    return (displayContacts || []).filter(c => 
+    return (displayContacts || []).filter((c: User) => 
       c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.role?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [displayContacts, searchQuery]);
 
-  const activeContact = (displayContacts || []).find(c => c.id === selectedChat);
+  const activeContact = (displayContacts || []).find((c: User) => c.id === selectedChat);
   
   // 1. Create a highly efficient O(1) lookup map to avoid O(N*M) render loops
   const lastMessagesMap = useMemo(() => {
@@ -178,6 +223,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
           setLocalMessages([]);
           setPage(0);
           setHasMore(true);
+          setMsgInput(''); // FIX: Reset input when switching chats
 
           // 2. Fetch fresh data and sync
           fetchConversation(selectedChat, 0);
@@ -314,7 +360,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
           const queue = JSON.parse(stored);
           if (queue.length === 0) return;
 
-          const stillOffline = [];
+          const stillOffline: any[] = [];
 
           // Process individually to prevent losing the whole batch if one fails
           for (const msgPayload of queue) {
@@ -355,7 +401,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
       setIsSending(true);
       
       const payload = {
-          school_id: currentUser.school_id,
+          school_id: currentUser.schoolId,
           sender_id: currentUser.id,
           receiver_id: selectedChat,
           content: finalContent,
@@ -454,7 +500,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
   const processUpload = async (uri: string, name: string, msgType: any, mimeType?: string) => {
       setIsUploading(true);
       try {
-          const publicUrl = await uploadMessageFile(currentUser.school_id || '', uri, name, mimeType);
+          const publicUrl = await uploadMessageFile(currentUser.schoolId || '', uri, name);
           await onSendDirect(msgType, publicUrl, name);
       } catch (err: any) {
           Alert.alert("Upload Error", err.message);
@@ -463,13 +509,109 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
       }
   };
 
+  const renderMessageItem = useCallback(({ item: msg, index: idx }: { item: any, index: number }) => {
+      const isMine = msg.sender_id === currentUser.id;
+      const isImage = msg.message_type === 'IMAGE';
+      const isDoc = msg.message_type === 'DOCUMENT';
+
+      return (
+         <View className={`mb-4 flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>
+             {!isMine && (
+                 <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center mr-2 mt-auto">
+                    <Text className="text-indigo-600 font-bold font-inter text-[12px]">{activeContact?.name?.charAt(0) || '?'}</Text>
+                 </View>
+             )}
+              {isOtherTyping && idx === 0 && (
+                 <View className="mb-4 flex-row justify-start">
+                     <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center mr-2 mt-auto">
+                        <Text className="text-indigo-600 font-bold font-inter text-[12px]">{activeContact?.name?.charAt(0) || '?'}</Text>
+                     </View>
+                     <View className="bg-white border border-gray-100 rounded-2xl px-4 py-2 shadow-sm flex-row items-center">
+                         <Text className="text-[10px] text-gray-400 font-inter-bold italic">Typing...</Text>
+                     </View>
+                 </View>
+              )}
+                  <TouchableOpacity 
+                     activeOpacity={(msg.attachment_url || msg.metadata?.url || msg.content?.includes('[LINK]:')) ? 0.7 : 1}
+                     onPress={() => {
+                         if (msg.attachment_url) {
+                             Linking.openURL(msg.attachment_url).catch(() => Alert.alert('Error', 'Could not open attachment.'));
+                         } else if (msg.metadata?.url) {
+                             Linking.openURL(msg.metadata.url).catch(() => Alert.alert('Error', 'Could not open link.'));
+                         } else if (msg.content?.includes('[LINK]:')) {
+                             const extractedUrl = msg.content.split('[LINK]:')[1]?.trim();
+                             if (extractedUrl) {
+                                 Linking.openURL(extractedUrl).catch(() => Alert.alert('Error', 'Could not open link.'));
+                             }
+                         }
+                     }}
+                     className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
+                         isMine ? 'bg-indigo-600' : 'bg-white border border-gray-100'
+                     } ${msg.isOffline ? 'opacity-70' : 'opacity-100'}`}
+                 >
+                     {isImage && (
+                         <Image 
+                             source={{ uri: msg.attachment_url }} 
+                             className="w-48 h-48 rounded-xl mb-3 bg-gray-100"
+                             resizeMode="cover"
+                         />
+                     )}
+                     
+                     {isDoc && (
+                         <View className={`flex-row items-center p-3 rounded-xl mb-3 ${isMine ? 'bg-white/20' : 'bg-gray-50 border border-gray-100'}`}>
+                             <Icons.FileText size={20} color={isMine ? 'white' : '#4f46e5'} />
+                             <View className="ml-3">
+                                 <Text className={`text-[10px] font-black font-inter-black ${isMine ? 'text-white' : 'text-gray-900'}`} numberOfLines={1}>
+                                     {msg.attachment_name || 'Document'}
+                                 </Text>
+                                 <Text className={`text-[8px] font-bold ${isMine ? 'text-indigo-100' : 'text-gray-400'}`}>Click to view</Text>
+                             </View>
+                         </View>
+                     )}
+
+                     {(msg.message_type === 'ASSIGNMENT' || msg.metadata?.assignment_id || msg.content?.startsWith('[ASSIGNMENT]:')) ? (
+                         <View className={`flex-row items-center p-3 rounded-xl mb-1 ${isMine ? 'bg-white/20' : 'bg-[#fffbeb] border border-[#fef3c7]'}`}>
+                             <Icons.Edit size={20} color={isMine ? 'white' : '#f59e0b'} />
+                             <View className="ml-3 flex-1">
+                                 <Text className={`text-[12px] font-black font-inter-black ${isMine ? 'text-white' : 'text-gray-900'}`} numberOfLines={1}>
+                                     {msg.metadata?.title || msg.content.split('|')[1] || 'Assignment'}
+                                 </Text>
+                                 <Text className={`text-[9px] font-bold mt-0.5 ${isMine ? 'text-indigo-100' : 'text-gray-500'}`}>
+                                     Max Marks: {msg.metadata?.max_marks || msg.content.split('|')[2] || '100'}
+                                 </Text>
+                             </View>
+                         </View>
+                     ) : (
+                         <Text className={`text-[14px] leading-relaxed font-inter-regular ${isMine ? 'text-white' : 'text-gray-800'}`}>
+                             {msg.content}
+                         </Text>
+                     )}
+                     <View className="flex-row items-center justify-end mt-1">
+                         <Text className={`text-[9px] font-inter-medium ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
+                             {msg.isOffline ? 'Pending' : (msg.timestamp || formatAcademicTime(msg.created_at))}
+                         </Text>
+                         {isMine && (
+                             msg.failed ? 
+                             <View style={{marginLeft: 4}}><Icons.Alert size={10} color="#fb7185" /></View> :
+                             msg.isOffline ? 
+                             <View style={{marginLeft: 4}}><Icons.Clock size={10} color="white" /></View> : 
+                             <View style={{marginLeft: 4}}><Icons.Check size={10} color="white" /></View>
+                         )}
+                     </View>
+                 </TouchableOpacity>
+         </View>
+      );
+  }, [currentUser.id, activeContact?.name, isOtherTyping]);
+
+  const keyExtractor = useCallback((item: any, index: number) => item.id || String(index), []);
+
   return (
     <View className="flex-1 bg-gray-50" style={{ paddingBottom: Platform.OS === 'ios' ? 0 : insets.bottom }}>
       {!selectedChat ? (
         <View className="flex-1 bg-gray-50">
           <PlatinumHeader 
             title="Inbox"
-            subtitle={`${currentUser?.school_name || 'Academy'} Node`}
+            subtitle={`${(currentUser as any)?.school_name || 'Academy'} Node`}
             icon={
               <View className="w-10 h-10 rounded-full bg-indigo-50 items-center justify-center">
                 <Icons.Messages size={20} color="#4f46e5" />
@@ -493,7 +635,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
           >
-              {filteredContacts.map((contact) => {
+              {filteredContacts.map((contact: User) => {
                 const lastMsg = lastMessagesMap.get(contact.id);
                 return (
                   <TouchableOpacity
@@ -551,7 +693,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
           {/* Chat Header */}
           <PlatinumHeader 
             title={activeContact?.name || 'Academic Chat'}
-            subtitle={activeContact?.role === 'student' ? 'SCHOLAR NODE' : activeContact?.role === 'super_admin' ? 'FACULTY HUB' : 'INSTITUTIONAL SYNC'}
+            subtitle={activeContact?.role === UserRole.STUDENT ? 'SCHOLAR NODE' : activeContact?.role === UserRole.SUPER_ADMIN ? 'FACULTY HUB' : 'INSTITUTIONAL SYNC'}
             onBack={() => setSelectedChat(null)}
             rightAction={
               <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center border border-gray-100 active:scale-95">
@@ -569,100 +711,8 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}
               ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#4f46e5" style={{marginVertical: 20}} /> : null}
-              keyExtractor={(item, index) => item.id || String(index)}
-              renderItem={({ item: msg, index: idx }) => {
-                  const isMine = msg.sender_id === currentUser.id;
-                  const isImage = msg.message_type === 'IMAGE';
-                  const isDoc = msg.message_type === 'DOCUMENT';
-
-                  return (
-                     <View className={`mb-4 flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>
-                         {!isMine && (
-                             <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center mr-2 mt-auto">
-                                <Text className="text-indigo-600 font-bold font-inter text-[12px]">{activeContact?.name?.charAt(0) || '?'}</Text>
-                             </View>
-                         )}
-                          {isOtherTyping && idx === 0 && (
-                             <View className="mb-4 flex-row justify-start">
-                                 <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center mr-2 mt-auto">
-                                    <Text className="text-indigo-600 font-bold font-inter text-[12px]">{activeContact?.name?.charAt(0) || '?'}</Text>
-                                 </View>
-                                 <View className="bg-white border border-gray-100 rounded-2xl px-4 py-2 shadow-sm flex-row items-center">
-                                     <Text className="text-[10px] text-gray-400 font-inter-bold italic">Typing...</Text>
-                                 </View>
-                             </View>
-                          )}
-                              <TouchableOpacity 
-                                 activeOpacity={(msg.attachment_url || msg.metadata?.url || msg.content?.includes('[LINK]:')) ? 0.7 : 1}
-                                 onPress={() => {
-                                     if (msg.attachment_url) {
-                                         Linking.openURL(msg.attachment_url).catch(() => Alert.alert('Error', 'Could not open attachment.'));
-                                     } else if (msg.metadata?.url) {
-                                         Linking.openURL(msg.metadata.url).catch(() => Alert.alert('Error', 'Could not open link.'));
-                                     } else if (msg.content?.includes('[LINK]:')) {
-                                         const extractedUrl = msg.content.split('[LINK]:')[1]?.trim();
-                                         if (extractedUrl) {
-                                             Linking.openURL(extractedUrl).catch(() => Alert.alert('Error', 'Could not open link.'));
-                                         }
-                                     }
-                                 }}
-                                 className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
-                                     isMine ? 'bg-indigo-600' : 'bg-white border border-gray-100'
-                                 } ${msg.isOffline ? 'opacity-70' : 'opacity-100'}`}
-                             >
-                                 {isImage && (
-                                     <Image 
-                                         source={{ uri: msg.attachment_url }} 
-                                         className="w-48 h-48 rounded-xl mb-3 bg-gray-100"
-                                         resizeMode="cover"
-                                     />
-                                 )}
-                                 
-                                 {isDoc && (
-                                     <View className={`flex-row items-center p-3 rounded-xl mb-3 ${isMine ? 'bg-white/20' : 'bg-gray-50 border border-gray-100'}`}>
-                                         <Icons.FileText size={20} color={isMine ? 'white' : '#4f46e5'} />
-                                         <View className="ml-3">
-                                             <Text className={`text-[10px] font-black font-inter-black ${isMine ? 'text-white' : 'text-gray-900'}`} numberOfLines={1}>
-                                                 {msg.attachment_name || 'Document'}
-                                             </Text>
-                                             <Text className={`text-[8px] font-bold ${isMine ? 'text-indigo-100' : 'text-gray-400'}`}>Click to view</Text>
-                                         </View>
-                                     </View>
-                                 )}
-    
-                                 {(msg.message_type === 'ASSIGNMENT' || msg.metadata?.assignment_id || msg.content?.startsWith('[ASSIGNMENT]:')) ? (
-                                     <View className={`flex-row items-center p-3 rounded-xl mb-1 ${isMine ? 'bg-white/20' : 'bg-[#fffbeb] border border-[#fef3c7]'}`}>
-                                         <Icons.Edit size={20} color={isMine ? 'white' : '#f59e0b'} />
-                                         <View className="ml-3 flex-1">
-                                             <Text className={`text-[12px] font-black font-inter-black ${isMine ? 'text-white' : 'text-gray-900'}`} numberOfLines={1}>
-                                                 {msg.metadata?.title || msg.content.split('|')[1] || 'Assignment'}
-                                             </Text>
-                                             <Text className={`text-[9px] font-bold mt-0.5 ${isMine ? 'text-indigo-100' : 'text-gray-500'}`}>
-                                                 Max Marks: {msg.metadata?.max_marks || msg.content.split('|')[2] || '100'}
-                                             </Text>
-                                         </View>
-                                     </View>
-                                 ) : (
-                                     <Text className={`text-[14px] leading-relaxed font-inter-regular ${isMine ? 'text-white' : 'text-gray-800'}`}>
-                                         {msg.content}
-                                     </Text>
-                                 )}
-                                 <View className="flex-row items-center justify-end mt-1">
-                                     <Text className={`text-[9px] font-inter-medium ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
-                                         {msg.isOffline ? 'Pending' : (msg.timestamp || formatAcademicTime(msg.created_at))}
-                                     </Text>
-                                     {isMine && (
-                                         msg.failed ? 
-                                         <View style={{marginLeft: 4}}><Icons.Alert size={10} color="#fb7185" /></View> :
-                                         msg.isOffline ? 
-                                         <View style={{marginLeft: 4}}><Icons.Clock size={10} color="white" /></View> : 
-                                         <View style={{marginLeft: 4}}><Icons.Check size={10} color="white" /></View>
-                                     )}
-                                 </View>
-                             </TouchableOpacity>
-                     </View>
-                  );
-              }}
+              keyExtractor={keyExtractor}
+              renderItem={renderMessageItem}
               ListEmptyComponent={
                   <View className="flex-1 items-center justify-center py-32">
                      <View className="w-14 h-14 bg-white rounded-full items-center justify-center mb-4 border border-gray-50 shadow-sm">
@@ -675,9 +725,12 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
               }
           />
 
-          <View 
+          <Animated.View 
             className="p-3 bg-white border-t border-gray-100 flex-row items-center space-x-2 shadow-2xl"
-            style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+            style={{ 
+              paddingBottom: Animated.add(keyboardHeight, Math.max(insets.bottom, 12)),
+              marginBottom: 0
+            }}
           >
             <TouchableOpacity 
               onPress={handlePlusAction}
@@ -708,7 +761,7 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
                 <Icons.Messages size={20} color="white" />
               )}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </View>
       )}
 
@@ -809,4 +862,4 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
       </Modal>
     </View>
   );
-};
+});

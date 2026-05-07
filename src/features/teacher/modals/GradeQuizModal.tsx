@@ -34,7 +34,7 @@ export const GradeQuizModal: React.FC<GradeQuizModalProps> = ({
             <Icons.Check size={20} color="#10b981" />
           </View>
           <View className="flex-1">
-            <Text className="text-[9px] font-inter-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Queue Status</Text>
+            <Text className="text-[9px] font-inter-black text-emerald-600 uppercase tracking-[1px] leading-none mb-1">Queue Status</Text>
             <Text className="text-[12px] font-inter-bold text-emerald-900">{gradingQueue.length} Pending Assessments</Text>
           </View>
         </View>
@@ -72,7 +72,7 @@ export const GradeQuizModal: React.FC<GradeQuizModalProps> = ({
 
               <View className="bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-100 items-center justify-center shadow-sm">
                 <Text className="text-[14px] font-inter-black text-indigo-600 mb-0.5">{item.count}</Text>
-                <Text className="text-[7px] font-inter-black text-gray-400 uppercase tracking-widest">Left</Text>
+                <Text className="text-[7px] font-inter-black text-gray-400 uppercase tracking-[1px]">Left</Text>
               </View>
             </TouchableOpacity>
           ))}

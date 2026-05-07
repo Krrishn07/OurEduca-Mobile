@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { User, ChatMessage } from '../../../../types';
 import { AppTheme, AppCard, AppTypography, SectionHeader, AppRow, StatusPill } from '../../../design-system';
 import { formatAcademicTime } from '../../../utils/timeUtils';
 
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 interface StudentMessagesProps {
   currentUser: User;

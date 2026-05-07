@@ -5,13 +5,14 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo
 import * as MediaLibrary from 'expo-media-library';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { cssInterop } from 'nativewind';
 import { Icons } from '../../../../components/Icons';
 import { Video, useSchoolData } from '../../../../contexts/SchoolDataContext';
 import { AppTheme, AppCard, AppTypography, SectionHeader, AppButton, ModalShell, StatusPill, AppRow } from '../../../design-system';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+if (LinearGradient) { cssInterop(LinearGradient, { className: 'style' }); }
+const StyledLinearGradient = LinearGradient || View;
 
 interface GoLiveModalProps {
   visible: boolean;

@@ -97,9 +97,9 @@ export const AnnouncementHistoryModal: React.FC<AnnouncementHistoryModalProps> =
               activeFilter === filter 
               ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-100' 
               : 'bg-white border-gray-200'
-            } active:scale-95 transition-all`}
+            } active:scale-95`}
           >
-            <Text className={`text-[10px] font-black uppercase tracking-widest ${
+            <Text className={`text-[10px] font-black uppercase tracking-[1px] ${
               activeFilter === filter ? 'text-white' : 'text-gray-400'
             }`}>
               {filter}
@@ -144,7 +144,7 @@ export const AnnouncementHistoryModal: React.FC<AnnouncementHistoryModalProps> =
                       <Text className={`text-[8px] font-black uppercase`} style={{ color: style.text }}>{a.audience}</Text>
                     </View>
                   </View>
-                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5" numberOfLines={1}>
+                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mb-1.5" numberOfLines={1}>
                     {a.sender || 'System'} • {a.date}
                   </Text>
                   <Text className="text-gray-600 text-[11px] leading-relaxed" numberOfLines={2}>{a.message}</Text>

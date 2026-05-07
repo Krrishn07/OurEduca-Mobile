@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Image, ActivityIndicator, Dimensions, Modal, Animated, Alert, AppState, AppStateStatus } from 'react-native';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,15 +8,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
 import { supabase } from '../../../../lib/supabase';
 import { Icons } from '../../../../components/Icons';
 import { Video as VideoType, useSchoolData, LiveStream } from '../../../../contexts/SchoolDataContext';
+import { useSystemStatus } from '../../../../contexts/SystemStatusContext';
 import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppRow, StatusPill, AppTypography, AppButton, ModalShell, PlatinumHeader } from '../../../design-system';
 import { UploadMaterialModal } from '../modals/UploadMaterialModal';
 
 const { width } = Dimensions.get('window');
-const StyledLinearGradient = LinearGradient ? styled(LinearGradient) : View;
+const StyledLinearGradient = LinearGradient;
 
 // Private component for GoLiveModal as it was consolidated
 interface GoLiveModalProps {
@@ -34,10 +35,10 @@ interface GoLiveModalProps {
   isLoading: boolean;
 }
 
-const GoLiveModal: React.FC<GoLiveModalProps> = ({
+const GoLiveModal = ({
   visible, onClose, onStart, streamTitle, setStreamTitle, streamSubject, setStreamSubject, 
   streamSource, setStreamSource, selectedCctvNode, setSelectedCctvNode, cctvNodes, isLoading
-}) => (
+}: GoLiveModalProps) => (
   <ModalShell visible={visible} onClose={onClose} title="Session Studio" subtitle="SETUP BROADCAST">
     <View className="space-y-6">
         <View>
@@ -135,7 +136,7 @@ interface SessionCapturedModalProps {
   onDiscard: () => void;
 }
 
-const SessionCapturedModal: React.FC<SessionCapturedModalProps> = ({ visible, onSave, onDiscard }) => (
+const SessionCapturedModal = ({ visible, onSave, onDiscard }: SessionCapturedModalProps) => (
   <ModalShell visible={visible} onClose={onDiscard} title="Capture Studio" subtitle="RECORDING COMPLETE">
       <View className="items-center">
         <View className="w-16 h-16 bg-emerald-50 rounded-2xl items-center justify-center mb-6 border border-emerald-100 shadow-inner">
@@ -164,7 +165,7 @@ const SessionCapturedModal: React.FC<SessionCapturedModalProps> = ({ visible, on
   </ModalShell>
 );
 
-export const TeacherVideos: React.FC<TeacherVideosProps> = ({
+export const TeacherVideos = React.memo<TeacherVideosProps>(({
   videoList = [],
   videoTab,
   setVideoTab,
@@ -179,15 +180,18 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
 }) => {
   const { 
     platformSettings, 
-    setIsLiveSessionActive, 
-    isLiveSessionActive: globalIsLiveActive,
-    activeSessionData,
-    setActiveSessionData,
     uploadVideo, 
     startLiveStream, 
     endLiveStream, 
     liveStreams 
   } = useSchoolData();
+
+  const {
+    isLiveSessionActive: globalIsLiveActive,
+    setIsLiveSessionActive,
+    activeSessionData,
+    setActiveSessionData
+  } = useSystemStatus();
 
   const insets = useSafeAreaInsets();
   const defaultTab = currentUser?.role === 'mentor' ? 'MONITOR' : 'STREAM';
@@ -340,7 +344,7 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
         setIsLoading(true);
         
         try {
-            const activeSection = (teacherAssignedSections || []).find(s => s.displayName === streamSubject) || teacherAssignedSections?.[0];
+            const activeSection = (teacherAssignedSections || []).find((s: any) => s.displayName === streamSubject) || teacherAssignedSections?.[0];
 
             const streamId = await startLiveStream({
                 school_id: currentUser?.school_id,
@@ -349,7 +353,8 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
                 section: activeSection?.section || null,
                 title: streamTitle,
                 subject: streamSubject || activeSection?.subject || 'General',
-                stream_url: streamSource === 'CAMERA' ? 'HARDWARE_CAMERA' : (selectedCctvNode?.stream_url || 'CCTV_FEED')
+                stream_url: streamSource === 'CAMERA' ? 'HARDWARE_CAMERA' : (selectedCctvNode?.stream_url || 'CCTV_FEED'),
+                source: streamSource
             });
 
             if (streamId) {
@@ -485,7 +490,7 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
                 title: streamTitle || 'Recorded Broadcast',
                 subject: streamSubject || 'General',
                 duration: formatTime(elapsed),
-                thumbnail_url: null,
+                thumbnail_url: undefined,
                 video_url: publicUrl,
                 is_public: true,
                 school_id: currentUser.school_id,
@@ -581,8 +586,8 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
             <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-4 font-inter-black">Select a class to go live</Text>
 
             <View className="space-y-4">
-              {teacherAssignedSections.map((cls, i) => (
-                <View key={i} className={`flex-row items-center py-3 ${i < teacherAssignedSections.length - 1 ? 'border-b border-gray-50' : ''}`}>
+              {teacherAssignedSections.map((cls: any, i: number) => (
+                <View key={i as any} className={`flex-row items-center py-3 ${i < teacherAssignedSections.length - 1 ? 'border-b border-gray-50' : ''}`}>
                   <View className="flex-1">
                     <Text className="text-gray-900 font-black text-[14px] font-inter-black">{cls.displayName}</Text>
                     <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1 font-inter-black">{cls.subject} • Room {cls.room_no}</Text>
@@ -616,7 +621,6 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                       {isStreaming && streamSource === 'CAMERA' && (
                           <CameraView 
-                              key="teacher-active-camera-v5"
                               ref={cameraRef}
                               style={{ width: '100%', height: '100%' }}
                               facing="back"
@@ -749,8 +753,8 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
 
         <View className="space-y-4">
           {filteredVideos.length > 0 ? (
-            filteredVideos.map((video) => (
-              <AppCard key={video.id} className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            filteredVideos.map((video: any) => (
+              <AppCard key={video.id as any} className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
                  <TouchableOpacity 
                    activeOpacity={0.9}
                    onPress={() => onVideoPress(video)}
@@ -953,4 +957,4 @@ export const TeacherVideos: React.FC<TeacherVideosProps> = ({
       />
     </View>
   );
-};
+});

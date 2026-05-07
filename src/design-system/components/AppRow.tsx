@@ -1,11 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
-  Animated,
-  PanResponder,
+  Pressable,
   Text,
-  TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  runOnJS 
+} from 'react-native-reanimated';
+import { 
+  Gesture, 
+  GestureDetector 
+} from 'react-native-gesture-handler';
 
 const ACTION_WIDTH = 72; // px revealed on swipe-left
 const SWIPE_THRESHOLD = 36; // minimum dx to snap open
@@ -19,8 +28,8 @@ export interface SwipeAction {
 }
 
 export interface AppRowProps {
-  /** Main text — bold, 13px */
-  title: string;
+  /** Main text — bold, 13px (can be a component for animations) */
+  title: string | React.ReactNode;
   /** Detail below title — 11px muted */
   subtitle?: string;
   /** Far-right tiny meta label OR custom right element */
@@ -46,11 +55,22 @@ export interface AppRowProps {
   /** Show bottom border separator */
   showBorder?: boolean;
   className?: string;
+  /** Custom class for the title text */
+  titleClassName?: string;
+  /** Custom class for the inner content container */
+  innerClassName?: string;
+  /** Custom class for the subtitle text */
+  subtitleClassName?: string;
+  /** Props for the title Text component */
+  titleProps?: any;
+  /** Props for the subtitle Text component */
+  subtitleProps?: any;
 }
 
 const RowContent = ({ 
   avatarLetter, avatarIcon, avatarBg, avatarColor, 
-  title, subtitle, pills, meta, rightElement 
+  title, subtitle, pills, meta, rightElement, titleClassName = '', subtitleClassName = '',
+  titleProps = {}, subtitleProps = {}
 }: any) => (
   <>
     {/* Avatar bubble */}
@@ -74,19 +94,25 @@ const RowContent = ({
 
     {/* Text content */}
     <View className="flex-1 mr-2">
-      <Text
-        className="text-[13px] font-black text-gray-900 tracking-tight font-inter-black leading-tight"
-        numberOfLines={1}
-      >
-        {title}
-      </Text>
+      {typeof title === 'string' ? (
+        <Text
+          className={`text-[13px] font-black tracking-tight font-inter-black leading-tight ${titleClassName || 'text-gray-900'}`}
+          numberOfLines={1}
+          {...titleProps}
+        >
+          {title}
+        </Text>
+      ) : (
+        title
+      )}
 
       {(subtitle || pills) && (
         <View className="flex-row items-center flex-wrap gap-1.5 mt-0.5">
           {subtitle && (
             <Text
-              className="text-[11px] font-medium text-gray-400 font-inter-medium"
+              className={`text-[11px] font-medium font-inter-medium ${subtitleClassName || 'text-gray-400'}`}
               numberOfLines={1}
+              {...subtitleProps}
             >
               {subtitle}
             </Text>
@@ -96,8 +122,8 @@ const RowContent = ({
       )}
     </View>
 
-    {/* Right side */}
-    <View className="items-end">
+    {/* Right side - Fixed width ensures vertical alignment of chevrons/icons */}
+    <View className="w-8 items-center justify-center">
       {meta && (
         <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-inter-black mb-1">
           {meta}
@@ -113,7 +139,7 @@ export const AppRow: React.FC<AppRowProps> = ({
   subtitle,
   meta,
   avatarLetter,
-  avatarBg = '#eef2ff',
+  avatarBg = 'rgba(238, 242, 255, 0.6)',
   avatarColor = '#4f46e5',
   avatarIcon,
   statusDot = 'none',
@@ -123,52 +149,44 @@ export const AppRow: React.FC<AppRowProps> = ({
   swipeAction,
   showBorder = true,
   className = '',
+  titleClassName = '',
+  innerClassName = '',
+  subtitleClassName = '',
+  titleProps,
+  subtitleProps,
 }) => {
-  const translateX = useRef(new Animated.Value(0)).current;
+  const translateX = useSharedValue(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !!swipeAction,
-      onMoveShouldSetPanResponder: (_, g) =>
-        !!swipeAction && Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
-
-      onPanResponderMove: (_, g) => {
-        if (g.dx < 0 && !isOpen) {
-          translateX.setValue(Math.max(g.dx, -ACTION_WIDTH));
-        } else if (g.dx > 0 && isOpen) {
-          translateX.setValue(Math.min(-ACTION_WIDTH + g.dx, 0));
-        }
-      },
-
-      onPanResponderRelease: (_, g) => {
-        if (!isOpen && g.dx < -SWIPE_THRESHOLD) {
-          Animated.spring(translateX, {
-            toValue: -ACTION_WIDTH,
-            useNativeDriver: true,
-            bounciness: 4,
-          }).start();
-          setIsOpen(true);
-        } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 4,
-          }).start();
-          setIsOpen(false);
-        }
-      },
-    })
-  ).current;
-
-  const closeSwipe = () => {
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      bounciness: 4,
-    }).start();
+  const closeSwipe = useCallback(() => {
+    translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
     setIsOpen(false);
-  };
+  }, []);
+
+  const panGesture = Gesture.Pan()
+    .enabled(!!swipeAction)
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-10, 10])
+    .onUpdate((event) => {
+      if (event.translationX < 0 && !isOpen) {
+        translateX.value = Math.max(event.translationX, -ACTION_WIDTH);
+      } else if (event.translationX > 0 && isOpen) {
+        translateX.value = Math.min(-ACTION_WIDTH + event.translationX, 0);
+      }
+    })
+    .onEnd((event) => {
+      if (!isOpen && event.translationX < -SWIPE_THRESHOLD) {
+        translateX.value = withSpring(-ACTION_WIDTH, { damping: 20, stiffness: 200 });
+        runOnJS(setIsOpen)(true);
+      } else {
+        translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        runOnJS(setIsOpen)(false);
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   const handleSwipeActionPress = () => {
     closeSwipe();
@@ -177,33 +195,36 @@ export const AppRow: React.FC<AppRowProps> = ({
 
   return (
     <View
-      className={`relative overflow-hidden ${showBorder ? 'border-b border-gray-50' : ''} ${className}`}
+      className={`relative overflow-hidden ${showBorder ? 'border-b border-gray-100/50' : ''} ${className}`}
     >
       {/* Swipe Action Background (revealed on left swipe) */}
       {swipeAction && (
-        <TouchableOpacity
+        <Pressable
           onPress={handleSwipeActionPress}
-          activeOpacity={0.85}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.85 : 1,
+          })}
           className={`absolute right-0 top-0 bottom-0 w-[72px] items-center justify-center ${swipeAction.bgColor}`}
         >
           {swipeAction.icon}
           <Text className="text-white text-[9px] font-black uppercase tracking-widest mt-1 font-inter-black">
             {swipeAction.label}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Main Row — slides left on swipe */}
-      <Animated.View
-        style={{ transform: [{ translateX }] }}
-        {...panResponder.panHandlers}
-      >
-        {onPress ? (
-          <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.7}
-            className="flex-row items-center px-4 py-3 bg-white"
-          >
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={animatedStyle}>
+          {onPress ? (
+            <Pressable
+              onPress={onPress}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.94 : 1,
+                transform: [{ scale: (pressed && Platform.OS === 'ios') ? 0.985 : 1 }],
+              })}
+              className={`flex-row items-center px-4 py-2.5 ${innerClassName || 'bg-white'}`}
+            >
             <RowContent 
               avatarLetter={avatarLetter}
               avatarIcon={avatarIcon}
@@ -214,10 +235,14 @@ export const AppRow: React.FC<AppRowProps> = ({
               pills={pills}
               meta={meta}
               rightElement={rightElement}
+              titleClassName={titleClassName}
+              subtitleClassName={subtitleClassName}
+              titleProps={titleProps}
+              subtitleProps={subtitleProps}
             />
-          </TouchableOpacity>
+          </Pressable>
         ) : (
-          <View className="flex-row items-center px-4 py-3 bg-white">
+          <View className={`flex-row items-center px-4 py-2.5 ${innerClassName || 'bg-white'}`}>
             <RowContent 
               avatarLetter={avatarLetter}
               avatarIcon={avatarIcon}
@@ -228,10 +253,15 @@ export const AppRow: React.FC<AppRowProps> = ({
               pills={pills}
               meta={meta}
               rightElement={rightElement}
+              titleClassName={titleClassName}
+              subtitleClassName={subtitleClassName}
+              titleProps={titleProps}
+              subtitleProps={subtitleProps}
             />
           </View>
-        )}
-      </Animated.View>
+          )}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 };

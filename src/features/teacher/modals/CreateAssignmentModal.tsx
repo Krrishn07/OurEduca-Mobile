@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { Icons } from '../../../../components/Icons';
 import { AppTheme, AppTypography, ModalShell, AppButton, AppRadius } from '../../../design-system';
+import { RosterSection } from '../../../../types';
 
 interface CreateAssignmentModalProps {
   visible: boolean;
   onClose: () => void;
   onCreate: (assignment: { title: string; description: string; max_marks: number; class_id: string; due_date?: string }) => void;
-  assignedSections: any[];
+  assignedSections: RosterSection[];
   isCreating?: boolean;
   initialClassId?: string | null;
 }
@@ -27,33 +28,57 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState('');
 
-  // Reset state on modal open
-  React.useEffect(() => {
-    if (visible) {
-      setCurrentStep(1);
-      setTitle('');
-      setDescription('');
-      setMaxMarks('100');
-      // If initialClassId is provided, find the corresponding roster entry
-      if (initialClassId) {
-          const match = assignedSections.find(r => r.class_id === initialClassId);
-          setSelectedRosterId(match ? (match.id || match.rosterId) : null);
-      } else {
-          setSelectedRosterId(null);
-      }
-      setDueDate('');
+  const resetForm = useCallback(() => {
+    setCurrentStep(1);
+    setTitle('');
+    setDescription('');
+    setMaxMarks('100');
+    setDueDate('');
+    if (initialClassId) {
+        const match = assignedSections.find(r => r.class_id === initialClassId);
+        setSelectedRosterId(match ? (match.id || match.rosterId) : null);
+    } else {
+        setSelectedRosterId(null);
     }
-  }, [visible, initialClassId]);
+  }, [initialClassId, assignedSections]);
+
+  // Reset state on modal open
+  useEffect(() => {
+    if (visible) resetForm();
+  }, [visible, resetForm]);
 
   const handleNext = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
+    if (currentStep === 1 && !selectedRosterId) return;
+    if (currentStep === 2 && !title.trim()) return;
+    if (currentStep < 3) setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const canSubmit = title.trim().length > 0 && selectedRosterId && maxMarks.length > 0;
+  const parsedMarks = parseInt(maxMarks);
+  const isMarksValid = !isNaN(parsedMarks) && parsedMarks > 0 && parsedMarks <= 1000;
+  const isDateValid = dueDate === '' || /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(dueDate);
+
+  const canSubmit = title.trim().length > 0 && selectedRosterId && isMarksValid && isDateValid;
+
+  const isDirty = title.trim() !== '' || description.trim() !== '' || (dueDate !== '');
+
+  const handleClose = () => {
+    if (isDirty && !isCreating) {
+      Alert.alert(
+        'Discard Assignment?',
+        'Progress will be lost. Institutional data nodes are not cached.',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: onClose },
+        ]
+      );
+    } else {
+      onClose();
+    }
+  };
 
   const handleSubmit = () => {
     const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === selectedRosterId);
@@ -62,13 +87,15 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         return;
     }
 
-    onCreate({
-      title,
-      description,
-      max_marks: parseInt(maxMarks) || 100,
-      class_id: selectedRoster.class_id,
-      due_date: dueDate || undefined
-    });
+    if (canSubmit) {
+      onCreate({
+        title: title.trim(),
+        description: description.trim(),
+        max_marks: parsedMarks,
+        class_id: selectedRoster.class_id,
+        due_date: dueDate || undefined
+      });
+    }
   };
 
   const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === selectedRosterId);
@@ -76,21 +103,27 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   return (
     <ModalShell
       visible={visible}
-      onClose={onClose}
+      onClose={handleClose}
       title="Create Assignment"
       subtitle={`Step ${currentStep} of 3`}
     >
       {/* Progress Indicator */}
-      <View className="flex-row items-center justify-center mb-8 gap-2">
+      <View className="flex-row items-center justify-center mb-8 gap-2.5">
           {[1, 2, 3].map(s => (
               <View 
                 key={s} 
-                className={`h-1.5 rounded-full ${currentStep === s ? 'w-8 bg-indigo-600' : 'w-4 bg-gray-200'}`} 
+                className={`h-2 rounded-full ${
+                  currentStep === s 
+                    ? 'w-10 bg-indigo-600 shadow-sm shadow-indigo-200' 
+                    : s < currentStep 
+                      ? 'w-4 bg-emerald-500' 
+                      : 'w-4 bg-gray-200'
+                }`} 
               />
           ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} className="max-h-[500px]">
+      <View className="min-h-[300px]">
         {currentStep === 1 && (
             <View>
                 <Text className="text-[9px] font-bold text-indigo-400 uppercase tracking-[2px] mb-4 px-1 font-inter-bold">Target Academic Section</Text>
@@ -102,6 +135,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                             <TouchableOpacity 
                                 key={uniqueId}
                                 onPress={() => setSelectedRosterId(uniqueId)}
+                                activeOpacity={0.75}
                                 className={`px-5 py-4 rounded-2xl border ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-200' : 'bg-white border-gray-100 shadow-sm'}`}
                             >
                                 <Text className={`text-[11px] font-bold uppercase tracking-wider font-inter-bold ${isSelected ? 'text-white' : 'text-gray-900'}`}>
@@ -155,7 +189,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 <View className="flex-row gap-4 mb-8">
                     <View className="flex-1">
                         <Text className="text-[9px] font-bold text-indigo-400 uppercase tracking-[2px] mb-2.5 px-1 font-inter-bold">Max Marks</Text>
-                        <View className="bg-gray-50 border border-gray-100 rounded-[24px] px-6 py-5 shadow-inner">
+                        <View className={`bg-gray-50 border ${!isMarksValid && maxMarks.length > 0 ? 'border-red-200' : 'border-gray-100'} rounded-[24px] px-6 py-5 shadow-inner`}>
                             <TextInput 
                                 placeholder="100" 
                                 value={maxMarks}
@@ -165,10 +199,15 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                                 placeholderTextColor="#94a3b8"
                             />
                         </View>
+                        {!isMarksValid && maxMarks.length > 0 && (
+                            <Text className="text-red-400 text-[9px] mt-2 font-inter-medium italic px-1">
+                                * Value 1 - 1000 required
+                            </Text>
+                        )}
                     </View>
                     <View className="flex-1">
                         <Text className="text-[9px] font-bold text-indigo-400 uppercase tracking-[2px] mb-2.5 px-1 font-inter-bold">Due Date (Optional)</Text>
-                        <View className="bg-gray-50 border border-gray-100 rounded-[24px] px-6 py-5 shadow-inner">
+                        <View className={`bg-gray-50 border ${!isDateValid && dueDate.length > 0 ? 'border-red-200' : 'border-gray-100'} rounded-[24px] px-6 py-5 shadow-inner`}>
                             <TextInput 
                                 placeholder="YYYY-MM-DD" 
                                 value={dueDate}
@@ -177,6 +216,11 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                                 placeholderTextColor="#94a3b8"
                             />
                         </View>
+                        {!isDateValid && dueDate.length > 0 && (
+                            <Text className="text-red-400 text-[9px] mt-2 font-inter-medium italic px-1">
+                                * Use YYYY-MM-DD
+                            </Text>
+                        )}
                     </View>
                 </View>
 
@@ -188,24 +232,29 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                         </View>
                         <View className="flex-1">
                             <Text className="text-gray-900 font-bold text-lg tracking-tight font-inter-bold" numberOfLines={1}>{title || 'Untitled Assignment'}</Text>
-                            <Text className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest font-inter-bold">{selectedRoster?.displayName || 'No Class Selected'}</Text>
+                            <Text className="text-[10px] font-bold text-indigo-500 uppercase tracking-[1px] font-inter-bold">
+                                {selectedRoster 
+                                    ? `${selectedRoster.name} • ${selectedRoster.subject} • Sec ${selectedRoster.section || 'A'}`
+                                    : 'No Class Selected'
+                                }
+                            </Text>
                         </View>
                     </View>
                     
                     <View className="pt-6 border-t border-gray-50">
                         <View className="flex-row justify-between mb-3">
-                            <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-inter-bold">Weightage</Text>
+                            <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-[1px] font-inter-bold">Weightage</Text>
                             <Text className="text-[10px] font-bold text-gray-900 font-inter-bold">{maxMarks} Marks</Text>
                         </View>
                         <View className="flex-row justify-between">
-                            <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-inter-bold">Target Students</Text>
+                            <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-[1px] font-inter-bold">Target Students</Text>
                             <Text className="text-[10px] font-bold text-indigo-600 italic font-inter-bold">Full Roster Transmission</Text>
                         </View>
                     </View>
                 </View>
             </View>
         )}
-      </ScrollView>
+      </View>
 
       <View className="mt-4 gap-4">
           {currentStep < 3 ? (
@@ -235,16 +284,16 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 onPress={handleBack}
                 className="py-4 items-center"
               >
-                  <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-inter-bold">Return to previous node</Text>
+                  <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-[1px] font-inter-bold">Return to previous node</Text>
               </TouchableOpacity>
           )}
 
           {currentStep === 1 && (
                <TouchableOpacity 
-               onPress={onClose}
+               onPress={handleClose}
                className="py-4 items-center"
              >
-                 <Text className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-inter-bold">Abort Creation</Text>
+                 <Text className="text-[10px] font-bold text-rose-400 uppercase tracking-[1px] font-inter-bold">Abort Creation</Text>
              </TouchableOpacity>
           )}
       </View>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, Image, ActivityIndicator, StyleSheet, InteractionManager } from 'react-native';
 import { UserRole, User, Video as VideoType } from '../types';
 import { RestrictedAccessView } from '../components/RestrictedAccessView';
 import { 
@@ -251,6 +251,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ role, activeTab,
 
         hydrate();
     }, [role, currentSchool?.id, mockAuthUser]);
+
 
     // --- Handlers ---
     const handleLogoutAllDevices = useCallback(async () => {
