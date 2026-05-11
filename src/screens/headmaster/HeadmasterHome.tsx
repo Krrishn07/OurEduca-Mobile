@@ -319,7 +319,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
                 </TouchableOpacity>
             }
           />
-          <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30 overflow-hidden">
+          <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">
             <CalendarWidget compact={true} />
           </AppCard>
         </View>

@@ -296,7 +296,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
       </View>
       
       {/* Selected Date Events */}
-      <View className="mt-2 pt-4 border-t border-gray-100 flex-1 min-h-[100px]">
+      <View className={`mt-2 pt-4 border-t border-gray-100 ${compact ? 'min-h-[120px]' : 'flex-1'}`}>
          <View className="flex-row justify-between items-center mb-3">
             <Text className="text-sm font-black text-gray-900">
                 {selectedDate ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) : 'Select a date'}
@@ -312,7 +312,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
             )}
          </View>
 
-         <ScrollView className="flex-1">
+         <ScrollView className={compact ? '' : 'flex-1'}>
              {selectedEvents && selectedEvents.length > 0 ? (
                  selectedEvents.map((evt, idx) => (
                      <View key={idx} className="flex-row items-center p-2 mb-2 rounded-lg bg-gray-50 border border-gray-100">
