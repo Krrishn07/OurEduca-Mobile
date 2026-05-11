@@ -74,10 +74,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
   }, [fetchSystemLogs]);
 
   const pendingInstitutes = (institutes || []).filter((i) => (i.status || '').toUpperCase() === 'PENDING');
-  const activeInstitutes = (institutes || []).filter((i) => {
-    const s = (i.status || '').toUpperCase();
-    return s === 'ACTIVE' || s === 'STABLE' || s === 'VERIFIED';
-  });
+  const activeInstitutes = (institutes || []).filter((i) => (i.status || '').toUpperCase() === 'ACTIVE');
   const activeCount = (users || []).filter((u) =>
     !u.status ||
     u.status?.toLowerCase() === 'active' ||

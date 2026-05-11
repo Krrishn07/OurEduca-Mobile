@@ -322,7 +322,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       setIsLoadingInstitutes(true);
       try {
           const { data, error } = await supabase
-              .from('institutes')
+              .from('schools')
               .select('*')
               .order('name', { ascending: true });
           if (error) throw error;
@@ -337,7 +337,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
   const registerInstitute = useCallback(async (details: any) => {
       try {
           const { error } = await supabase
-              .from('institutes')
+              .from('schools')
               .insert({
                   name: details.name,
                   phone: details.phone,
