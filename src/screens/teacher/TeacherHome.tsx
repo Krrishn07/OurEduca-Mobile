@@ -208,8 +208,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'classes',
       tone: 'indigo' as const,
       icon: <Icons.Users size={20} color={AppTheme.colors.primary} />,
-      subtitle: 'Class Roster',
-      subtitleTone: 'info' as const,
       trend: '+2',
       trendType: 'up' as const,
     },
@@ -219,8 +217,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'assignments',
       tone: 'amber' as const,
       icon: <Icons.Report size={20} color={AppTheme.colors.warning} />,
-      subtitle: 'Pending Work',
-      subtitleTone: 'warning' as const,
       trend: pendingGradesCount > 5 ? 'High' : 'Normal',
       trendType: pendingGradesCount > 10 ? 'down' : 'neutral' as const,
     },
@@ -230,8 +226,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'classes',
       tone: 'emerald' as const,
       icon: <Icons.Classes size={20} color={AppTheme.colors.success} />,
-      subtitle: "Today's Schedule",
-      subtitleTone: 'success' as const,
       trend: 'Full',
       trendType: 'neutral' as const,
     },
@@ -241,8 +235,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'notices',
       tone: 'rose' as const,
       icon: <Icons.Notifications size={20} color={AppTheme.colors.error} />,
-      subtitle: 'Latest Updates',
-      subtitleTone: 'danger' as const,
       trend: (announcements || []).length > 0 ? 'New' : 'Zero',
       trendType: (announcements || []).length > 0 ? 'up' : 'neutral' as const,
     },
@@ -252,8 +244,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'materials',
       tone: 'blue' as const,
       icon: <Icons.FileText size={20} color="#0ea5e9" />,
-      subtitle: 'Lesson Hub',
-      subtitleTone: 'info' as const,
       trend: 'Synced',
       trendType: 'up' as const,
     },
@@ -389,7 +379,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                activeOpacity={0.7}
                onPress={() => {
                  if (isLoading) return;
-                 triggerHaptic();
                  (stat as any).target && onStatPress?.((stat as any).target);
                }}
              >
@@ -408,13 +397,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                     tone={(stat as any).tone}
                     trend={(stat as any).trend}
                     trendType={(stat as any).trendType}
-                    pill={
-                      <StatusPill
-                        label={(stat as any).subtitle}
-                        className="self-center"
-                        type={(stat as any).subtitleTone === 'danger' ? 'danger' : (stat as any).subtitleTone === 'success' ? 'success' : (stat as any).subtitleTone === 'warning' ? 'warning' : 'neutral'}
-                      />
-                    }
                   />
                )}
              </TouchableOpacity>
