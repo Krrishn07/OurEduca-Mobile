@@ -71,8 +71,9 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         subtitle={
           <View className="mt-0.5">
             <Text 
-              className="text-[11px] font-inter-medium text-gray-500 leading-relaxed"
+              className="text-[11px] font-inter-medium text-gray-500 leading-relaxed flex-1"
               numberOfLines={2}
+              ellipsizeMode="tail"
             >
               {message}
             </Text>

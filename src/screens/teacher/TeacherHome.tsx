@@ -559,7 +559,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                     <AppRow
                       title={a.title}
                       subtitle={a.message}
-                      subtitleProps={{ numberOfLines: 2 }}
+                      subtitleProps={{ numberOfLines: 2, ellipsizeMode: 'tail' }}
                       avatarIcon={<Icons.Notifications size={16} color="#4f46e5" />}
                       avatarBg="#eef2ff"
                       meta={formatAcademicTime(a.created_at || a.date)}
