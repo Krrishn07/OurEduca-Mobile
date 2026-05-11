@@ -332,7 +332,7 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
           />
 
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {displayAnnouncements.map((a: any, idx: number) => {
+            {mentorAnnouncements.slice(0, 3).map((a: any, idx: number) => {
               const diff = Date.now() - new Date(a.date || Date.now()).getTime();
               const isNew = diff < 24 * 60 * 60 * 1000;
 

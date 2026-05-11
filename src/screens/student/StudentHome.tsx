@@ -280,7 +280,7 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
           }
         />
         <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-8">
-            {displayAnnouncements.map((a: any, idx) => {
+            {studentAnnouncements.slice(0, 3).map((a: any, idx) => {
               const diff = Date.now() - new Date(a.date || Date.now()).getTime();
               const isNew = diff < 24 * 60 * 60 * 1000;
 
