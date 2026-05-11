@@ -208,8 +208,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'classes',
       tone: 'indigo' as const,
       icon: <Icons.Users size={20} color={AppTheme.colors.primary} />,
-      trend: '+2',
-      trendType: 'up' as const,
+      trend: totalStudents > 0 ? 'Active' : 'None',
+      trendType: 'neutral' as const,
     },
     {
       label: 'To Grade',
@@ -217,8 +217,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'assignments',
       tone: 'amber' as const,
       icon: <Icons.Report size={20} color={AppTheme.colors.warning} />,
-      trend: pendingGradesCount > 5 ? 'High' : 'Normal',
-      trendType: pendingGradesCount > 10 ? 'down' : 'neutral' as const,
+      trend: pendingGradesCount > 15 ? 'Critical' : pendingGradesCount > 5 ? 'Medium' : 'Normal',
+      trendType: pendingGradesCount > 15 ? 'down' : pendingGradesCount > 5 ? 'down' : 'neutral' as const,
     },
     {
       label: 'Sessions',
@@ -226,7 +226,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'classes',
       tone: 'emerald' as const,
       icon: <Icons.Classes size={20} color={AppTheme.colors.success} />,
-      trend: 'Full',
+      trend: (assignedSections || []).length > 0 ? 'Full' : 'None',
       trendType: 'neutral' as const,
     },
     {
@@ -235,8 +235,11 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'notices',
       tone: 'rose' as const,
       icon: <Icons.Notifications size={20} color={AppTheme.colors.error} />,
-      trend: (announcements || []).length > 0 ? 'New' : 'Zero',
-      trendType: (announcements || []).length > 0 ? 'up' : 'neutral' as const,
+      trend: (announcements || []).some(a => {
+        const diff = Date.now() - new Date(a.created_at || Date.now()).getTime();
+        return diff < 24 * 60 * 60 * 1000; // 24 hours
+      }) ? 'New' : undefined,
+      trendType: 'up' as const,
     },
     {
       label: 'My Lessons',
@@ -244,7 +247,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       target: 'materials',
       tone: 'blue' as const,
       icon: <Icons.FileText size={20} color="#0ea5e9" />,
-      trend: 'Synced',
+      trend: teacherMaterials.length > 0 ? 'Synced' : 'Empty',
       trendType: 'up' as const,
     },
   ], [totalStudents, pendingGradesCount, assignedSections.length, announcements.length, teacherMaterials.length]);
