@@ -67,6 +67,8 @@ export interface AppRowProps {
   titleProps?: any;
   /** Props for the subtitle Text component */
   subtitleProps?: any;
+  /** Vertical alignment of row items */
+  alignItems?: 'center' | 'flex-start' | 'flex-end';
 }
 
 const RowContent = ({ 
@@ -165,6 +167,7 @@ export const AppRow: React.FC<AppRowProps> = ({
   subtitleClassName = '',
   titleProps,
   subtitleProps,
+  alignItems = 'center',
 }) => {
   const translateX = useSharedValue(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -233,8 +236,9 @@ export const AppRow: React.FC<AppRowProps> = ({
               style={({ pressed }) => ({
                 opacity: pressed ? 0.94 : 1,
                 transform: [{ scale: (pressed && Platform.OS === 'ios') ? 0.985 : 1 }],
+                alignItems: alignItems as any
               })}
-              className={`flex-row items-center px-4 py-2.5 ${innerClassName || 'bg-white'}`}
+              className={`flex-row px-4 py-2.5 ${innerClassName || 'bg-white'}`}
             >
             <RowContent 
               avatarLetter={avatarLetter}
@@ -254,7 +258,10 @@ export const AppRow: React.FC<AppRowProps> = ({
             />
           </Pressable>
         ) : (
-          <View className={`flex-row items-center px-4 py-2.5 ${innerClassName || 'bg-white'}`}>
+          <View 
+            style={{ alignItems: alignItems as any }}
+            className={`flex-row px-4 py-2.5 ${innerClassName || 'bg-white'}`}
+          >
             <RowContent 
               avatarLetter={avatarLetter}
               avatarIcon={avatarIcon}

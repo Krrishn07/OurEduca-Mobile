@@ -83,17 +83,18 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
     >
       <AppRow
         title={cleanTitle}
+        alignItems="flex-start"
         leftElement={
-          <View className="items-center">
+          <View className="items-center mt-0.5">
             <View 
-              className="w-9 h-9 rounded-xl items-center justify-center mb-1.5"
+              className="w-9 h-9 rounded-xl items-center justify-center mb-1"
               style={{ backgroundColor: config.bg }}
             >
               {config.icon}
             </View>
             {extractedType && (
               <View 
-                className="px-1 py-0.5 rounded border"
+                className="px-2 py-0.5 rounded border"
                 style={{ backgroundColor: config.bg, borderColor: config.color + '20' }}
               >
                 <Text 
@@ -107,7 +108,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           </View>
         }
         subtitle={
-          <View className="mt-0.5">
+          <View className="mt-0">
             <Text 
               className="text-[11px] font-inter-medium text-gray-500 leading-relaxed flex-1"
               numberOfLines={2}
