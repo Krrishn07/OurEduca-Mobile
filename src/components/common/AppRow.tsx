@@ -79,12 +79,12 @@ const RowContent = ({
   <>
     {/* Leading Content (Avatar or Custom) */}
     {leftElement ? (
-      <View className="mr-3 shrink-0 items-center">
+      <View className="mr-2 shrink-0 items-center">
         {leftElement}
       </View>
     ) : (avatarLetter || avatarIcon) && (
       <View
-        className="w-9 h-9 rounded-xl items-center justify-center mr-3 shrink-0"
+        className="w-9 h-9 rounded-xl items-center justify-center mr-2 shrink-0"
         style={{ backgroundColor: avatarBg }}
       >
         {avatarIcon ? (
@@ -238,7 +238,7 @@ export const AppRow: React.FC<AppRowProps> = ({
                 transform: [{ scale: (pressed && Platform.OS === 'ios') ? 0.985 : 1 }],
                 alignItems: alignItems as any
               })}
-              className={`flex-row px-4 py-2.5 ${innerClassName || 'bg-white'}`}
+              className={`flex-row px-3 py-2.5 ${innerClassName || 'bg-white'}`}
             >
             <RowContent 
               avatarLetter={avatarLetter}
@@ -260,7 +260,7 @@ export const AppRow: React.FC<AppRowProps> = ({
         ) : (
           <View 
             style={{ alignItems: alignItems as any }}
-            className={`flex-row px-4 py-2.5 ${innerClassName || 'bg-white'}`}
+            className={`flex-row px-3 py-2.5 ${innerClassName || 'bg-white'}`}
           >
             <RowContent 
               avatarLetter={avatarLetter}

@@ -85,7 +85,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         title={cleanTitle}
         alignItems="flex-start"
         leftElement={
-          <View className="items-center mt-0.5 w-14">
+          <View className="items-center mt-0.5 w-12">
             <View 
               className="w-9 h-9 rounded-xl items-center justify-center mb-1"
               style={{ backgroundColor: config.bg }}
