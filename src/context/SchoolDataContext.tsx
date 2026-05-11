@@ -448,7 +448,9 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
               id: a.id,
               title: a.title,
               message: a.message,
-              date: new Date(a.created_at).toLocaleDateString(),
+              date: new Date(a.created_at).toLocaleDateString('en-IN', {
+                  day: 'numeric', month: 'short', year: 'numeric'
+              }),
               sender_name: a.users?.name || 'Administration',
               sender_role: a.users?.role || 'SYSTEM',
               audience: a.audience,

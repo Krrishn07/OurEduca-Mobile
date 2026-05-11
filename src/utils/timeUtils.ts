@@ -16,7 +16,7 @@ export const formatAcademicTime = (dateStr?: string) => {
     return `Today at ${past.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
 
-  return past.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+  return past.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 export const isToday = (date: Date) => {
   const now = new Date();
@@ -39,6 +39,7 @@ export const formatDetailedDate = (date: Date) => {
   
   return date.toLocaleDateString('en-IN', {
     day: 'numeric',
-    month: 'long'
+    month: 'long',
+    year: 'numeric'
   });
 };
