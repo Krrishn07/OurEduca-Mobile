@@ -1,10 +1,11 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, TouchableOpacity } from 'react-native';
 import { AppCard } from './AppCard';
 import { AppTheme, AppTypography } from '@constants/Theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Icons } from './Icons';
+import { triggerHaptic, ImpactFeedbackStyle } from '@utils/haptics';
 
 interface StatCardProps {
   value: string | number;
@@ -12,10 +13,11 @@ interface StatCardProps {
   icon: React.ReactNode;
   tone?: 'indigo' | 'amber' | 'emerald' | 'rose' | 'blue' | 'sky' | 'violet';
   className?: string;
-  pill?: React.ReactNode;
   trend?: string | number;
   trendType?: 'up' | 'down' | 'neutral';
   index?: number;
+  onPress?: () => void;
+  isLoading?: boolean;
 }
 
 const TONE_CONFIG: Record<string, { colors: string[], iconBg: string }> = {
@@ -28,25 +30,53 @@ const TONE_CONFIG: Record<string, { colors: string[], iconBg: string }> = {
   violet:  { colors: ['#f5f3ff', '#ede9fe'], iconBg: '#ddd6fe' },
 };
 
+/**
+ * StatCard - The master controller for KPI cards across all dashboards.
+ * Handles internal haptics, animations, and theme-synchronized styling.
+ */
 export const StatCard: React.FC<StatCardProps> = ({
   value,
   label,
   icon,
   tone = 'indigo',
   className = '',
-  pill,
   trend,
   trendType = 'neutral',
   index = 0,
+  onPress,
+  isLoading = false,
 }) => {
   const config = TONE_CONFIG[tone] || TONE_CONFIG.indigo;
+
+  // MASTER SWITCH: Change this to true/false to enable/disable haptics for ALL stats in the app.
+  const ENABLE_HAPTICS = false; 
+
+  const handlePress = () => {
+    if (isLoading || !onPress) return;
+    if (ENABLE_HAPTICS) triggerHaptic(ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
+  if (isLoading) {
+    return (
+      <AppCard className={`w-full items-center justify-center min-h-[150px] ${className}`}>
+        <View className="w-10 h-10 rounded-2xl bg-gray-50 mb-3" />
+        <View className="w-2/3 h-6 bg-gray-50 rounded-lg mb-2" />
+        <View className="w-1/3 h-3 bg-gray-50 rounded-md" />
+      </AppCard>
+    );
+  }
 
   return (
     <Animated.View 
       entering={FadeInDown.delay(index * 100).duration(500).springify()}
       className={`w-full ${className}`}
     >
-      <AppCard noPadding className="items-center justify-center min-h-[150px] overflow-hidden">
+      <AppCard 
+        noPadding 
+        onPress={handlePress}
+        className="items-center justify-center min-h-[150px] overflow-hidden"
+      >
         <LinearGradient
           colors={config.colors}
           style={{ position: 'absolute', inset: 0, opacity: 0.5 }}
@@ -85,8 +115,6 @@ export const StatCard: React.FC<StatCardProps> = ({
             )}
           </View>
         </View>
-        
-        {pill && <View className="mt-1">{pill}</View>}
       </AppCard>
     </Animated.View>
   );
