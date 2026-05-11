@@ -93,17 +93,12 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
               {config.icon}
             </View>
             {extractedType && (
-              <View 
-                className="px-2 py-0.5 rounded border"
-                style={{ backgroundColor: config.bg, borderColor: config.color + '20' }}
+              <Text 
+                className="text-[7px] font-inter-black uppercase tracking-widest mt-1"
+                style={{ color: config.color }}
               >
-                <Text 
-                  className="text-[6px] font-inter-black uppercase tracking-tighter"
-                  style={{ color: config.color }}
-                >
-                  {extractedType}
-                </Text>
-              </View>
+                {extractedType}
+              </Text>
             )}
           </View>
         }
