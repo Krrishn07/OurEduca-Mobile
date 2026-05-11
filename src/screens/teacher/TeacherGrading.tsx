@@ -158,8 +158,7 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
   // FIX-13: Error state so user sees a retry prompt instead of silent empty screen
   const [fetchError,         setFetchError]         = useState<string | null>(null);
 
-  // FIX-15: Ref to programmatically focus the search TextInput from the header icon
-  const searchRef = useRef<TextInput>(null);
+
 
   const insets = useSafeAreaInsets();
 
