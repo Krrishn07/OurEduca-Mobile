@@ -217,8 +217,8 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
               <Icons.Calendar size={20} color="#4f46e5" />
           </View>
           <View>
-              <Text className="text-xl font-black text-gray-900 tracking-tighter">Academic Calendar</Text>
-              <Text className="text-[9px] text-gray-400 font-black uppercase tracking-[2px] mt-1">Institutional Schedule</Text>
+              <Text className="text-xl font-black text-gray-900 tracking-tighter">My Schedule</Text>
+              <Text className="text-[9px] text-gray-400 font-black uppercase tracking-[2px] mt-1">Personal Workspace</Text>
           </View>
         </View>
       )}

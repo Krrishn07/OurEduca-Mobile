@@ -796,7 +796,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
          {/* INSTITUTIONAL CALENDAR */}
          <View className="mb-8">
            <SectionHeader
-             title="INSTITUTIONAL CALENDAR"
+             title="MY SCHEDULE"
              className=""
            />
           <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">

@@ -308,10 +308,10 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
             )}
         </AppCard>
         
-        {/* Institutional Calendar */}
+        {/* Personal Calendar */}
         <SectionHeader 
-          title="ACADEMIC CALENDAR" 
-          subtitle="EVENTS & HOLIDAYS"
+          title="MY SCHEDULE" 
+          subtitle="PERSONAL REMINDERS"
           className="mb-4"
         />
         <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">

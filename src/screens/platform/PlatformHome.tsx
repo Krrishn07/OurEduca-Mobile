@@ -324,11 +324,11 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
           </AppCard>
         </View>
 
-        {/* System Schedule Section */}
+        {/* Personal Schedule Section */}
         <View className="mb-10">
           <SectionHeader 
-            title="SYSTEM SCHEDULE" 
-            subtitle="GLOBAL CYCLES & MAINTENANCE"
+            title="MY SCHEDULE" 
+            subtitle="SYSTEM REMINDERS"
             className="mb-4 px-2"
           />
           <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">

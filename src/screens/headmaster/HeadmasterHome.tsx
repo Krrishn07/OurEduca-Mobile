@@ -307,7 +307,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
         {/* Section: Academic Calendar */}
         <View className="mb-10">
           <SectionHeader
-            title="ACADEMIC CALENDAR"
+            title="MY SCHEDULE"
             className="px-2"
             rightElement={
                 <TouchableOpacity 
