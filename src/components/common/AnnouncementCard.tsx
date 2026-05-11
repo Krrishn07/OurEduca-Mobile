@@ -84,12 +84,6 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       <AppRow
         title={
           <View className="flex-row items-center flex-wrap gap-2">
-            <Text 
-              className="text-[13px] font-inter-bold text-gray-900"
-              numberOfLines={1}
-            >
-              {cleanTitle}
-            </Text>
             {extractedType && (
               <View 
                 className="px-1.5 py-0.5 rounded border"
@@ -106,6 +100,12 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
                 </Text>
               </View>
             )}
+            <Text 
+              className="text-[13px] font-inter-bold text-gray-900"
+              numberOfLines={1}
+            >
+              {cleanTitle}
+            </Text>
           </View>
         }
         subtitle={
