@@ -210,23 +210,25 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
         <View className="flex-row flex-wrap justify-between mb-4">
-          {stats.map((stat) => (
-            <TouchableOpacity key={stat.label} onPress={stat.onPress} className="w-[48.2%] mb-4">
-              <StatCard
-                value={stat.value}
-                label={stat.label}
-                icon={stat.icon}
-                toneClassName={stat.toneClassName}
-                pill={
-                  <StatusPill
-                    label={stat.subtitle}
-                    className="self-center"
-                    type={stat.subtitleTone === 'success' ? 'success' : stat.subtitleTone === 'warning' ? 'warning' : 'neutral'}
-                  />
-                }
-              />
-            </TouchableOpacity>
-          ))}
+          {stats.map((stat, idx) => {
+            const mappedTone = 
+              stat.toneClassName === 'bg-indigo-50' ? 'indigo' :
+              stat.toneClassName === 'bg-emerald-50' ? 'emerald' :
+              stat.toneClassName === 'bg-amber-50' ? 'amber' : 'indigo';
+
+            return (
+              <View key={`platform-stat-${idx}`} className="w-[48.2%] mb-4">
+                <StatCard
+                  index={idx}
+                  value={stat.value}
+                  label={stat.label}
+                  icon={stat.icon}
+                  tone={mappedTone as any}
+                  onPress={stat.onPress}
+                />
+              </View>
+            );
+          })}
         </View>
         
 

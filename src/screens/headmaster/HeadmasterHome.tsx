@@ -173,21 +173,26 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
-          {stats.map((stat, idx) => (
-            <TouchableOpacity 
-              key={`headmaster-stat-${stat.label.replace(/\s+/g, '-')}-${idx}`} 
-              onPress={stat.onPress} 
-              className="w-[48%]"
-            >
-              <StatCard
-                value={stat.value}
-                label={stat.label}
-                icon={stat.icon}
-                toneClassName={stat.toneClassName}
-                pill={<StatusPill label={stat.subtitle} type={stat.subtitleTone} className="self-center" />}
-              />
-            </TouchableOpacity>
-          ))}
+          {stats.map((stat, idx) => {
+            const mappedTone = 
+              stat.toneClassName === 'bg-indigo-50' ? 'indigo' :
+              stat.toneClassName === 'bg-orange-50' ? 'amber' :
+              stat.toneClassName === 'bg-emerald-50' ? 'emerald' :
+              stat.toneClassName === 'bg-blue-50' ? 'blue' : 'indigo';
+
+            return (
+              <View key={`headmaster-stat-${idx}`} className="w-[48%]">
+                <StatCard
+                  index={idx}
+                  value={stat.value}
+                  label={stat.label}
+                  icon={stat.icon}
+                  tone={mappedTone as any}
+                  onPress={stat.onPress}
+                />
+              </View>
+            );
+          })}
         </View>
 
         {/* Section: School Notices */}

@@ -241,21 +241,29 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
 
         {/* Stats Grid */}
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
-          {(stats || []).map((stat, idx) => (
-            <TouchableOpacity
-              key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`}
-              className="w-[48%]"
-              activeOpacity={0.9}
-            >
-              <StatCard
-                value={stat.value}
-                label={stat.label}
-                icon={stat.icon}
-                toneClassName={stat.toneClassName}
-                pill={<StatusPill label={stat.subtitle} className="self-center" type={stat.subtitleTone} />}
-              />
-            </TouchableOpacity>
-          ))}
+          {(stats || []).map((stat, idx) => {
+            const mappedTone = 
+              stat.toneClassName === 'bg-indigo-50' ? 'indigo' :
+              stat.toneClassName === 'bg-emerald-50' ? 'emerald' :
+              stat.toneClassName === 'bg-amber-50' ? 'amber' :
+              stat.toneClassName === 'bg-rose-50' ? 'rose' : 'indigo';
+
+            return (
+              <View key={`mentor-stat-${idx}`} className="w-[48%]">
+                <StatCard
+                  index={idx}
+                  value={stat.value}
+                  label={stat.label}
+                  icon={stat.icon}
+                  tone={mappedTone as any}
+                  onPress={() => {
+                    if (stat.label === 'Students') onNavigate?.('manage');
+                    else if (stat.label === 'Subjects') onNavigate?.('classes');
+                  }}
+                />
+              </View>
+            );
+          })}
         </View>
 
         {/* Daily Agenda - Standardized 280px Horizontal Cards */}
