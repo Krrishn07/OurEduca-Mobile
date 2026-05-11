@@ -372,40 +372,35 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       >
         {/* KPI Stats Grid - Top */}
          <View className="flex-row flex-wrap justify-between mb-8">
-           {(isLoading ? [1, 2, 3, 4] : stats).map((stat, idx) => (
-             <TouchableOpacity
-               key={isLoading ? `skeleton-${idx}` : `stat-${(stat as any).label.replace(/\s+/g, '-')}-${idx}`}
-               className="w-[48%] mb-4"
-               activeOpacity={0.7}
-               onPress={() => {
-                 if (isLoading) return;
-                 triggerHaptic();
-                 (stat as any).target && onStatPress?.((stat as any).target);
-               }}
-             >
-               {isLoading ? (
-                 <AppCard className="w-full items-center justify-center min-h-[140px]">
-                   <Skeleton width={40} height={40} borderRadius={12} className="mb-3" />
-                   <Skeleton width="60%" height={24} className="mb-2" />
-                   <Skeleton width="40%" height={12} />
-                 </AppCard>
-               ) : (
-                 <StatCard
-                   value={(stat as any).value}
-                   label={(stat as any).label}
-                   icon={(stat as any).icon}
-                   tone={(stat as any).tone}
-                   pill={
-                     <StatusPill
-                       label={(stat as any).subtitle}
-                       className="self-center"
-                       type={(stat as any).subtitleTone === 'danger' ? 'danger' : (stat as any).subtitleTone === 'success' ? 'success' : (stat as any).subtitleTone === 'warning' ? 'warning' : 'neutral'}
-                     />
-                   }
-                 />
-               )}
-             </TouchableOpacity>
-           ))}
+            {(isLoading ? [1, 2, 3, 4] : stats).map((stat, idx) => (
+              <View
+                key={isLoading ? `skeleton-${idx}` : `stat-${(stat as any).label.replace(/\s+/g, '-')}-${idx}`}
+                className="w-[48%] mb-4"
+              >
+                {isLoading ? (
+                  <AppCard className="w-full items-center justify-center min-h-[140px]">
+                    <Skeleton width={40} height={40} borderRadius={12} className="mb-3" />
+                    <Skeleton width="60%" height={24} className="mb-2" />
+                    <Skeleton width="40%" height={12} />
+                  </AppCard>
+                ) : (
+                  <StatCard
+                    value={(stat as any).value}
+                    label={(stat as any).label}
+                    icon={(stat as any).icon}
+                    tone={(stat as any).tone}
+                    onPress={() => (stat as any).target && onStatPress?.((stat as any).target)}
+                    pill={
+                      <StatusPill
+                        label={(stat as any).subtitle}
+                        className="self-center"
+                        type={(stat as any).subtitleTone === 'danger' ? 'danger' : (stat as any).subtitleTone === 'success' ? 'success' : (stat as any).subtitleTone === 'warning' ? 'warning' : 'neutral'}
+                      />
+                    }
+                  />
+                )}
+              </View>
+            ))}
          </View>
 
         {/* TODAY'S TIMELINE: AUTO-COLLAPSING ENGINE */}

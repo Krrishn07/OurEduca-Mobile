@@ -242,19 +242,18 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
         {/* Stats Grid */}
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
           {(stats || []).map((stat, idx) => (
-            <TouchableOpacity
+            <View
               key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`}
               className="w-[48%]"
-              activeOpacity={0.9}
             >
               <StatCard
                 value={stat.value}
                 label={stat.label}
                 icon={stat.icon}
-                toneClassName={stat.toneClassName}
+                onPress={() => {}}
                 pill={<StatusPill label={stat.subtitle} className="self-center" type={stat.subtitleTone} />}
               />
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 

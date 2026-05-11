@@ -240,20 +240,19 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
 
         {/* Stats Registry */}
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
-          {stats.map((stat, idx) => (
-            <TouchableOpacity 
+            {stats.map((stat, idx) => (
+            <View 
               key={`stat-${stat.label.replace(/\s+/g, '-')}-${idx}`} 
               className="w-[48%]" 
-              activeOpacity={0.9}
             >
               <StatCard
                 value={stat.value}
                 label={stat.label}
                 icon={stat.icon}
-                toneClassName={stat.toneClassName}
+                onPress={() => onNavigate(stat.label.toLowerCase() === 'attendance' ? 'classes' : stat.label.toLowerCase())}
                 pill={<StatusPill label={stat.subtitle} type={stat.subtitleTone} className="self-center" />}
               />
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 
