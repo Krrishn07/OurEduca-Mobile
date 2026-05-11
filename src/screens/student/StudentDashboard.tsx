@@ -12,10 +12,11 @@ import { StudentHome } from '@screens/student/StudentHome';
 import { StudentClasses } from '@screens/student/StudentClasses';
 import { StudentVideos } from '@screens/student/StudentVideos';
 import { StudentFees } from '@screens/student/StudentFees';
-import { PaymentGatewayModal, AnnouncementHistoryModal, VideoPlayerModal } from '@components/modals';
+import { PaymentGatewayModal, VideoPlayerModal } from '@components/modals';
 import { RazorpayCheckout } from '@components/payment/RazorpayCheckout';
 import { StudentMessages } from '@screens/student/StudentMessages';
 import { StudentProfile } from '@screens/student/StudentProfile';
+import { AnnouncementsScreen } from '@components/common';
 import { Video as VideoType } from '@context/SchoolDataContext';
 
 interface StudentDashboardProps {
@@ -42,6 +43,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
   const [videoSearch, setVideoSearch] = useState('');
   const [playingVideo, setPlayingVideo] = useState<VideoType | null>(null);
   const [showVideoPlayerModal, setShowVideoPlayerModal] = useState(false);
+  const [showAllNotices, setShowAllNotices] = useState(false);
 
   const { 
     announcements, fetchAnnouncements, fetchSchoolDetails, studentPaymentLink, chatMessages, sendChatMessage, fetchMessages,
@@ -368,6 +370,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
          ) : (
              <>
                 {activeTab === 'home' && (
+                  showAllNotices ? (
+                    <AnnouncementsScreen 
+                      announcements={announcements}
+                      currentUser={currentUser}
+                      onBack={() => setShowAllNotices(false)}
+                    />
+                  ) : (
                     <StudentHome 
                       currentUser={currentUser}
                       studentMaterials={studentMaterials}
@@ -376,10 +385,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                       allStudentClasses={studentClasses}
                       announcements={announcements}
                       onNavigate={onNavigate}
-                      onShowHistory={() => setShowHistoryModal(true)}
+                      onShowHistory={() => setShowAllNotices(true)}
                       currentSchool={currentSchool}
                       attendanceRate={attendanceRate}
                     />
+                  )
                 )}
                 {activeTab === 'classes' && (
                   hasPermission('classes', role, currentSchool?.id) ? (
@@ -472,12 +482,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
              </>
          )}
 
-         <AnnouncementHistoryModal 
-            visible={showHistoryModal}
-            onClose={() => setShowHistoryModal(false)}
-            announcements={announcements}
-            currentUser={mockAuthUser}
-         />
 
          <VideoPlayerModal 
             visible={showVideoPlayerModal}
