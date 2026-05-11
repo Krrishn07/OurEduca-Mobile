@@ -174,18 +174,19 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       >
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
           {stats.map((stat, idx) => (
-            <View 
+            <TouchableOpacity 
               key={`headmaster-stat-${stat.label.replace(/\s+/g, '-')}-${idx}`} 
+              onPress={stat.onPress} 
               className="w-[48%]"
             >
               <StatCard
                 value={stat.value}
                 label={stat.label}
                 icon={stat.icon}
-                onPress={stat.onPress}
+                toneClassName={stat.toneClassName}
                 pill={<StatusPill label={stat.subtitle} type={stat.subtitleTone} className="self-center" />}
               />
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 

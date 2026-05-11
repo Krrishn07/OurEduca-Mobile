@@ -210,6 +210,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       icon: <Icons.Users size={20} color={AppTheme.colors.primary} />,
       subtitle: 'Class Roster',
       subtitleTone: 'info' as const,
+      trend: '+2',
+      trendType: 'up' as const,
     },
     {
       label: 'To Grade',
@@ -219,6 +221,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       icon: <Icons.Report size={20} color={AppTheme.colors.warning} />,
       subtitle: 'Pending Work',
       subtitleTone: 'warning' as const,
+      trend: pendingGradesCount > 5 ? 'High' : 'Normal',
+      trendType: pendingGradesCount > 10 ? 'down' : 'neutral' as const,
     },
     {
       label: 'Sessions',
@@ -228,6 +232,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       icon: <Icons.Classes size={20} color={AppTheme.colors.success} />,
       subtitle: "Today's Schedule",
       subtitleTone: 'success' as const,
+      trend: 'Full',
+      trendType: 'neutral' as const,
     },
     {
       label: 'Announcements',
@@ -237,6 +243,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       icon: <Icons.Notifications size={20} color={AppTheme.colors.error} />,
       subtitle: 'Latest Updates',
       subtitleTone: 'danger' as const,
+      trend: (announcements || []).length > 0 ? 'New' : 'Zero',
+      trendType: (announcements || []).length > 0 ? 'up' : 'neutral' as const,
     },
     {
       label: 'My Lessons',
@@ -246,6 +254,8 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       icon: <Icons.FileText size={20} color="#0ea5e9" />,
       subtitle: 'Lesson Hub',
       subtitleTone: 'info' as const,
+      trend: 'Synced',
+      trendType: 'up' as const,
     },
   ], [totalStudents, pendingGradesCount, assignedSections.length, announcements.length, teacherMaterials.length]);
 
@@ -372,24 +382,32 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
       >
         {/* KPI Stats Grid - Top */}
          <View className="flex-row flex-wrap justify-between mb-8">
-            {(isLoading ? [1, 2, 3, 4] : stats).map((stat, idx) => (
-              <View
-                key={isLoading ? `skeleton-${idx}` : `stat-${(stat as any).label.replace(/\s+/g, '-')}-${idx}`}
-                className="w-[48%] mb-4"
-              >
-                {isLoading ? (
-                  <AppCard className="w-full items-center justify-center min-h-[140px]">
-                    <Skeleton width={40} height={40} borderRadius={12} className="mb-3" />
-                    <Skeleton width="60%" height={24} className="mb-2" />
-                    <Skeleton width="40%" height={12} />
-                  </AppCard>
-                ) : (
+           {(isLoading ? [1, 2, 3, 4] : stats).map((stat, idx) => (
+             <TouchableOpacity
+               key={isLoading ? `skeleton-${idx}` : `stat-${(stat as any).label.replace(/\s+/g, '-')}-${idx}`}
+               className="w-[48%] mb-4"
+               activeOpacity={0.7}
+               onPress={() => {
+                 if (isLoading) return;
+                 triggerHaptic();
+                 (stat as any).target && onStatPress?.((stat as any).target);
+               }}
+             >
+               {isLoading ? (
+                 <AppCard className="w-full items-center justify-center min-h-[140px]">
+                   <Skeleton width={40} height={40} borderRadius={12} className="mb-3" />
+                   <Skeleton width="60%" height={24} className="mb-2" />
+                   <Skeleton width="40%" height={12} />
+                 </AppCard>
+               ) : (
                   <StatCard
+                    index={idx}
                     value={(stat as any).value}
                     label={(stat as any).label}
                     icon={(stat as any).icon}
                     tone={(stat as any).tone}
-                    onPress={() => (stat as any).target && onStatPress?.((stat as any).target)}
+                    trend={(stat as any).trend}
+                    trendType={(stat as any).trendType}
                     pill={
                       <StatusPill
                         label={(stat as any).subtitle}
@@ -398,9 +416,9 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                       />
                     }
                   />
-                )}
-              </View>
-            ))}
+               )}
+             </TouchableOpacity>
+           ))}
          </View>
 
         {/* TODAY'S TIMELINE: AUTO-COLLAPSING ENGINE */}

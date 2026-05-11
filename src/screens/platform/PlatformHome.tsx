@@ -211,12 +211,12 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       >
         <View className="flex-row flex-wrap justify-between mb-4">
           {stats.map((stat) => (
-            <View key={stat.label} className="w-[48.2%] mb-4">
+            <TouchableOpacity key={stat.label} onPress={stat.onPress} className="w-[48.2%] mb-4">
               <StatCard
                 value={stat.value}
                 label={stat.label}
                 icon={stat.icon}
-                onPress={stat.onPress}
+                toneClassName={stat.toneClassName}
                 pill={
                   <StatusPill
                     label={stat.subtitle}
@@ -225,7 +225,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
                   />
                 }
               />
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
         

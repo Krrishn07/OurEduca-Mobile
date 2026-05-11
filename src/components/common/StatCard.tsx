@@ -1,16 +1,10 @@
 import React from 'react';
-import { Text, View, Pressable } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  withTiming,
-  interpolate,
-  Extrapolate
-} from 'react-native-reanimated';
+import { Text, View } from 'react-native';
 import { AppCard } from './AppCard';
-import { AppTypography, AppTheme } from '@constants/Theme';
-import { triggerHaptic } from '@utils/haptics';
+import { AppTheme, AppTypography } from '@constants/Theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Icons } from './Icons';
 
 interface StatCardProps {
   value: string | number;
@@ -19,20 +13,20 @@ interface StatCardProps {
   tone?: 'indigo' | 'amber' | 'emerald' | 'rose' | 'blue' | 'sky' | 'violet';
   className?: string;
   pill?: React.ReactNode;
-  onPress?: () => void;
+  trend?: string | number;
+  trendType?: 'up' | 'down' | 'neutral';
+  index?: number;
 }
 
-const TONE_STYLES: Record<string, { backgroundColor: string }> = {
-  indigo:  { backgroundColor: '#eef2ff' },
-  amber:   { backgroundColor: '#fffbeb' },
-  emerald: { backgroundColor: '#f0fdf4' },
-  rose:    { backgroundColor: '#fff1f2' },
-  blue:    { backgroundColor: '#f0f9ff' },
-  sky:     { backgroundColor: '#e0f2fe' },
-  violet:  { backgroundColor: '#f5f3ff' },
+const TONE_CONFIG: Record<string, { colors: string[], iconBg: string }> = {
+  indigo:  { colors: ['#f5f7ff', '#eef2ff'], iconBg: '#e0e7ff' },
+  amber:   { colors: ['#fffcf0', '#fffbeb'], iconBg: '#fef3c7' },
+  emerald: { colors: ['#f0fdf4', '#dcfce7'], iconBg: '#bbf7d0' },
+  rose:    { colors: ['#fff1f2', '#ffe4e6'], iconBg: '#fecdd3' },
+  blue:    { colors: ['#eff6ff', '#dbeafe'], iconBg: '#bfdbfe' },
+  sky:     { colors: ['#f0f9ff', '#e0f2fe'], iconBg: '#bae6fd' },
+  violet:  { colors: ['#f5f3ff', '#ede9fe'], iconBg: '#ddd6fe' },
 };
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const StatCard: React.FC<StatCardProps> = ({
   value,
@@ -41,86 +35,59 @@ export const StatCard: React.FC<StatCardProps> = ({
   tone = 'indigo',
   className = '',
   pill,
-  onPress,
+  trend,
+  trendType = 'neutral',
+  index = 0,
 }) => {
-  const pressed = useSharedValue(0);
+  const config = TONE_CONFIG[tone] || TONE_CONFIG.indigo;
 
-  const animatedStyle = useAnimatedStyle(() => {
-    const scale = interpolate(pressed.value, [0, 1], [1, 0.97], Extrapolate.CLAMP);
-    const elevation = interpolate(pressed.value, [0, 1], [4, 8], Extrapolate.CLAMP);
-    const shadowOpacity = interpolate(pressed.value, [0, 1], [0.1, 0.2], Extrapolate.CLAMP);
-
-    return {
-      transform: [{ scale: withSpring(scale, { damping: 15, stiffness: 150 }) }],
-      shadowOpacity: withTiming(shadowOpacity, { duration: 150 }),
-      elevation: withTiming(elevation, { duration: 150 }),
-    };
-  });
-
-  const iconStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(pressed.value, [0, 1], [0, -4], Extrapolate.CLAMP);
-    return {
-      transform: [{ translateY: withSpring(translateY, { damping: 12, stiffness: 120 }) }],
-    };
-  });
-
-  const pillStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(pressed.value, [0, 1], [1, 0.8], Extrapolate.CLAMP);
-    const scale = interpolate(pressed.value, [0, 1], [1, 1.05], Extrapolate.CLAMP);
-    return {
-      opacity: withTiming(opacity, { duration: 200 }),
-      transform: [{ scale: withSpring(scale) }],
-    };
-  });
-
-  const handlePressIn = () => {
-    pressed.value = 1;
-    triggerHaptic();
-  };
-
-  const handlePressOut = () => {
-    pressed.value = 0;
-  };
-
-  const content = (
+  return (
     <Animated.View 
-      style={[animatedStyle]} 
-      className={`w-full bg-white border border-gray-100/50 rounded-[24px] p-5 items-center justify-center min-h-[160px] shadow-xl shadow-indigo-100/30 ${className}`}
+      entering={FadeInDown.delay(index * 100).duration(500).springify()}
+      className={`w-full ${className}`}
     >
-      <Animated.View 
-        className="p-4 rounded-[18px] mb-3 items-center justify-center"
-        style={[TONE_STYLES[tone] || TONE_STYLES.indigo, iconStyle]}
-      >
-        {icon}
-      </Animated.View>
-      <Text 
-        className={AppTypography.statValue}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {value}
-      </Text>
-      <Text className={`${AppTypography.meta} text-gray-400 mt-1.5 mb-3 text-center`}>{label}</Text>
-      {pill && (
-        <Animated.View style={pillStyle}>
-          {pill}
-        </Animated.View>
-      )}
+      <AppCard noPadding className="items-center justify-center min-h-[150px] overflow-hidden">
+        <LinearGradient
+          colors={config.colors}
+          style={{ position: 'absolute', inset: 0, opacity: 0.5 }}
+        />
+        
+        <View 
+          className="p-3 rounded-[16px] mb-2.5 shadow-sm"
+          style={{ backgroundColor: config.iconBg }}
+        >
+          {icon}
+        </View>
+
+        <View className="items-center px-2">
+          <Text 
+            className={`${AppTypography.statValue} text-[22px]`}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {value}
+          </Text>
+          
+          <View className="flex-row items-center mt-1 mb-2">
+            <Text className={`${AppTypography.meta} text-gray-400 mr-1.5`}>{label}</Text>
+            {trend && (
+              <View className={`flex-row items-center px-1.5 py-0.5 rounded-full ${
+                trendType === 'up' ? 'bg-emerald-100' : trendType === 'down' ? 'bg-rose-100' : 'bg-gray-100'
+              }`}>
+                {trendType === 'up' && <Icons.ArrowUp size={8} color="#059669" />}
+                {trendType === 'down' && <Icons.ArrowDown size={8} color="#e11d48" />}
+                <Text className={`text-[8px] font-black font-inter-black ml-0.5 ${
+                  trendType === 'up' ? 'text-emerald-700' : trendType === 'down' ? 'text-rose-700' : 'text-gray-600'
+                }`}>
+                  {trend}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+        
+        {pill && <View className="mt-1">{pill}</View>}
+      </AppCard>
     </Animated.View>
   );
-
-  if (onPress) {
-    return (
-      <AnimatedPressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={{ width: '100%' }}
-      >
-        {content}
-      </AnimatedPressable>
-    );
-  }
-
-  return content;
 };
