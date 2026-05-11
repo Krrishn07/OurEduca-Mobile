@@ -5,7 +5,7 @@ import { AppRow } from './AppRow';
 import { AppTheme, AppTypography } from '@constants/Theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-export type AnnouncementCategory = 'urgent' | 'academic' | 'event' | 'general';
+export type AnnouncementCategory = 'urgent' | 'academic' | 'event' | 'staff' | 'student' | 'general';
 
 interface AnnouncementCardProps {
   id: string;
@@ -38,10 +38,20 @@ const CATEGORY_CONFIG: Record<AnnouncementCategory, { icon: React.ReactNode, col
     color: '#059669', 
     bg: '#ecfdf5' 
   },
-  general: { 
-    icon: <Icons.Notifications size={15} color="#0ea5e9" />, 
-    color: '#0ea5e9', 
+  staff: { 
+    icon: <Icons.Briefcase size={15} color="#d97706" />, 
+    color: '#d97706', 
+    bg: '#fffbeb' 
+  },
+  student: { 
+    icon: <Icons.User size={15} color="#0284c7" />, 
+    color: '#0284c7', 
     bg: '#f0f9ff' 
+  },
+  general: { 
+    icon: <Icons.Notifications size={15} color="#64748b" />, 
+    color: '#64748b', 
+    bg: '#f8fafc' 
   },
 };
 

@@ -147,13 +147,15 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                 );
 
                 // Intelligent Category Mapping (Keyword-based fallback)
-                let cardCategory: any = a.category;
+                let cardCategory: AnnouncementCategory = a.category;
                 if (!cardCategory || cardCategory === 'general') {
                     const titleUpper = (a.title || '').toUpperCase();
                     if (titleUpper.includes('[URGENT]') || titleUpper.includes('URGENT:')) cardCategory = 'urgent';
                     else if (titleUpper.includes('[ACADEMIC]') || titleUpper.includes('ACADEMIC:')) cardCategory = 'academic';
                     else if (titleUpper.includes('[EVENT]') || titleUpper.includes('EVENT:')) cardCategory = 'event';
-                    else cardCategory = 'general'; // Standardized: No more defaulting ALL to urgent
+                    else if (titleUpper.includes('[STAFF]') || titleUpper.includes('STAFF:')) cardCategory = 'staff';
+                    else if (titleUpper.includes('[STUDENT]') || titleUpper.includes('STUDENT:') || titleUpper.includes('[STUDENTS]')) cardCategory = 'student';
+                    else cardCategory = 'general';
                 }
 
                 return (

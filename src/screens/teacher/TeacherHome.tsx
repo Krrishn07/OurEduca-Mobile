@@ -561,7 +561,9 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                       category={
                         (a.title || '').toUpperCase().includes('[URGENT]') ? 'urgent' :
                         (a.title || '').toUpperCase().includes('[ACADEMIC]') ? 'academic' :
-                        (a.title || '').toUpperCase().includes('[EVENT]') ? 'event' : 'general'
+                        (a.title || '').toUpperCase().includes('[EVENT]') ? 'event' :
+                        (a.title || '').toUpperCase().includes('[STAFF]') ? 'staff' :
+                        ((a.title || '').toUpperCase().includes('[STUDENT]') || (a.title || '').toUpperCase().includes('[STUDENTS]')) ? 'student' : 'general'
                       }
                       senderName={a.sender_name}
                       senderRole={a.sender_role}
