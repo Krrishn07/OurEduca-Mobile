@@ -440,7 +440,7 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
       {/* ── HEADER ── */}
       <PlatinumSearchHeader
         title={selectedClass ? `${selectedClass.subject} Grading` : "Session Grading"}
-        subtitle={`${mockAuthUser?.school_name || 'Academy'} Node • ${selectedClass ? `SEC ${selectedClass.section || 'A'}` : 'Universal'}`}
+        subtitle={`${currentUser?.school_name || 'Academy'} Node • ${selectedClass ? `SEC ${selectedClass.section || 'A'}` : 'Universal'}`}
         onBack={handleBack}
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
