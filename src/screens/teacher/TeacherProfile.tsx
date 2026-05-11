@@ -354,7 +354,6 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
           <Text className="text-[9px] text-gray-400 uppercase tracking-[2px] font-inter-black">Verified Faculty Node</Text>
           <Text className="text-[8px] text-gray-400 mt-1 uppercase tracking-[1px] font-inter-black italic">TLS 1.3 SECURE CONNECTION</Text>
         </View>
-      </View>
     </Animated.ScrollView>
   );
 });

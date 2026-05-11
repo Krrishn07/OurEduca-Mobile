@@ -335,20 +335,6 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
             <CalendarWidget compact={true} canAddEvents={true} />
           </AppCard>
         </View>
-
-              </View>
-            )}
-
-            <TouchableOpacity
-              onPress={() => onNavigate?.('AuditTrail')}
-              className="flex-row items-center justify-center py-3.5 border-t border-gray-50 bg-gray-50/30 active:bg-gray-100/50"
-            >
-              <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Activity</Text>
-              <Icons.ChevronRight size={11} color="#4f46e5" className="ml-1" />
-            </TouchableOpacity>
-          </View>
-        </AppCard>
-      </View>
       </Animated.ScrollView>
 
       <SystemHealthModal visible={isHealthModalVisible} onClose={() => setIsHealthModalVisible(false)} />
