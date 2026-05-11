@@ -98,7 +98,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
                 style={{ backgroundColor: config.bg, borderColor: config.color + '20' }}
               >
                 <Text 
-                  className="text-[6px] font-inter-black uppercase tracking-tighter"
+                  className="text-[7px] font-inter-black uppercase tracking-widest"
                   style={{ color: config.color }}
                 >
                   {extractedType}
