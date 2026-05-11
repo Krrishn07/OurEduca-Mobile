@@ -19,10 +19,10 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     <View className={`flex-row items-center justify-between mb-4 ${className}`}>
       <View className="flex-1 pr-4">
         <View className="flex-row items-center">
-          <View className="w-[3px] h-5 bg-indigo-500 rounded-full mr-2 opacity-40" />
+
           <Text className={AppTypography.sectionTitle}>{title}</Text>
         </View>
-        {subtitle ? <Text className={`${AppTypography.eyebrow} text-indigo-500 mt-0.5 ml-3`}>{subtitle}</Text> : null}
+        {subtitle ? <Text className={`${AppTypography.eyebrow} text-indigo-500 mt-0.5`}>{subtitle}</Text> : null}
       </View>
       {rightElement}
     </View>
