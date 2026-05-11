@@ -314,7 +314,7 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
           subtitle="EVENTS & HOLIDAYS"
           className="mb-4"
         />
-        <AppCard className="p-2 border border-white shadow-xl shadow-indigo-100/30 overflow-hidden">
+        <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30 overflow-hidden">
           <CalendarWidget compact={true} canAddEvents={false} />
         </AppCard>
 
