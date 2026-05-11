@@ -554,19 +554,18 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                     );
                   }}
                 >
-                  <View className="relative bg-white">
-                    <View className={`absolute left-0 top-0 bottom-0 w-1 ${a.audience === 'ALL' ? 'bg-indigo-500' : 'bg-amber-500'}`} />
-                    <AppRow
+                    <AnnouncementCard
                       title={a.title}
-                      subtitle={a.message}
-                      subtitleProps={{ numberOfLines: 2, ellipsizeMode: 'tail' }}
-                      avatarIcon={<Icons.Notifications size={16} color="#4f46e5" />}
-                      avatarBg="#eef2ff"
-                      meta={formatAcademicTime(a.created_at || a.date)}
-                      showBorder={idx < displayAnnouncements.length - 1}
-                      rightElement={<Icons.ChevronRight size={12} color="#d1d5db" />}
+                      message={a.message}
+                      date={formatAcademicTime(a.created_at || a.date)}
+                      category={
+                        (a.title || '').toUpperCase().includes('[URGENT]') ? 'urgent' :
+                        (a.title || '').toUpperCase().includes('[ACADEMIC]') ? 'academic' :
+                        (a.title || '').toUpperCase().includes('[EVENT]') ? 'event' : 'general'
+                      }
+                      senderName={a.sender_name}
+                      onPress={() => {}}
                     />
-                  </View>
                 </SwipeableRow>
               );
             })}

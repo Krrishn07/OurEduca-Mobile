@@ -60,6 +60,11 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   onDelete,
   showDelete = false,
 }) => {
+  // Extract tag from title (e.g., "[EVENT] Title" -> type: EVENT, cleanTitle: "Title")
+  const tagMatch = title.match(/^\[(\w+)\]/);
+  const extractedType = tagMatch ? tagMatch[1] : null;
+  const cleanTitle = title.replace(/^\[\w+\]\s*/, '');
+
   const config = CATEGORY_CONFIG[category];
 
   return (
@@ -67,9 +72,24 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       entering={FadeInDown.delay(index * 100).duration(500)}
     >
       <AppRow
-        title={title}
+        title={cleanTitle}
         subtitle={
           <View className="mt-0.5">
+            {extractedType && (
+              <View className="flex-row items-center mb-1">
+                <View 
+                  className="px-1.5 py-0.5 rounded-md"
+                  style={{ backgroundColor: config.bg, borderColor: config.color + '20', borderWidth: 1 }}
+                >
+                  <Text 
+                    className="text-[7px] font-inter-black uppercase tracking-widest"
+                    style={{ color: config.color }}
+                  >
+                    {extractedType}
+                  </Text>
+                </View>
+              </View>
+            )}
             <Text 
               className="text-[11px] font-inter-medium text-gray-500 leading-relaxed flex-1"
               numberOfLines={2}
