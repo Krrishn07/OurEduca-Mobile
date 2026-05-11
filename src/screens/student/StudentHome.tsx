@@ -91,32 +91,32 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
       value: attendanceRate,
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Check size={22} color={AppTheme.colors.success} />,
-      subtitle: 'Verified Record',
-      subtitleTone: 'success' as const,
+      trend: parseFloat(attendanceRate) > 90 ? 'Optimal' : parseFloat(attendanceRate) < 75 ? 'Warning' : 'Stable',
+      trendType: parseFloat(attendanceRate) > 90 ? 'up' : parseFloat(attendanceRate) < 75 ? 'down' : 'neutral' as const,
     },
     {
       label: 'Materials',
       value: studentMaterials.length,
       toneClassName: 'bg-indigo-50',
       icon: <Icons.BookOpen size={22} color={AppTheme.colors.primary} />,
-      subtitle: 'Resource Vault',
-      subtitleTone: 'info' as const,
+      trend: studentMaterials.length > 0 ? 'New' : 'Empty',
+      trendType: studentMaterials.length > 0 ? 'up' : 'neutral' as const,
     },
     {
       label: 'Standing',
       value: studentPrimaryClass?.grade_score || 'A+',
       toneClassName: 'bg-amber-50',
       icon: <Icons.GraduationCap size={22} color={AppTheme.colors.warning} />,
-      subtitle: 'Academic Rank',
-      subtitleTone: 'warning' as const,
+      trend: (studentPrimaryClass?.grade_score || 'A').startsWith('A') ? 'Elite' : (studentPrimaryClass?.grade_score || 'B').startsWith('B') ? 'Good' : 'Focus',
+      trendType: (studentPrimaryClass?.grade_score || 'A').startsWith('A') ? 'up' : (studentPrimaryClass?.grade_score || 'B').startsWith('B') ? 'neutral' : 'down' as const,
     },
     {
       label: 'Assignments',
       value: studentAssignments.length,
       toneClassName: 'bg-rose-50',
       icon: <Icons.Report size={22} color={AppTheme.colors.error} />,
-      subtitle: 'Pending Tasks',
-      subtitleTone: 'danger' as const,
+      trend: studentAssignments.length > 5 ? 'Heavy' : studentAssignments.length > 0 ? 'Pending' : 'Clear',
+      trendType: studentAssignments.length > 5 ? 'down' : studentAssignments.length > 0 ? 'neutral' : 'up' as const,
     },
   ];
 
@@ -255,6 +255,8 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
                   label={stat.label}
                   icon={stat.icon}
                   tone={mappedTone as any}
+                  trend={(stat as any).trend}
+                  trendType={(stat as any).trendType}
                   onPress={() => {
                     if (stat.label === 'Materials') onNavigate?.('videos');
                     else if (stat.label === 'Assignments') onNavigate?.('assignments' as any);
