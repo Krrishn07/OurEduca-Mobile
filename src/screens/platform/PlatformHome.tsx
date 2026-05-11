@@ -111,8 +111,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.Inbox size={22} color={AppTheme.colors.primary} />,
       onPress: () => onNavigate?.('leads'),
-      trend: '+2',
-      trendType: 'up' as const,
+      trend: newInquiries.length > 0 ? 'Action' : 'Cleared',
+      trendType: newInquiries.length > 0 ? 'up' : 'neutral' as const,
     },
     {
       label: 'Billing Audit',
@@ -120,7 +120,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: autoOverdueCount > 0 ? 'bg-amber-50' : 'bg-emerald-50',
       icon: <Icons.Shield size={22} color={autoOverdueCount > 0 ? AppTheme.colors.warning : AppTheme.colors.success} />,
       onPress: () => onNavigate?.('billing'),
-      trend: autoOverdueCount > 0 ? 'Urgent' : 'Synced',
+      trend: autoOverdueCount > 0 ? 'Urgent' : 'Stable',
       trendType: autoOverdueCount > 0 ? 'down' : 'neutral' as const,
     },
     {
@@ -129,7 +129,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.School size={22} color={AppTheme.colors.primary} />,
       onPress: () => onNavigate?.('institutes'),
-      trend: '+1',
+      trend: activeInstitutes.length > 0 ? 'Live' : 'Zero',
       trendType: 'up' as const,
     },
     {
@@ -138,7 +138,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Users size={22} color={AppTheme.colors.success} />,
       onPress: () => onNavigate?.('roles'),
-      trend: '+15',
+      trend: activeCount > 0 ? 'Online' : 'Offline',
       trendType: 'up' as const,
     },
     {
@@ -147,8 +147,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Signal size={22} color={AppTheme.colors.success} />,
       onPress: () => setIsHealthModalVisible(true),
-      trend: 'Peak',
-      trendType: 'up' as const,
+      trend: systemStatus.health === 'Optimal' ? 'Peak' : 'Review',
+      trendType: systemStatus.health === 'Optimal' ? 'up' : 'down' as const,
     },
     {
       label: 'DB Latency',
@@ -156,8 +156,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.Activity size={22} color={AppTheme.colors.primary} />,
       onPress: () => setIsHealthModalVisible(true),
-      trend: '-5ms',
-      trendType: 'up' as const,
+      trend: (systemStatus.latency || 0) < 100 ? 'Fast' : 'Delayed',
+      trendType: (systemStatus.latency || 0) < 100 ? 'up' : 'down' as const,
     },
   ];
 

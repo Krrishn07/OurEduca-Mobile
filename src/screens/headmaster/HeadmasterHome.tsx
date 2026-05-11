@@ -67,8 +67,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.GraduationCap size={22} color={AppTheme.colors.primary} />,
       onPress: () => onNavigate?.('manage'),
-      trend: '+4',
-      trendType: 'up' as const,
+      trend: dbStudents.length > 0 ? 'Tracking' : 'Empty',
+      trendType: 'neutral' as const,
     },
     {
       label: 'Faculty',
@@ -76,8 +76,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-orange-50',
       icon: <Icons.Users size={22} color="#ea580c" />,
       onPress: () => onNavigate?.('manage'),
-      trend: '+1',
-      trendType: 'up' as const,
+      trend: facultyCount > 0 ? 'Active' : 'Missing',
+      trendType: 'neutral' as const,
     },
     {
       label: 'Classes',
@@ -85,8 +85,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.BookOpen size={22} color={AppTheme.colors.success} />,
       onPress: () => onNavigate?.('manage'),
-      trend: 'Stable',
-      trendType: 'neutral' as const,
+      trend: dbClasses.length > 0 ? 'Synced' : 'None',
+      trendType: 'up' as const,
     },
     {
       label: 'Attendance',
@@ -94,8 +94,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-blue-50',
       icon: <Icons.Calendar size={22} color={AppTheme.colors.info} />,
       onPress: undefined,
-      trend: '+0.5%',
-      trendType: 'up' as const,
+      trend: parseFloat(attendanceRate) > 90 ? 'Optimal' : parseFloat(attendanceRate) < 75 ? 'Review' : 'Stable',
+      trendType: parseFloat(attendanceRate) > 90 ? 'up' : parseFloat(attendanceRate) < 75 ? 'down' : 'neutral' as const,
     },
   ];
 
