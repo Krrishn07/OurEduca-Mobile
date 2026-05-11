@@ -153,7 +153,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
               <Text className="text-2xl font-black text-white tracking-tighter leading-7 font-inter-black">
                 {currentSchool?.name || 'School Dashboard'}
               </Text>
-              <Text className="text-indigo-100 text-[10px] font-black uppercase tracking-[3px] mt-1 opacity-85 font-inter-black">Principal&apos;s Office</Text>
+              <Text className="text-indigo-100 text-[10px] font-black uppercase tracking-[3px] mt-1 opacity-85 font-inter-black">Principal's Office</Text>
             </View>
           </Animated.View>
 

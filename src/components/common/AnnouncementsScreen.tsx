@@ -76,7 +76,7 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                 <Text className="text-[12px] font-inter-black text-indigo-600 uppercase tracking-[2px]">{title}</Text>
                 <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[1px]">{subtitle}</Text>
             </View>
-            <View className="w-10 h-10" /> {/* Spacer */}
+            <View className="w-10 h-10" />
         </View>
 
         {/* Search Bar - Platinum Style */}
