@@ -181,7 +181,6 @@ export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
                 <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
                 <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">Institutional Standard</Text>
             </View>
-        </View>
     </ScrollView>
   );
 };
