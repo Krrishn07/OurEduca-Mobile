@@ -238,7 +238,7 @@ export const AppRow: React.FC<AppRowProps> = ({
                 transform: [{ scale: (pressed && Platform.OS === 'ios') ? 0.985 : 1 }],
                 alignItems: alignItems as any
               })}
-              className={`flex-row px-3 py-2.5 ${innerClassName || 'bg-white'}`}
+              className={`flex-row px-3 py-2 ${innerClassName || 'bg-white'}`}
             >
             <RowContent 
               avatarLetter={avatarLetter}
@@ -260,7 +260,7 @@ export const AppRow: React.FC<AppRowProps> = ({
         ) : (
           <View 
             style={{ alignItems: alignItems as any }}
-            className={`flex-row px-3 py-2.5 ${innerClassName || 'bg-white'}`}
+            className={`flex-row px-3 py-2 ${innerClassName || 'bg-white'}`}
           >
             <RowContent 
               avatarLetter={avatarLetter}
