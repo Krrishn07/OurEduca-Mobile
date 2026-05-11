@@ -9,11 +9,13 @@ const StyledLinearGradient = LinearGradient ? typeof LinearGradient === 'functio
 interface HeadmasterProfileProps {
   currentUser: any;
   onShowEditProfileModal: () => void;
+  recentActivity?: any[];
 }
 
 export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
   currentUser,
   onShowEditProfileModal,
+  recentActivity = [],
 }) => {
   return (
     <ScrollView 
@@ -119,9 +121,62 @@ export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
                     rightElement={<Icons.ChevronRight size={13} color="#fca5a5" />}
                 />
             </AppCard>
+        </View>
 
-            {/* Build Information */}
-            <View className="mt-10 items-center opacity-30">
+        {/* 5. Activity Log — Platinum Audit Trail */}
+        <View className="px-4 mb-10">
+          <SectionHeader
+            title="SYSTEM ACTIVITY"
+            className="px-2"
+            rightElement={
+              <StatusPill 
+                label={`${recentActivity.length} Recent`} 
+                type="neutral" 
+              />
+            }
+          />
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {recentActivity.map((item, idx) => {
+              const ActivityIcon = (Icons as any)[item.icon] || Icons.Activity;
+              const category = item.category || 'SYSTEM';
+              const catPillType = 
+                category === 'SECURITY' ? 'danger' : 
+                category === 'BILLING' ? 'warning' : 
+                category === 'ACADEMIC' ? 'info' : 'neutral';
+              
+              const timeStr = item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now';
+              const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: 'short', day: '2-digit' }) : 'Today';
+
+              return (
+                <AppRow
+                  key={'hm-activity-' + (item.id || idx)}
+                  title={item.title}
+                  subtitle={`${dateStr} · ${timeStr}`}
+                  statusDot={
+                    category === 'SECURITY' ? 'danger' :
+                    category === 'BILLING'  ? 'pending' : 'none'
+                  }
+                  avatarIcon={<ActivityIcon size={14} color={item.color || AppTheme.colors.primary} />}
+                  avatarBg={item.color ? `${item.color}18` : '#eef2ff'}
+                  pills={<StatusPill label={category} type={catPillType} />}
+                  rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
+                  showBorder={idx < recentActivity.length - 1}
+                  className="px-0"
+                />
+              );
+            })}
+
+            {recentActivity.length === 0 && (
+                <View className="items-center py-10">
+                    <Icons.Notifications size={20} color="#cbd5e1" />
+                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mt-2 text-center">No recent security or system logs found.</Text>
+                </View>
+            )}
+          </AppCard>
+        </View>
+
+        {/* 6. Build Information */}
+        <View className="px-4 mb-16">
                 <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
                 <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
                 <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">Institutional Standard</Text>

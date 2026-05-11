@@ -10,6 +10,7 @@ interface PlatformProfileProps {
   onEditProfile: () => void;
   onAccountSecurity: () => void;
   onLogout: () => void;
+  systemLogs?: any[];
 }
 
 export const PlatformProfile: React.FC<PlatformProfileProps> = ({
@@ -17,6 +18,7 @@ export const PlatformProfile: React.FC<PlatformProfileProps> = ({
   onEditProfile,
   onAccountSecurity,
   onLogout,
+  systemLogs = [],
 }) => {
   return (
     <ScrollView 
@@ -124,9 +126,57 @@ export const PlatformProfile: React.FC<PlatformProfileProps> = ({
                     rightElement={<Icons.ChevronRight size={13} color="#fca5a5" />}
                 />
             </AppCard>
+        </View>
 
-            {/* Build Information */}
-            <View className="mt-10 items-center opacity-30">
+        {/* 5. System Activity — Platinum Audit Ledger */}
+        <View className="px-4 mb-10">
+          <SectionHeader
+            title="SYSTEM ACTIVITY"
+            className="px-2"
+          />
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {systemLogs.map((item, index) => {
+              const IconComp = (Icons as any)[item.icon] || Icons.Activity;
+              const category = item.category || 'SYSTEM';
+              const catPillType =
+                category === 'SECURITY'    ? 'danger'  :
+                category === 'BILLING'     ? 'warning' :
+                category === 'INSTITUTION' ? 'info'    : 'neutral';
+              const timeStr = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const dateStr = new Date(item.created_at).toLocaleDateString([], { month: 'short', day: '2-digit' });
+
+              return (
+                <AppRow
+                  key={item.id}
+                  title={item.title}
+                  subtitle={`${dateStr} · ${timeStr}`}
+                  statusDot={
+                    category === 'SECURITY' ? 'danger' :
+                    category === 'BILLING'  ? 'pending' : 'none'
+                  }
+                  avatarIcon={<IconComp size={14} color={item.color || AppTheme.colors.primary} />}
+                  avatarBg={item.color ? `${item.color}18` : '#eef2ff'}
+                  pills={
+                    <StatusPill label={category} type={catPillType} />
+                  }
+                  showBorder={index < systemLogs.length - 1}
+                  rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
+                  className="px-0"
+                />
+              );
+            })}
+
+            {systemLogs.length === 0 && (
+                <View className="items-center py-10">
+                    <Icons.Notifications size={20} color="#cbd5e1" />
+                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mt-2 text-center">No recent system activity logs found.</Text>
+                </View>
+            )}
+          </AppCard>
+        </View>
+
+        {/* 6. Build Information */}
+        <View className="px-4 mb-16">
                 <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
                 <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
                 <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">256-bit encryption</Text>

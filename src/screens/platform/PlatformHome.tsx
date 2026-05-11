@@ -336,56 +336,6 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
           </AppCard>
         </View>
 
-        {/* Activity Log Section — Compact Eyebrow Style */}
-        <View className="mb-8">
-          <View className="flex-row items-center mb-3 px-2">
-            <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Activity Log</Text>
-          </View>
-
-          <AppCard className="p-0 overflow-hidden">
-
-          {/* Activity Log — AppRow timeline */}
-          <View>
-            {systemLogs.slice(0, 5).map((item, index) => {
-              const IconComp = (Icons as any)[item.icon] || Icons.Activity;
-              const category = item.category || 'SYSTEM';
-              const catPillType =
-                category === 'SECURITY'    ? 'danger'  :
-                category === 'BILLING'     ? 'warning' :
-                category === 'INSTITUTION' ? 'info'    : 'neutral';
-              const timeStr = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const dateStr = new Date(item.created_at).toLocaleDateString([], { month: 'short', day: '2-digit' });
-
-              return (
-                <AppRow
-                  key={item.id}
-                  title={item.title}
-                  subtitle={`${dateStr} · ${timeStr}`}
-                  statusDot={
-                    category === 'SECURITY' ? 'danger' :
-                    category === 'BILLING'  ? 'pending' : 'none'
-                  }
-                  avatarIcon={<IconComp size={14} color={item.color || AppTheme.colors.primary} />}
-                  avatarBg={item.color ? `${item.color}18` : '#eef2ff'}
-                  pills={
-                    <StatusPill label={category} type={catPillType} />
-                  }
-                  showBorder={index < Math.min(systemLogs.length, 5) - 1}
-                  rightElement={
-                    <Icons.ChevronRight size={13} color="#d1d5db" />
-                  }
-                />
-              );
-            })}
-
-            {systemLogs.length === 0 && (
-              <View className="items-center py-10">
-                <View className="w-12 h-12 rounded-2xl bg-gray-50 items-center justify-center mb-3 border border-gray-100">
-                  <Icons.Database size={22} color="#cbd5e1" />
-                </View>
-                <Text className="text-[13px] font-black text-gray-900 font-inter-black">No activity recorded</Text>
-                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 font-inter-black">The ledger is currently quiet</Text>
               </View>
             )}
 

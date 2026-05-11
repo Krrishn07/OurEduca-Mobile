@@ -19,6 +19,7 @@ interface TeacherProfileProps {
   onEdit: () => void;
   onAccountSecurity?: () => void;
   onLogout: () => void;
+  recentActivity?: any[];
 }
 
 export const TeacherProfile = React.memo<TeacherProfileProps>(({
@@ -26,6 +27,7 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
   onEdit,
   onAccountSecurity,
   onLogout,
+  recentActivity = [],
 }) => {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -314,8 +316,40 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
             rightElement={<Icons.ChevronRight size={13} color="#e11d48" />}
           />
         </AppCard>
+      </View>
 
-        <View className="mt-16 items-center opacity-50">
+      <View className="px-4 mb-10">
+        <SectionHeader
+          title="RECENT ACTIVITY"
+          className="mb-3"
+          rightElement={
+            <StatusPill 
+              label="LOGS" 
+              type="neutral" 
+            />
+          }
+        />
+        <AppCard className="p-0 overflow-hidden border border-white shadow-sm">
+          {recentActivity.length > 0 ? recentActivity.map((act, idx) => (
+            <AppRow
+              key={act.id || idx}
+              title={act.title}
+              subtitle={`${act.user} • ${act.time}`}
+              avatarIcon={act.icon}
+              avatarBg={act.bg}
+              showBorder={idx < recentActivity.length - 1}
+              rightElement={<Icons.ChevronRight size={12} color="#d1d5db" />}
+            />
+          )) : (
+              <View className="items-center py-10">
+                  <Icons.Notifications size={20} color="#cbd5e1" />
+                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mt-2">No recent system activity</Text>
+              </View>
+          )}
+        </AppCard>
+      </View>
+
+      <View className="px-4 mb-10">
           <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-4" />
           <Text className="text-[9px] text-gray-400 uppercase tracking-[2px] font-inter-black">Verified Faculty Node</Text>
           <Text className="text-[8px] text-gray-400 mt-1 uppercase tracking-[1px] font-inter-black italic">TLS 1.3 SECURE CONNECTION</Text>

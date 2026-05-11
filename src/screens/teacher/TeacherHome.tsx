@@ -761,37 +761,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
           </AppCard>
         </View>
 
-        {/* RECENT ACTIVITY - Just above Calendar */}
-        <View className="mb-8">
-          <SectionHeader
-            title="RECENT ACTIVITY"
-            className=""
-            rightElement={
-              <StatusPill 
-                label="LIVE FEED" 
-                type="info" 
-              />
-            }
-          />
-          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {recentActivity.length > 0 ? recentActivity.map((act, idx) => (
-              <AppRow
-                key={act.id || idx}
-                title={act.title}
-                subtitle={`${act.user} • ${act.time}`}
-                avatarIcon={act.icon}
-                avatarBg={act.bg}
-                showBorder={idx < recentActivity.length - 1}
-                rightElement={<Icons.ChevronRight size={12} color="#d1d5db" />}
-              />
-            )) : (
-                <View className="items-center py-10">
-                    <Icons.Notifications size={20} color="#cbd5e1" />
-                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mt-2">No recent system activity</Text>
-                </View>
-            )}
-          </AppCard>
-        </View>
+
 
          {/* INSTITUTIONAL CALENDAR */}
          <View className="mb-8">

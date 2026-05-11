@@ -324,67 +324,6 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
           </AppCard>
         </View>
 
-        {/* Section: Activity Log */}
-        <View className="mb-10">
-          <SectionHeader
-            title="ACTIVITY LOG"
-            className="px-2"
-            rightElement={
-              <StatusPill 
-                label={`${recentActivity.length} Recent`} 
-                type="neutral" 
-              />
-            }
-          />
-          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {recentActivity.map((item, idx) => {
-              const ActivityIcon = (Icons as any)[item.icon] || Icons.Activity;
-              const category = item.category || 'SYSTEM';
-              const catPillType = 
-                category === 'SECURITY' ? 'danger' : 
-                category === 'BILLING' ? 'warning' : 
-                category === 'ACADEMIC' ? 'info' : 'neutral';
-              
-              const timeStr = item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now';
-              const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: 'short', day: '2-digit' }) : 'Today';
-
-              return (
-                <AppRow
-                  key={'hm-activity-' + (item.id || idx)}
-                  title={item.title}
-                  subtitle={`${dateStr} · ${timeStr}`}
-                  statusDot={
-                    category === 'SECURITY' ? 'danger' :
-                    category === 'BILLING'  ? 'pending' : 'none'
-                  }
-                  avatarIcon={<ActivityIcon size={14} color={item.color || AppTheme.colors.primary} />}
-                  avatarBg={item.color ? `${item.color}18` : '#eef2ff'}
-                  pills={<StatusPill label={category} type={catPillType} />}
-                  rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
-                  showBorder={idx < recentActivity.length - 1}
-                  className="px-0"
-                />
-              );
-            })}
-
-            {recentActivity.length === 0 ? (
-              <View className="items-center py-10">
-                <View className="w-14 h-14 rounded-full bg-gray-50 items-center justify-center mb-4 border border-gray-100">
-                  <Icons.Activity size={24} color="#cbd5e1" />
-                </View>
-                <Text className="text-sm font-black text-gray-900 font-inter-black">No recent activity</Text>
-                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 font-inter-black">School operations are quiet</Text>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                onPress={() => onNavigate?.('settings')}
-                className="py-4 border-t border-gray-50 items-center bg-gray-50/30"
-              >
-                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Activity</Text>
-              </TouchableOpacity>
-            )}
-          </AppCard>
-        </View>
       </Animated.ScrollView>
     </View>
   );
