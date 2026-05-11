@@ -2,6 +2,7 @@ export * from './AppButton';
 export * from './AppCard';
 export * from './AppRow';
 export * from './StatusPill';
+export * from './AnnouncementCard';
 export * from './AppText';
 export * from './SectionHeader';
 export * from './StatCard';

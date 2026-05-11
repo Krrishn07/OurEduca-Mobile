@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Icons } from '@components/common/Icons';
 import { UserRole } from '@/types';
-import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill } from '@components/common';
+import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill, AnnouncementCard } from '@components/common';
 import { PlatformStatusBadge } from '@screens/platform/components/PlatformStatusBadge';
 import { formatGreetingName } from '@utils/nameUtils';
 
@@ -210,19 +210,25 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
             }
           />
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {announcements.slice(0, 3).map((a, idx) => (
-              <AppRow
-                key={'hm-notice-' + (a.id || idx)}
-                title={a.title}
-                subtitle={a.message || 'No description provided'}
-                meta={a.date}
-                avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
-                avatarBg="#eef2ff"
-                onPress={() => onShowNoticeDetail?.(a)}
-                showBorder={idx < announcements.slice(0, 3).length - 1}
-                className="px-0"
-              />
-            ))}
+            {displayAnnouncements.map((a: any, idx: number) => {
+              const diff = Date.now() - new Date(a.date || Date.now()).getTime();
+              const isNew = diff < 24 * 60 * 60 * 1000;
+
+              return (
+                <AnnouncementCard
+                  key={a.id}
+                  index={idx}
+                  title={a.title}
+                  message={a.message}
+                  date={a.date}
+                  category={a.category || 'general'}
+                  isNew={isNew}
+                  showDelete={onDeleteNotice && a.sender_id === currentUser.id}
+                  onDelete={() => onDeleteNotice && onDeleteNotice(a.id)}
+                  onPress={() => onShowNoticeDetail?.(a)}
+                />
+              );
+            })}
 
             {announcements.length === 0 ? (
               <View className="items-center py-10">

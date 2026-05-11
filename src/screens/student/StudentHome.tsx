@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from '@components/common/Icons';
 import { CalendarWidget } from '@components/common/CalendarWidget';
 import { User } from '@/types';
-import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppTypography, StatusPill, AppRow } from '@components/common';
+import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppTypography, StatusPill, AppRow, AnnouncementCard } from '@components/common';
 import { formatGreetingName } from '@utils/nameUtils';
 
 const StyledLinearGradient = LinearGradient || View;
@@ -280,18 +280,23 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
           }
         />
         <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-8">
-            {displayAnnouncements.map((a: any, idx) => (
-                <AppRow 
-                    key={a.id || idx}
-                    title={a.title}
-                    subtitle={a.message}
-                    meta={a.date}
-                    avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
-                    avatarBg="#eef2ff"
-                    onPress={() => {}}
-                    showBorder={idx < displayAnnouncements.length - 1}
+            {displayAnnouncements.map((a: any, idx) => {
+              const diff = Date.now() - new Date(a.date || Date.now()).getTime();
+              const isNew = diff < 24 * 60 * 60 * 1000;
+
+              return (
+                <AnnouncementCard 
+                  key={a.id || idx}
+                  index={idx}
+                  title={a.title}
+                  message={a.message}
+                  date={a.date}
+                  category={a.category || 'general'}
+                  isNew={isNew}
+                  onPress={() => {}}
                 />
-            ))}
+              );
+            })}
         </AppCard>
 
         {/* Today's Schedule Registry */}

@@ -15,6 +15,7 @@ export interface Announcement {
   sender: string;
   sender_id?: string;
   audience: 'ALL' | 'STUDENT' | 'STAFF';
+  category?: 'urgent' | 'academic' | 'event' | 'general';
 }
 
 export interface SystemLog {
@@ -449,7 +450,8 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
               message: a.message,
               date: new Date(a.created_at).toLocaleDateString(),
               sender: 'Administration',
-              audience: a.audience
+              audience: a.audience,
+              category: a.category || 'general'
           }));
 
           // TACTICAL DEDUPLICATION: Ensure unique announcement IDs

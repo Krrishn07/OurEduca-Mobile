@@ -13,6 +13,7 @@ import {
   StatCard, 
   ActionTile, 
   AppRow, 
+  AnnouncementCard,
   StatusPill 
 } from '@components/common';
 import { PlatformStatusBadge } from '@screens/platform/components/PlatformStatusBadge';
@@ -331,27 +332,25 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
           />
 
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
-            {displayAnnouncements.map((a: any, idx: number) => (
-              <AppRow
-                key={a.id}
-                title={a.title}
-                subtitle={a.message}
-                avatarIcon={<Icons.Notifications size={15} color="#4f46e5" />}
-                avatarBg="#eef2ff"
-                meta={a.date}
-                showBorder={idx < displayAnnouncements.length - 1}
-                rightElement={
-                  onDeleteNotice && a.sender_id === currentUser.id ? (
-                    <TouchableOpacity
-                      onPress={() => onDeleteNotice(a.id)}
-                      className="bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl active:bg-rose-100"
-                    >
-                      <Text className="text-[9px] font-black text-rose-500 uppercase tracking-widest font-inter-black">Delete</Text>
-                    </TouchableOpacity>
-                  ) : <Icons.ChevronRight size={13} color="#d1d5db" />
-                }
-              />
-            ))}
+            {displayAnnouncements.map((a: any, idx: number) => {
+              const diff = Date.now() - new Date(a.date || Date.now()).getTime();
+              const isNew = diff < 24 * 60 * 60 * 1000;
+
+              return (
+                <AnnouncementCard
+                  key={a.id}
+                  index={idx}
+                  title={a.title}
+                  message={a.message}
+                  date={a.date}
+                  category={a.category || 'general'}
+                  isNew={isNew}
+                  showDelete={onDeleteNotice && a.sender_id === currentUser.id}
+                  onDelete={() => onDeleteNotice && onDeleteNotice(a.id)}
+                  onPress={() => {}}
+                />
+              );
+            })}
 
             {mentorAnnouncements.length === 0 && (
               <View className="items-center py-12">
