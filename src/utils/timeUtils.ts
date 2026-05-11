@@ -18,3 +18,27 @@ export const formatAcademicTime = (dateStr?: string) => {
 
   return past.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
 };
+export const isToday = (date: Date) => {
+  const now = new Date();
+  return date.toDateString() === now.toDateString();
+};
+
+export const isYesterday = (date: Date) => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return date.toDateString() === yesterday.toDateString();
+};
+
+export const isSameDay = (date1: Date, date2: Date) => {
+  return date1.toDateString() === date2.toDateString();
+};
+
+export const formatDetailedDate = (date: Date) => {
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long'
+  });
+};

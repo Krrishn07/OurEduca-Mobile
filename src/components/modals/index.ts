@@ -1,0 +1,10 @@
+export * from './AddStudentModal';
+export * from './AnnouncementHistoryModal';
+export * from './AnnouncementModal';
+export * from './CreateAssignmentModal';
+export * from './EditProfileModal';
+export * from './UploadMaterialModal';
+export * from './UploadVideoModal';
+export * from './VideoPlayerModal';
+export { ConfirmModal } from '../common/ConfirmModal';
+export { PaymentGatewayModal } from '../../screens/student/modals/PaymentGatewayModal';

@@ -1,4 +1,4 @@
-import { UserRole } from '../../types';
+import { UserRole } from '@/types';
 
 export type DbRole = 'platform' | 'headmaster' | 'mentor' | 'teacher' | 'student';
 
