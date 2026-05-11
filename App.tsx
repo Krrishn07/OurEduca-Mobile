@@ -3,7 +3,6 @@ import 'react-native-reanimated';
 import * as React from 'react';
 import { useState, Component, ErrorInfo } from 'react';
 import "./global.css";
-import "./src/design-system/nativewind-interop";
 import { View, Text, StatusBar, ScrollView } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,16 +14,16 @@ import {
   Inter_700Bold,
   Inter_900Black,
 } from '@expo-google-fonts/inter';
-import { Layout } from './components/Layout';
-import { Login } from './pages/Login';
-import { StudentDashboard } from './pages/StudentDashboard';
-import { TeacherDashboard } from './pages/TeacherDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { UserRole } from './types';
-import { SchoolDataProvider, useSchoolData } from './contexts/SchoolDataContext';
-import { MockAuthProvider, useMockAuth } from './contexts/MockAuthContext';
-import { SystemStatusProvider } from './contexts/SystemStatusContext';
-import { DevSimulationOverlay } from './components/DevSimulationOverlay';
+import { Layout } from '@components/common/Layout';
+import { Login } from '@screens/auth/Login';
+import { StudentDashboard } from '@screens/student/StudentDashboard';
+import { TeacherDashboard } from '@screens/teacher/TeacherDashboard';
+import { AdminDashboard } from '@screens/admin/AdminDashboard';
+import { UserRole } from '@/types';
+import { SchoolDataProvider, useSchoolData } from '@context/SchoolDataContext';
+import { MockAuthProvider, useMockAuth } from '@context/MockAuthContext';
+import { SystemStatusProvider } from '@context/SystemStatusContext';
+import { DevSimulationOverlay } from '@components/common/DevSimulationOverlay';
 
 class GlobalErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: any, info: any}> {
   constructor(props: any) {
@@ -56,7 +55,7 @@ class GlobalErrorBoundary extends Component<{children: React.ReactNode}, {hasErr
   }
 }
 
-import { NotificationService } from './src/features/platform/services/NotificationService';
+
 
 // ============================================================
 // Inner app — has access to MockAuthContext
@@ -71,21 +70,21 @@ function AppInner() {
 
   // Global Notification Handshake
   React.useEffect(() => {
-    NotificationService.registerForPushNotificationsAsync().then(token => {
-      if (token) {
-        setExpoPushToken(token);
-        // If user is already logged in, sync token to Supabase immediately
-        if (currentUser) updatePushToken(token);
-      }
-    });
+    // NotificationService.registerForPushNotificationsAsync().then(token => {
+    //   if (token) {
+    //     setExpoPushToken(token);
+    //     // If user is already logged in, sync token to Supabase immediately
+    //     if (currentUser) updatePushToken(token);
+    //   }
+    // });
 
-    notificationListener.current = NotificationService.addNotificationListener(notification => {
-      console.log('[GLOBAL_NOTIFICATION] Foreground Event:', notification);
-    });
+    // notificationListener.current = NotificationService.addNotificationListener(notification => {
+    //   console.log('[GLOBAL_NOTIFICATION] Foreground Event:', notification);
+    // });
 
-    responseListener.current = NotificationService.addNotificationResponseListener(response => {
-      console.log('[GLOBAL_NOTIFICATION] Interaction Event:', response);
-    });
+    // responseListener.current = NotificationService.addNotificationResponseListener(response => {
+    //   console.log('[GLOBAL_NOTIFICATION] Interaction Event:', response);
+    // });
 
     return () => {
       notificationListener.current?.remove();

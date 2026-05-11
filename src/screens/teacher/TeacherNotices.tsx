@@ -68,33 +68,14 @@ export const TeacherNotices = React.memo<TeacherNoticesProps>(({
 
   return (
     <View className="flex-1 bg-[#f8faff]">
-      <PlatinumHeader
+      <PlatinumSearchHeader
         title="School Notices"
         subtitle={`${currentUser?.school_name || 'Academy'} Node`}
         onBack={onBack}
+        searchValue={search}
+        onSearchChange={setSearch}
+        placeholder="Search Faculty News..."
       />
-
-      <View className="px-4 pt-6">
-        <View className="bg-white p-4 rounded-[28px] border border-gray-100 shadow-sm flex-row items-center">
-          <Icons.Search size={18} color="#94a3b8" />
-          <TextInput
-            className="flex-1 ml-4 text-[13px] font-black text-gray-900 font-inter-black"
-            placeholder="Search Faculty News..."
-            value={search}
-            onChangeText={setSearch}
-            placeholderTextColor="#94a3b8"
-          />
-          {search.length > 0 && (
-            <Pressable
-              onPress={() => setSearch('')}
-              className="p-1 active:opacity-70"
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Icons.Close size={16} color="#94a3b8" />
-            </Pressable>
-          )}
-        </View>
-      </View>
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 

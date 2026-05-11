@@ -892,30 +892,28 @@ export const TeacherVideos = React.memo<TeacherVideosProps>(({
     <View className="flex-1 bg-[#f5f7ff]">
       {!isStreaming && (
         <>
-          <PlatinumHeader 
-            title={activeTab === 'MONITOR' ? 'Campus View' : activeTab === 'LIBRARY' ? 'Video Library' : 'Broadcasting'}
-            subtitle={activeTab === 'MONITOR' ? `${currentUser?.school_name || 'Academy'} Security Node` : `${currentUser?.school_name || 'Academy'} Node`}
-            icon={
-              <View className="w-10 h-10 rounded-full bg-indigo-50 items-center justify-center">
-                <Icons.Video size={20} color="#4f46e5" />
-              </View>
-            }
-            rightAction={
-              <View className="flex-row items-center gap-2">
-                <TouchableOpacity className="p-2 bg-gray-50 rounded-full border border-gray-100">
-                  <Icons.Search size={18} color="#6b7280" />
-                </TouchableOpacity>
-                {activeTab === 'MONITOR' && (
-                  <TouchableOpacity 
-                    onPress={() => fetchCameraNodes(currentUser.school_id)}
-                    className="p-2 bg-gray-50 rounded-full border border-gray-100 active:scale-95"
-                  >
-                    <Icons.Refresh size={18} color="#4f46e5" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            }
-          />
+      <PlatinumSearchHeader 
+        title={activeTab === 'MONITOR' ? 'Campus View' : activeTab === 'LIBRARY' ? 'Video Library' : 'Broadcasting'}
+        subtitle={activeTab === 'MONITOR' ? `${currentUser?.school_name || 'Academy'} Security Node` : `${currentUser?.school_name || 'Academy'} Node`}
+        searchValue={videoSearch}
+        onSearchChange={setVideoSearch}
+        placeholder="Search videos or feeds..."
+        icon={
+          <View className="w-10 h-10 rounded-full bg-indigo-50 items-center justify-center">
+            <Icons.Video size={20} color="#4f46e5" />
+          </View>
+        }
+        rightAction={
+          activeTab === 'MONITOR' ? (
+            <TouchableOpacity 
+              onPress={() => fetchCameraNodes(currentUser.school_id)}
+              className="p-2 bg-gray-50 rounded-full border border-gray-100 active:scale-95"
+            >
+              <Icons.Refresh size={18} color="#4f46e5" />
+            </TouchableOpacity>
+          ) : null
+        }
+      />
 
           {/* Segment Selector */}
           <View className="px-4 py-4">

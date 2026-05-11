@@ -48,7 +48,6 @@ export const TeacherReports = React.memo<TeacherReportsProps>(({
     const [isExporting, setIsExporting] = useState(false);
     const [exportStep, setExportStep] = useState(0); // 0: Idle, 1: Preparing, 2: Generating, 3: Sharing
     const [search, setSearch] = useState('');
-    const [isSearchVisible, setIsSearchVisible] = useState(false);
 
     const fetchData = useCallback(async (isMounted = true) => {
         setLoading(true);
@@ -260,21 +259,13 @@ export const TeacherReports = React.memo<TeacherReportsProps>(({
 
     return (
         <View className="flex-1 bg-[#f8faff]">
-            <PlatinumHeader
+            <PlatinumSearchHeader
                 title="Class Progress"
                 subtitle={selectedClass ? `${selectedClass.name} • ${selectedClass.subject}` : 'Institutional Analytics'}
                 onBack={() => { triggerHaptic(); onBack(); }}
-                rightAction={
-                    <View className="flex-row items-center gap-2">
-                        <Pressable 
-                            onPress={() => { triggerHaptic(); setIsSearchVisible(!isSearchVisible); }}
-                            className={`p-2 rounded-full border ${isSearchVisible ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-100'}`}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <Icons.Search size={18} color={isSearchVisible ? '#4f46e5' : '#6b7280'} />
-                        </Pressable>
-                    </View>
-                }
+                searchValue={search}
+                onSearchChange={setSearch}
+                placeholder="Search students..."
             />
             <View className="px-4">
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 pb-2">
@@ -304,23 +295,7 @@ export const TeacherReports = React.memo<TeacherReportsProps>(({
                     })}
                 </ScrollView>
                 
-                {isSearchVisible && (
-                    <View className="mt-4 bg-white p-4 rounded-[24px] border border-gray-100 shadow-sm flex-row items-center">
-                        <Icons.Search size={16} color="#94a3b8" />
-                        <TextInput 
-                            className="flex-1 ml-3 text-[13px] font-black text-gray-900 font-inter-black p-0"
-                            placeholder="Search students..."
-                            value={search}
-                            onChangeText={setSearch}
-                            autoFocus
-                        />
-                        {search.length > 0 && (
-                            <Pressable onPress={() => setSearch('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Icons.Close size={16} color="#94a3b8" />
-                            </Pressable>
-                        )}
-                    </View>
-                )}
+
             </View>
 
             {loading ? (

@@ -237,10 +237,13 @@ export const TeacherClassDetail = React.memo<TeacherClassDetailProps>(({
 
   return (
     <View className="flex-1 bg-[#f8faff]">
-      <PlatinumHeader
+      <PlatinumSearchHeader
         title={selectedClass?.subject ?? 'Untitled Class'}
         subtitle={`${schoolName} Node • SEC ${selectedClass?.section || 'A'}`.replace(' • ', '•')}
         onBack={onBack}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder={`Search ${activeTab.toLowerCase()}...`}
         rightAction={
           <Pressable 
             onPress={onUploadMaterial} 
@@ -330,27 +333,7 @@ export const TeacherClassDetail = React.memo<TeacherClassDetailProps>(({
               </View>
             </View>
 
-            {/* Search Filter */}
-            <View className="px-6 mb-4">
-              <View className="flex-row bg-white rounded-xl px-4 py-2.5 border border-gray-200 items-center shadow-sm shadow-gray-100">
-                <Icons.Search size={16} color="#94a3b8" />
-                <TextInput
-                    placeholder={`Search ${activeTab.toLowerCase()}...`}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    className="flex-1 ml-3 text-[13px] text-gray-800 font-inter-medium"
-                    placeholderTextColor="#9ca3af"
-                />
-                {searchQuery.length > 0 && (
-                  <Pressable 
-                    onPress={() => setSearchQuery('')}
-                    style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
-                  >
-                      <Icons.Plus size={16} color="#94a3b8" style={{ transform: [{ rotate: '45deg' }] }} />
-                  </Pressable>
-                )}
-              </View>
-            </View>
+
 
             <View className="px-6">
               <SectionHeader

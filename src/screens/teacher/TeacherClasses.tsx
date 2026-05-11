@@ -144,20 +144,9 @@ export const TeacherClasses = React.memo<TeacherClassesProps>(({
 }) => {
   const { currentUser } = useMockAuth();
   const [classSearch, setClassSearch] = useState('');
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const searchRef = useRef<TextInput>(null);
 
   const handleRefresh = () => {
     onRefresh?.();
-  };
-
-  const toggleSearch = () => {
-    setIsSearchVisible(!isSearchVisible);
-    if (!isSearchVisible) {
-      setTimeout(() => searchRef.current?.focus(), 100);
-    } else {
-      setClassSearch('');
-    }
   };
 
   const filteredClasses = useMemo(() => {
@@ -192,56 +181,18 @@ export const TeacherClasses = React.memo<TeacherClassesProps>(({
 
   return (
     <View className="flex-1 bg-[#f8faff]">
-      <PlatinumHeader
+      <PlatinumSearchHeader
         title="My Classes"
         subtitle={`${(currentUser as any)?.school_name || 'Academy'} Node`}
+        searchValue={classSearch}
+        onSearchChange={setClassSearch}
+        placeholder="Filter by subject or class name..."
         rightAction={
-          <>
-            <TouchableOpacity 
-              activeOpacity={0.7} 
-              onPress={() => {
-                triggerHaptic();
-                toggleSearch();
-              }}
-              className={`w-9 h-9 rounded-full items-center justify-center border mr-3 ${isSearchVisible ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-100'}`}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Icons.Search size={18} color={isSearchVisible ? "#4f46e5" : "#6b7280"} />
-            </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.7} onPress={() => { triggerHaptic(); onShowUploadModal(); }} className="bg-indigo-600 px-4 py-2 rounded-xl shadow-lg shadow-indigo-200">
               <Text className="text-white text-[11px] font-inter-black uppercase">Add</Text>
             </TouchableOpacity>
-          </>
         }
       />
-
-      {isSearchVisible && (
-        <View className="px-4 pt-4">
-          <View className="bg-white p-4 rounded-[20px] border border-gray-100 shadow-sm flex-row items-center">
-            <Icons.Search size={16} color="#94a3b8" />
-            <TextInput
-              ref={searchRef}
-              className="flex-1 ml-3 text-[13px] font-inter-medium text-gray-900"
-              placeholder="Filter by subject or class name..."
-              value={classSearch}
-              onChangeText={setClassSearch}
-              placeholderTextColor="#94a3b8"
-              autoCapitalize="none"
-            />
-            {classSearch.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => {
-                   setClassSearch('');
-                }} 
-                className="p-1"
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Icons.Close size={14} color="#94a3b8" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
 
       {isLoading ? (
         <View className="px-4 pt-6">

@@ -20,4 +20,5 @@ export * from './AvatarShimmer';
 export * from './FloatingInput';
 export * from './ModalShell';
 export * from './AppFilterBar';
+export * from './PlatinumSearchHeader';
 export { AppTheme, AppColors, AppSpacing, AppRadius, AppTypography, AppShadows } from '@constants/Theme';

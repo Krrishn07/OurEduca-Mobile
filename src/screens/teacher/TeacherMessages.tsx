@@ -59,7 +59,6 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
   const insets = useSafeAreaInsets();
   const [msgInput, setMsgInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [showAssignmentPicker, setShowAssignmentPicker] = useState(false);
@@ -79,7 +78,6 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
   
   const [stickyDate, setStickyDate] = useState<string>('');
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const searchRef = useRef<TextInput>(null);
 
   // --- Animation Shared Values ---
   const chatSlide = useSharedValue(50);
@@ -153,17 +151,6 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
   const sendButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + hasContent.value * 0.02 }]
   }));
-
-  const toggleSearch = () => {
-    HapticPatterns.selection();
-    setIsSearchVisible(!isSearchVisible);
-    if (!isSearchVisible) {
-      setTimeout(() => searchRef.current?.focus(), 100);
-    } else {
-      setSearchQuery('');
-      Keyboard.dismiss();
-    }
-  };
 
   const activeContact = useMemo(() => 
     displayContacts.find(c => c.id === selectedChat),
@@ -488,32 +475,19 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
           pointerEvents={selectedChat ? 'none' : 'auto'}
           style={inboxAnimStyle}
         >
-          <PlatinumHeader 
-            title="Messages" subtitle="Institutional Sync"
-            icon={<View className="w-9 h-9 rounded-full bg-indigo-50 items-center justify-center border border-indigo-100/30"><Icons.Messages size={18} color="#4f46e5" /></View>}
-            rightAction={
-              <Pressable 
-                onPress={toggleSearch} 
-                style={({ pressed }) => ({
-                  transform: [{ scale: pressed ? 0.94 : 1 }],
-                  opacity: pressed ? 0.7 : 1,
-                  ...SHADOWS.level1
-                })}
-                className="w-10 h-10 items-center justify-center rounded-xl bg-white border border-gray-100"
-              >
-                <Icons.Search size={20} color="#4f46e5" />
-              </Pressable>
+          <PlatinumSearchHeader 
+            title="Messages" 
+            subtitle="Institutional Sync"
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            placeholder="Search contacts..."
+            icon={
+              <View className="w-9 h-9 rounded-full bg-indigo-50 items-center justify-center border border-indigo-100/30">
+                <Icons.Messages size={18} color="#4f46e5" />
+              </View>
             }
           />
           <View className="flex-1 w-full">
-            {isSearchVisible && (
-              <Animated.View entering={FadeInDown} exiting={FadeOutUp} className="px-4 pt-4">
-                <View className="flex-row bg-white rounded-2xl items-center px-4 py-3 w-full shadow-sm border border-gray-100">
-                  <Icons.Search size={18} color="#4f46e5" />
-                  <TextInput ref={searchRef} placeholder="Search contacts..." value={searchQuery} onChangeText={setSearchQuery} className="flex-1 ml-3 text-[14px] font-bold text-gray-800" />
-                </View>
-              </Animated.View>
-            )}
             <FlatList 
               data={filteredContacts}
               keyExtractor={(item) => item.id}

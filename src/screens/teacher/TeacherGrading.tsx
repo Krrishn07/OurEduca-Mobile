@@ -40,7 +40,6 @@ import {
   useEffect,
   useCallback,
   useMemo,
-  useRef,
 } from 'react';
 import {
   View,
@@ -440,78 +439,39 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
       className="flex-1 bg-[#f8faff]"
     >
       {/* ── HEADER ── */}
-      <PlatinumHeader
-        title="Student Scores"
-        subtitle={
-          selectedClass
-            ? `${selectedClass.name} • ${selectedClass.subject}`
-            : 'Marking Hub'
-        }
-        onBack={handleBack}   // FIX-14: guard applied
+      <PlatinumSearchHeader
+        title={selectedClass ? `${selectedClass.subject} Grading` : "Session Grading"}
+        subtitle={`${mockAuthUser?.school_name || 'Academy'} Node • ${selectedClass ? `SEC ${selectedClass.section || 'A'}` : 'Universal'}`}
+        onBack={handleBack}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search student names or roll numbers..."
+        searchVisible={selectedClass ? undefined : false}
         rightAction={
-          <View className="flex-row items-center gap-2">
-
-            {selectedClass && (
-              <TouchableOpacity
-                onPress={() => searchRef.current?.focus()}
-                className="p-2 bg-gray-50 rounded-full border border-gray-100 active:scale-95"
-                activeOpacity={0.7}
-              >
-                <Icons.Search size={18} color="#6b7280" />
-              </TouchableOpacity>
-            )}
-
-            {selectedClass && (
-              /* FIX-16: Distinct styling for Sync vs Add states */
-              <TouchableOpacity
-                onPress={() => {
-                  if (canSave) {
-                    triggerHaptic(ImpactFeedbackStyle.Heavy);
-                    handleSaveAll();
-                  } else if (onAddAssignment) {
-                    onAddAssignment(getClassId(selectedClass));
-                  }
-                }}
-                className={`px-4 py-2 rounded-xl shadow-lg active:scale-95 ${
-                  canSave ? 'bg-indigo-600' : 'bg-emerald-500'
-                }`}
-                activeOpacity={0.8}
-              >
-                <Text className="text-white text-[10px] font-inter-black uppercase">
-                  {canSave ? 'Sync' : 'Add'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          selectedClass && (
+            <TouchableOpacity
+              onPress={() => {
+                if (canSave) {
+                  triggerHaptic(ImpactFeedbackStyle.Heavy);
+                  handleSaveAll();
+                } else if (onAddAssignment) {
+                  onAddAssignment(getClassId(selectedClass));
+                }
+              }}
+              className={`px-4 py-2 rounded-xl shadow-lg active:scale-95 ${
+                canSave ? 'bg-indigo-600' : 'bg-emerald-500'
+              }`}
+              activeOpacity={0.8}
+            >
+              <Text className="text-white text-[10px] font-inter-black uppercase">
+                {canSave ? 'Sync' : 'Add'}
+              </Text>
+            </TouchableOpacity>
+          )
         }
       />
 
-      {/* ── SEARCH BAR — shown whenever a class is selected ── */}
-      {selectedClass && (
-        <View className="px-4 pb-2 pt-1">
-          <View className="bg-gray-50 rounded-xl border border-gray-100 px-4 py-2.5 flex-row items-center">
-            <Icons.Search size={16} color="#94a3b8" />
-            <TextInput
-              ref={searchRef}            // FIX-15
-              placeholder="Search student names or roll numbers…"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 ml-3 text-[12px] font-black text-gray-900 font-inter-black p-0"
-              placeholderTextColor="#94a3b8"
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => setSearchQuery('')} 
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Icons.Close size={14} color="#94a3b8" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
+
 
       {/* FIX-13: Error banner with retry */}
       {fetchError && (

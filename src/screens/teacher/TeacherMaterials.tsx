@@ -49,7 +49,6 @@ export const TeacherMaterials = React.memo<TeacherMaterialsProps>(({
   const [selectedSubject, setSelectedSubject] = useState('ALL');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<string[]>([]);
-  const searchRef = useRef<TextInput>(null);
 
   const allSubjects = useMemo(() => {
     return ['ALL', ...Array.from(new Set(materials.map(m => (m.subject || 'General').trim()))).sort()];
@@ -160,27 +159,8 @@ export const TeacherMaterials = React.memo<TeacherMaterialsProps>(({
   const ListHeader = useMemo(() => (
     <View>
       <View className="px-4 pt-6">
-        <View className="bg-white p-4 rounded-[28px] border border-gray-100 shadow-sm flex-row items-center mb-6">
-          <Icons.Search size={18} color="#94a3b8" />
-          <TextInput
-            ref={searchRef}
-            className="flex-1 ml-4 text-[13px] font-black text-gray-900 font-inter-black"
-            placeholder="Search Resources..."
-            value={search}
-            onChangeText={setSearch}
-            placeholderTextColor="#94a3b8"
-          />
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={onShowUploadModal}
-            className="bg-indigo-600 w-10 h-10 rounded-xl shadow-lg shadow-indigo-100 items-center justify-center active:scale-95"
-          >
-            <Icons.Plus size={16} color="white" />
-          </TouchableOpacity>
-        </View>
-
-        <View className="mb-6">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-1 pb-2">
+        <View className="mb-6 flex-row items-center justify-between">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1 pb-2">
             {allSubjects.map((sub) => (
               <Pressable
                 key={sub}
@@ -198,6 +178,13 @@ export const TeacherMaterials = React.memo<TeacherMaterialsProps>(({
               </Pressable>
             ))}
           </ScrollView>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={onShowUploadModal}
+            className="bg-indigo-600 w-10 h-10 rounded-xl shadow-lg shadow-indigo-100 items-center justify-center active:scale-95 ml-2"
+          >
+            <Icons.Plus size={16} color="white" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -213,19 +200,13 @@ export const TeacherMaterials = React.memo<TeacherMaterialsProps>(({
 
   return (
     <View className="flex-1 bg-[#f8faff]">
-      <PlatinumHeader
+      <PlatinumSearchHeader
         title="My Lessons"
         subtitle={`${(currentUser as any)?.school_name || 'Academy'} Node`}
         onBack={onBack}
-        rightAction={
-          <TouchableOpacity 
-            activeOpacity={0.7}
-            onPress={() => searchRef.current?.focus()}
-            className="p-2 bg-gray-50 rounded-full border border-gray-100 active:scale-95"
-          >
-            <Icons.Search size={18} color="#6366f1" />
-          </TouchableOpacity>
-        }
+        searchValue={search}
+        onSearchChange={setSearch}
+        placeholder="Search Resources..."
       />
 
       {isLoading ? (
