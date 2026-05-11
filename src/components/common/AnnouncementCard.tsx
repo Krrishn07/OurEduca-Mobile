@@ -82,30 +82,28 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       entering={FadeInDown.delay(index * 100).duration(500)}
     >
       <AppRow
-        title={
-          <View className="flex-row items-center flex-wrap gap-2">
+        title={cleanTitle}
+        leftElement={
+          <View className="items-center">
+            <View 
+              className="w-9 h-9 rounded-xl items-center justify-center mb-1.5"
+              style={{ backgroundColor: config.bg }}
+            >
+              {config.icon}
+            </View>
             {extractedType && (
               <View 
-                className="px-1.5 py-0.5 rounded border"
-                style={{ 
-                  backgroundColor: config.bg, 
-                  borderColor: config.color + '20'
-                }}
+                className="px-1 py-0.5 rounded border"
+                style={{ backgroundColor: config.bg, borderColor: config.color + '20' }}
               >
                 <Text 
-                  className="text-[7px] font-inter-black uppercase tracking-widest"
+                  className="text-[6px] font-inter-black uppercase tracking-tighter"
                   style={{ color: config.color }}
                 >
                   {extractedType}
                 </Text>
               </View>
             )}
-            <Text 
-              className="text-[13px] font-inter-bold text-gray-900"
-              numberOfLines={1}
-            >
-              {cleanTitle}
-            </Text>
           </View>
         }
         subtitle={

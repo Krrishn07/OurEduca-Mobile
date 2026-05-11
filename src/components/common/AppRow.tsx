@@ -42,6 +42,8 @@ export interface AppRowProps {
   avatarColor?: string;
   /** Replaces avatar letter with a React node icon */
   avatarIcon?: React.ReactNode;
+  /** Custom element to show instead of avatar */
+  leftElement?: React.ReactNode;
   /** @deprecated — no longer rendered */
   statusDot?: string;
   /** Inline pill tags shown after subtitle */
@@ -68,13 +70,17 @@ export interface AppRowProps {
 }
 
 const RowContent = ({ 
-  avatarLetter, avatarIcon, avatarBg, avatarColor, 
+  avatarLetter, avatarIcon, avatarBg, avatarColor, leftElement,
   title, subtitle, pills, meta, rightElement, titleClassName = '', subtitleClassName = '',
   titleProps = {}, subtitleProps = {}
 }: any) => (
   <>
-    {/* Avatar bubble */}
-    {(avatarLetter || avatarIcon) && (
+    {/* Leading Content (Avatar or Custom) */}
+    {leftElement ? (
+      <View className="mr-3 shrink-0 items-center">
+        {leftElement}
+      </View>
+    ) : (avatarLetter || avatarIcon) && (
       <View
         className="w-9 h-9 rounded-xl items-center justify-center mr-3 shrink-0"
         style={{ backgroundColor: avatarBg }}
@@ -146,6 +152,7 @@ export const AppRow: React.FC<AppRowProps> = ({
   avatarBg = 'rgba(238, 242, 255, 0.6)',
   avatarColor = '#4f46e5',
   avatarIcon,
+  leftElement,
   statusDot = 'none',
   pills,
   rightElement,
@@ -234,6 +241,7 @@ export const AppRow: React.FC<AppRowProps> = ({
               avatarIcon={avatarIcon}
               avatarBg={avatarBg}
               avatarColor={avatarColor}
+              leftElement={leftElement}
               title={title}
               subtitle={subtitle}
               pills={pills}
@@ -252,6 +260,7 @@ export const AppRow: React.FC<AppRowProps> = ({
               avatarIcon={avatarIcon}
               avatarBg={avatarBg}
               avatarColor={avatarColor}
+              leftElement={leftElement}
               title={title}
               subtitle={subtitle}
               pills={pills}
