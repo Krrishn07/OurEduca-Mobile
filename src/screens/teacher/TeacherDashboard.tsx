@@ -16,6 +16,7 @@ import { TeacherMessages } from '@screens/teacher/TeacherMessages';
 import { TeacherProfile } from '@screens/teacher/TeacherProfile';
 import { TeacherMaterials } from '@screens/teacher/TeacherMaterials';
 import { TeacherNotices } from '@screens/teacher/TeacherNotices';
+import { AnnouncementsScreen } from '@components/common';
 import { TeacherGrading } from '@screens/teacher/TeacherGrading';
 import { TeacherClassDetail } from '@screens/teacher/TeacherClassDetail';
 import { TeacherReports } from '@screens/teacher/TeacherReports';
@@ -873,7 +874,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                 />
 
               ) : showAllNotices ? (
-                <TeacherNotices 
+                <AnnouncementsScreen 
                   announcements={announcements as any}
                   currentUser={teacherProfile}
                   onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
