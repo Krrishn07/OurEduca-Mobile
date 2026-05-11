@@ -10,6 +10,7 @@ import { StudentMessages } from '@screens/student/StudentMessages';
 
 import { DashboardDomainBundles } from '@/types/dashboard';
 import { RestrictedAccessView } from '@components/common/RestrictedAccessView';
+import { AnnouncementsScreen } from '@components/common';
 
 interface StudentRouterProps {
     bundle: DashboardDomainBundles['student'];
@@ -33,7 +34,7 @@ export const StudentRouter: React.FC<StudentRouterProps> = ({ bundle, common }) 
                     attendanceRate={data.studentAttendanceRate}
                     announcements={data.announcements}
                     onNavigate={onNavigate}
-                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
+                    onShowHistory={() => onNavigate?.('notices')}
                 />
             );
         case 'classes':
@@ -109,6 +110,14 @@ export const StudentRouter: React.FC<StudentRouterProps> = ({ bundle, common }) 
                     setMsgInput={common.setMsgInput}
                 />
             );
+        case 'notices':
+            return (
+                <AnnouncementsScreen 
+                    announcements={data.announcements}
+                    currentUser={currentUser}
+                    onBack={() => onNavigate?.('home')}
+                />
+            );
         case 'profile':
             return (
                 <StudentProfile 
@@ -127,7 +136,7 @@ export const StudentRouter: React.FC<StudentRouterProps> = ({ bundle, common }) 
                     attendanceRate={data.studentAttendanceRate || '...'}
                     announcements={data.announcements} 
                     onNavigate={(screen: any) => onNavigate(screen)}
-                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
+                    onShowHistory={() => onNavigate?.('notices')}
                     currentSchool={currentSchool}
                 />
             );

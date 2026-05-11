@@ -10,6 +10,7 @@ import { HeadmasterProfile } from '@screens/headmaster/HeadmasterProfile';
 
 import { DashboardDomainBundles } from '@/types/dashboard';
 import { RestrictedAccessView } from '@components/common/RestrictedAccessView';
+import { AnnouncementsScreen } from '@components/common';
 
 interface HeadmasterRouterProps {
     bundle: DashboardDomainBundles['headmaster'];
@@ -32,7 +33,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     attendanceRate={data.attendanceRate || '...'}
                     systemLogs={data.systemLogs}
                     onPostNotice={() => actions.setShowAnnouncementModal(true)}
-                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
+                    onShowHistory={() => onNavigate?.('notices')}
                     onDeleteNotice={actions.handleDeleteAnnouncement}
                     onShowNoticeDetail={actions.handleShowNoticeDetail}
                     currentSchool={currentSchool}
@@ -156,6 +157,16 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     onViewReport={() => actions.setShowFeesReportModal(true)}
                 />
             );
+        case 'notices':
+            return (
+                <AnnouncementsScreen 
+                    announcements={data.announcements}
+                    currentUser={currentUser}
+                    onDeleteNotice={actions.handleDeleteAnnouncement}
+                    onShowNoticeDetail={actions.handleShowNoticeDetail}
+                    onBack={() => onNavigate?.('home')}
+                />
+            );
         case 'settings':
             if (hasPermission && !hasPermission('settings')) {
                 return (
@@ -190,7 +201,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     attendanceRate={data.attendanceRate || '...'}
                     systemLogs={data.systemLogs}
                     onPostNotice={() => actions.setShowAnnouncementModal(true)}
-                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
+                    onShowHistory={() => onNavigate?.('notices')}
                     onDeleteNotice={actions.handleDeleteAnnouncement}
                     onShowNoticeDetail={actions.handleShowNoticeDetail}
                     currentSchool={currentSchool}

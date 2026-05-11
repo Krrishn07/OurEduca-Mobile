@@ -11,6 +11,7 @@ import { MentorProfile } from '@screens/mentor/MentorProfile';
 import { MentorMaterials } from '@screens/mentor/MentorMaterials';
 
 import { DashboardDomainBundles } from '@/types/dashboard';
+import { AnnouncementsScreen } from '@components/common';
 
 interface MentorRouterProps {
     bundle: DashboardDomainBundles['mentor'];
@@ -37,7 +38,7 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     announcements={data.announcements}
                     onNavigate={onNavigate}
                     onPostNotice={() => actions.setShowAnnouncementModal(true)}
-                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
+                    onShowHistory={() => onNavigate?.('notices')}
                     onDeleteNotice={actions.handleDeleteAnnouncement}
                     onShowAddStudentModal={() => actions.setShowAddStudentModal(true)}
                     currentSchool={currentSchool}
@@ -142,6 +143,16 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     onLogout={onLogout || (() => {})}
                 />
             );
+        case 'notices':
+            return (
+                <AnnouncementsScreen 
+                    announcements={data.announcements}
+                    currentUser={currentUser}
+                    onDeleteNotice={actions.handleDeleteAnnouncement}
+                    onShowNoticeDetail={actions.handleShowNoticeDetail}
+                    onBack={() => onNavigate?.('home')}
+                />
+            );
         case 'materials':
             return (
                 <MentorMaterials 
@@ -163,7 +174,7 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     announcements={data.announcements}
                     onNavigate={onNavigate}
                     onPostNotice={() => actions.setShowAnnouncementModal(true)}
-                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
+                    onShowHistory={() => onNavigate?.('notices')}
                     onDeleteNotice={actions.handleDeleteAnnouncement}
                     onShowAddStudentModal={() => actions.setShowAddStudentModal(true)}
                     currentSchool={currentSchool}
