@@ -110,7 +110,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
   pendingGradesCount = 0
 }) => {
   const insets = useSafeAreaInsets();
-  const HEADER_MAX_HEIGHT = insets.top + 220;
+  const HEADER_MAX_HEIGHT = insets.top + 260;
   const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -290,7 +290,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
           left: 0,
           right: 0,
           paddingHorizontal: 16,
-          paddingTop: 16,
+          paddingTop: insets.top + 8,
         }}
       >
         <StyledLinearGradient
@@ -327,10 +327,10 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                 <Icons.Notifications size={16} color="white" />
             </TouchableOpacity>
           </Animated.View>
-
-          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-5">
+ 
+          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-3">
             <View>
-                <Text className="text-white/90 text-[9px] uppercase tracking-[2px] mb-1 font-inter-black">Teacher Workflow</Text>
+                <Text className="text-white/90 text-[9px] uppercase tracking-[2px] mb-0.5 font-inter-black">Teacher Workflow</Text>
                 <Text className="text-white text-[20px] tracking-tighter leading-7 font-inter-black">{greeting}</Text>
                 <Text className="text-[26px] text-brand-accent tracking-tighter leading-8 font-inter-black">
                     {formatGreetingName(currentUser?.name, 'Teacher')}!
