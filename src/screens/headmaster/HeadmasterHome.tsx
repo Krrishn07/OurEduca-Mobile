@@ -248,7 +248,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
                   date={a.date}
                   category={a.category || 'general'}
                   isNew={isNew}
-                  showDelete={onDeleteNotice && a.sender_id === currentUser.id}
+                  showDelete={!!onDeleteNotice}
                   onDelete={() => onDeleteNotice && onDeleteNotice(a.id)}
                   onPress={() => onShowNoticeDetail?.(a)}
                 />

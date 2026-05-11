@@ -538,7 +538,10 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
               return (
                 <SwipeableRow
                   key={a.id || idx}
-                  canDelete={!!onDeleteNotice}
+                  canDelete={!!onDeleteNotice && (
+                    currentUser?.id === a.sender_id || 
+                    ['SCHOOL_ADMIN', 'HEADMASTER'].includes(currentUser?.role?.toUpperCase())
+                  )}
                   onDelete={() => {
                     triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
                     Alert.alert(
