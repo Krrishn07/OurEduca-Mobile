@@ -100,7 +100,7 @@ export const PlatformProfile: React.FC<PlatformProfileProps> = ({
         </View>
 
         {/* 4. Account & Security — AppRow pattern */}
-        <View className="px-4 mb-16">
+        <View className="px-4 mb-5">
             <SectionHeader
                 title="ACCOUNT & SECURITY"
                 className="px-2"
@@ -177,10 +177,9 @@ export const PlatformProfile: React.FC<PlatformProfileProps> = ({
 
         {/* 6. Build Information */}
         <View className="px-4 mb-16">
-                <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
-                <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
-                <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">256-bit encryption</Text>
-            </View>
+            <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
+            <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
+            <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">256-bit encryption</Text>
         </View>
     </ScrollView>
   );

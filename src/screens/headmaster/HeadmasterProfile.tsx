@@ -4,8 +4,6 @@ import { Icons } from '@components/common/Icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppTheme, AppCard, AppTypography, StatusPill, AppRow, SectionHeader } from '@components/common';
 
-const StyledLinearGradient = LinearGradient ? typeof LinearGradient === 'function' ? LinearGradient : View : View;
-
 interface HeadmasterProfileProps {
   currentUser: any;
   onShowEditProfileModal: () => void;
@@ -92,12 +90,13 @@ export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
                     avatarBg="#eef2ff"
                     showBorder={false}
                     rightElement={<Icons.ChevronRight size={13} color="#d1d5db" />}
+                    titleClassName="text-gray-700"
                 />
             </AppCard>
         </View>
 
         {/* 4. Account & Security — AppRow pattern */}
-        <View className="px-4 mb-16">
+        <View className="px-4 mb-5">
             <SectionHeader
                 title="SECURITY & ACCOUNT"
                 className="px-2"
@@ -177,10 +176,10 @@ export const HeadmasterProfile: React.FC<HeadmasterProfileProps> = ({
 
         {/* 6. Build Information */}
         <View className="px-4 mb-16">
-                <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
-                <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
-                <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">Institutional Standard</Text>
-            </View>
+            <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-3" />
+            <Text className="text-[8px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Secure Connection</Text>
+            <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black">Institutional Standard</Text>
+        </View>
     </ScrollView>
   );
 };

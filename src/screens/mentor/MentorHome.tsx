@@ -373,7 +373,11 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
 
         {/* Institutional Calendar - Standardized Compact Mode */}
         <View className="mb-8">
-          <SectionHeader title="Institutional Calendar" className="px-2" />
+          <SectionHeader 
+            title="MY SCHEDULE" 
+            subtitle="PERSONAL REMINDERS"
+            className="px-2" 
+          />
           <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">
             <CalendarWidget compact={true} />
           </AppCard>

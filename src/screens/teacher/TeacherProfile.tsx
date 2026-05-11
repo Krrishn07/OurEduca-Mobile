@@ -288,7 +288,7 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
         </AppCard>
       </View>
 
-      <View className="px-4 mb-10">
+      <View className="px-4 mb-6">
         <SectionHeader
           title="ACCOUNT & SECURITY"
           className="mb-3"
@@ -349,11 +349,11 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
         </AppCard>
       </View>
 
-      <View className="px-4 mb-10">
+      <View className="px-4 mb-10 items-center opacity-50">
           <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-4" />
           <Text className="text-[9px] text-gray-400 uppercase tracking-[2px] font-inter-black">Verified Faculty Node</Text>
           <Text className="text-[8px] text-gray-400 mt-1 uppercase tracking-[1px] font-inter-black italic">TLS 1.3 SECURE CONNECTION</Text>
-        </View>
+      </View>
     </Animated.ScrollView>
   );
 });
