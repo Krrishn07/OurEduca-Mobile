@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Icons } from '@components/common/Icons';
 import { UserRole } from '@/types';
-import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill, AnnouncementCard } from '@components/common';
+import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill, AnnouncementCard, CalendarWidget } from '@components/common';
 import { PlatformStatusBadge } from '@screens/platform/components/PlatformStatusBadge';
 import { formatGreetingName } from '@utils/nameUtils';
 
@@ -302,6 +302,24 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
               ))}
             </View>
           </AppCard>
+        </View>
+        
+        {/* Section: Academic Calendar */}
+        <View className="mb-10">
+          <SectionHeader
+            title="ACADEMIC CALENDAR"
+            className="px-2"
+            rightElement={
+                <TouchableOpacity 
+                    className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-gray-100 shadow-sm"
+                    onPress={() => onNavigate?.('management')}
+                >
+                    <Icons.Calendar size={12} color="#4f46e5" />
+                    <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1.5">Manage</Text>
+                </TouchableOpacity>
+            }
+          />
+          <CalendarWidget compact={true} />
         </View>
 
         {/* Section: Activity Log */}

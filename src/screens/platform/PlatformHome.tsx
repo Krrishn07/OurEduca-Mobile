@@ -5,7 +5,7 @@ import { useSchoolData } from '@context/SchoolDataContext';
 import { useSystemStatus } from '@context/SystemStatusContext';
 import { Icons } from '@components/common/Icons';
 import { SystemHealthModal } from './modals/SystemHealthModal';
-import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppRow, StatusPill, inferPillType } from '@components/common';
+import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppRow, StatusPill, inferPillType, CalendarWidget } from '@components/common';
 import { formatGreetingName } from '@utils/nameUtils';
 
 const StyledLinearGradient = LinearGradient || View;
@@ -322,6 +322,16 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
               ))}
             </View>
           </AppCard>
+        </View>
+
+        {/* System Schedule Section */}
+        <View className="mb-10">
+          <SectionHeader 
+            title="SYSTEM SCHEDULE" 
+            subtitle="GLOBAL CYCLES & MAINTENANCE"
+            className="mb-4 px-2"
+          />
+          <CalendarWidget compact={true} canAddEvents={true} className="mb-0" />
         </View>
 
         {/* Activity Log Section — Compact Eyebrow Style */}

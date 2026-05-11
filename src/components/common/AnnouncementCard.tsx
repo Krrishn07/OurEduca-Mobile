@@ -92,23 +92,19 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       entering={FadeInDown.delay(index * 100).duration(500)}
     >
       <AppRow
-        title={
-          <Text className="text-[12px] font-black tracking-tight font-inter-black leading-tight text-gray-900">
-            {cleanTitle}
-          </Text>
-        }
+        title={cleanTitle}
         alignItems="flex-start"
         leftElement={
-          <View className="items-center mt-0.5 w-11">
+          <View className="items-center mt-0.5 w-12">
             <View 
-              className="w-8 h-8 rounded-xl items-center justify-center mb-0.5"
+              className="w-9 h-9 rounded-xl items-center justify-center mb-1"
               style={{ backgroundColor: config.bg }}
             >
-              {React.cloneElement(config.icon as React.ReactElement, { size: 13 })}
+              {config.icon}
             </View>
             {extractedType && (
               <Text 
-                className="text-[6px] font-inter-black uppercase tracking-widest"
+                className="text-[7px] font-inter-black uppercase tracking-widest mt-1"
                 style={{ color: config.color }}
               >
                 {extractedType}
@@ -119,17 +115,17 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         subtitle={
           <View className="mt-0">
             <Text 
-              className="text-[10px] font-inter-medium text-gray-500 leading-tight flex-1"
+              className="text-[11px] font-inter-medium text-gray-500 leading-relaxed flex-1"
               numberOfLines={2}
               ellipsizeMode="tail"
             >
               {message}
             </Text>
             {senderName && (
-              <View className="flex-row items-center mt-1">
-                <View className="bg-gray-50 px-1 py-0.5 rounded border border-gray-100 flex-row items-center">
-                  <Icons.User size={7} color="#94a3b8" />
-                  <Text className="text-[7px] font-inter-bold text-gray-400 uppercase tracking-tight ml-1">
+              <View className="flex-row items-center mt-1.5">
+                <View className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 flex-row items-center">
+                  <Icons.User size={8} color="#94a3b8" />
+                  <Text className="text-[8px] font-inter-bold text-gray-400 uppercase tracking-tight ml-1">
                     Posted by {senderName} {senderRole ? `· ${formatRole(senderRole)}` : ''}
                   </Text>
                 </View>

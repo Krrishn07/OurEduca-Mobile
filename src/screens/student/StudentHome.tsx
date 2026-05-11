@@ -307,6 +307,14 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
               </TouchableOpacity>
             )}
         </AppCard>
+        
+        {/* Institutional Calendar */}
+        <SectionHeader 
+          title="ACADEMIC CALENDAR" 
+          subtitle="EVENTS & HOLIDAYS"
+          className="mb-4"
+        />
+        <CalendarWidget compact={true} canAddEvents={false} className="mb-8" />
 
         {/* Today's Schedule Registry */}
         <SectionHeader 

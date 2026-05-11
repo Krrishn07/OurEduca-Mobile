@@ -355,7 +355,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                 
                 <View className="space-y-6">
                     <View>
-                        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Activity Designation</Text>
+                        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Event Title</Text>
                         <TextInput 
                             className="w-full border border-gray-100 bg-gray-50 rounded-2xl p-4 text-[13px] font-black text-gray-900 shadow-inner font-inter-black"
                             placeholder="e.g. Physics Laboratory Sync"
@@ -366,7 +366,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                     </View>
                     
                     <View className="mt-4">
-                        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Institutional Category</Text>
+                        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Event Category</Text>
                         <View className="flex-row gap-2">
                            {['academic', 'exam', 'meeting'].map(type => (
                              <TouchableOpacity 
@@ -383,7 +383,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                     </View>
 
                     <View className="mt-4">
-                        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Temporal Synchronization</Text>
+                        <Text className="text-[9px] font-black text-indigo-400 uppercase tracking-[2px] mb-2 px-1 font-inter-black">Event Time</Text>
                         <View className="flex-row items-center gap-3">
                             <View className="flex-1">
                                 <TextInput 
@@ -414,7 +414,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                         activeOpacity={0.9}
                         className="w-full bg-indigo-600 py-4 rounded-2xl flex-row justify-center items-center mt-6 shadow-xl shadow-indigo-200 border border-indigo-500"
                     >
-                        <Text className="text-white font-black uppercase tracking-[3px] text-[11px] font-inter-black">Validate Milestone</Text>
+                        <Text className="text-white font-black uppercase tracking-[3px] text-[11px] font-inter-black">Confirm Event</Text>
                     </TouchableOpacity>
                 </View>
             </View>
