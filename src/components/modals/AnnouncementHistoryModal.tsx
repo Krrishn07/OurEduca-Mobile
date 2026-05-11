@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput, ScrollView } from 'react-native';
-import { Icons } from '@components/common/Icons';
-import { AppTheme, ModalShell, AppCard } from '@components/common';
+import { AppTheme, ModalShell, AppCard, AnnouncementCard } from '@components/common';
 import { triggerHaptic } from '@utils/haptics';
 
 interface AnnouncementHistoryModalProps {
@@ -92,19 +91,19 @@ export const AnnouncementHistoryModal: React.FC<AnnouncementHistoryModalProps> =
         </View>
 
         {/* Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 px-1">
           {(['ALL', 'STAFF', 'PARENT', 'STUDENT'] as const).map((filter) => (
             <TouchableOpacity 
               key={filter}
               onPress={() => { triggerHaptic(); setActiveFilter(filter); }}
-              className={`mr-3 px-6 py-3 rounded-2xl border-2 ${
+              className={`mr-3 px-6 py-2.5 rounded-xl border ${
                 activeFilter === filter 
-                  ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' 
-                  : 'bg-white border-transparent shadow-sm'
+                  ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-200' 
+                  : 'bg-white border-gray-100'
               } active:scale-95`}
             >
-              <Text className={`text-[10px] font-inter-black uppercase tracking-[1px] ${
-                activeFilter === filter ? 'text-indigo-600' : 'text-gray-400'
+              <Text className={`text-[10px] font-inter-black uppercase tracking-[1.5px] ${
+                activeFilter === filter ? 'text-white' : 'text-gray-400'
               }`}>
                 {filter}
               </Text>
@@ -123,53 +122,32 @@ export const AnnouncementHistoryModal: React.FC<AnnouncementHistoryModalProps> =
             </Text>
           </View>
         ) : (
-          <View className="gap-3">
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/10">
             {filteredAnnouncements.map((a: any, idx) => {
-              const style = getAudienceColor(a.audience);
+              const diff = Date.now() - new Date(a.date || Date.now()).getTime();
+              const isNew = diff < 24 * 60 * 60 * 1000;
+              
               const canDelete = onDeleteNotice && (
                 currentUser?.id === a.sender_id || 
                 ['SCHOOL_ADMIN', 'HEADMASTER'].includes(currentUser?.role?.toUpperCase())
               );
 
               return (
-                <TouchableOpacity 
-                  key={a.id || idx} 
-                  onPress={() => { triggerHaptic(); onShowNoticeDetail && onShowNoticeDetail(a); }}
-                  activeOpacity={0.7}
-                  className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex-row items-center"
-                >
-                  <View className={`w-10 h-10 rounded-xl ${style.bg} items-center justify-center mr-4 border border-black/5`}>
-                    <Icons.Notifications size={18} color={style.text} />
-                  </View>
-
-                  <View className="flex-1 mr-2">
-                    <View className="flex-row items-center mb-0.5 flex-wrap">
-                      <Text className="font-inter-bold text-gray-900 text-[14px] tracking-tight mr-2" numberOfLines={1}>{a.title}</Text>
-                      <View className={`${style.bg} px-1.5 py-0.5 rounded-md`}>
-                        <Text className={`text-[7px] font-inter-bold uppercase tracking-[0.5px]`} style={{ color: style.text }}>{a.audience}</Text>
-                      </View>
-                    </View>
-                    <Text className="text-[9px] font-inter-bold text-gray-400 uppercase tracking-[0.5px] mb-1">
-                      {a.sender || 'System'} • {a.date}
-                    </Text>
-                    <Text className="text-gray-500 text-[11px] leading-relaxed font-inter-medium" numberOfLines={1}>{a.message}</Text>
-                  </View>
-
-                  <View className="flex-row items-center gap-2">
-                    {canDelete && (
-                      <TouchableOpacity 
-                        onPress={() => handleDelete(a.id)}
-                        className="p-2 bg-gray-50 rounded-xl border border-gray-100 active:bg-red-50"
-                      >
-                        <Icons.Trash size={12} color="#9ca3af" />
-                      </TouchableOpacity>
-                    )}
-                    <Icons.ChevronRight size={14} color="#e2e8f0" />
-                  </View>
-                </TouchableOpacity>
+                <AnnouncementCard 
+                  key={a.id || idx}
+                  index={idx}
+                  title={a.title}
+                  message={a.message}
+                  date={a.date}
+                  category={a.category || (a.audience === 'ALL' ? 'urgent' : 'general')}
+                  isNew={isNew}
+                  showDelete={!!canDelete}
+                  onDelete={() => handleDelete(a.id)}
+                  onPress={() => onShowNoticeDetail && onShowNoticeDetail(a)}
+                />
               );
             })}
-          </View>
+          </AppCard>
         )}
       </View>
     </ModalShell>
