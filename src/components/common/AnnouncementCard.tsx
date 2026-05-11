@@ -14,6 +14,7 @@ interface AnnouncementCardProps {
   date: string;
   category?: AnnouncementCategory;
   senderName?: string;
+  senderRole?: string;
   isNew?: boolean;
   index?: number;
   onPress?: () => void;
@@ -54,6 +55,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   date,
   category = 'general',
   senderName,
+  senderRole,
   isNew = false,
   index = 0,
   onPress,
@@ -64,6 +66,14 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   const tagMatch = title.match(/^\[(\w+)\]/);
   const extractedType = tagMatch ? tagMatch[1] : null;
   const cleanTitle = title.replace(/^\[\w+\]\s*/, '');
+
+  const formatRole = (r?: string) => {
+    if (!r) return '';
+    if (r.toUpperCase() === 'HEADMASTER') return 'Headmaster';
+    if (r.toUpperCase() === 'TEACHER') return 'Faculty';
+    if (r.toUpperCase() === 'ADMIN_TEACHER') return 'Senior Mentor';
+    return r.charAt(0).toUpperCase() + r.slice(1).toLowerCase();
+  };
 
   const config = CATEGORY_CONFIG[category];
 
@@ -99,10 +109,10 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             </Text>
             {senderName && (
               <View className="flex-row items-center mt-1.5">
-                <View className="bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100/50 flex-row items-center">
-                  <Icons.User size={8} color="#6366f1" />
-                  <Text className="text-[8px] font-inter-black text-indigo-600 uppercase tracking-tight ml-1">
-                    Posted by {senderName}
+                <View className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 flex-row items-center">
+                  <Icons.User size={8} color="#94a3b8" />
+                  <Text className="text-[8px] font-inter-bold text-gray-400 uppercase tracking-tight ml-1">
+                    Posted by {senderName} {senderRole ? `· ${formatRole(senderRole)}` : ''}
                   </Text>
                 </View>
               </View>

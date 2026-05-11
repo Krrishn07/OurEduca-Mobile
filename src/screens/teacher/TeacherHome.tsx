@@ -564,6 +564,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
                         (a.title || '').toUpperCase().includes('[EVENT]') ? 'event' : 'general'
                       }
                       senderName={a.sender_name}
+                      senderRole={a.sender_role}
                       onPress={() => {}}
                     />
                 </SwipeableRow>

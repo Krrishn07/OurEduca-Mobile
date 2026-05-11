@@ -28,6 +28,12 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
   const insets = useSafeAreaInsets();
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'STAFF' | 'STUDENT'>('ALL');
+
+  const counts = useMemo(() => ({
+    ALL: announcements.length,
+    STAFF: announcements.filter(a => (a.audience || '').toUpperCase() === 'STAFF').length,
+    STUDENT: announcements.filter(a => (a.audience || '').toUpperCase() === 'STUDENT' || (a.audience || '').toUpperCase() === 'STUDENTS').length,
+  }), [announcements]);
   const [searchVisible, setSearchVisible] = useState(false);
 
   const filteredAnnouncements = useMemo(() => {
@@ -39,7 +45,9 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
       
       const matchesFilter = 
         activeFilter === 'ALL' || 
-        (a.audience || '').toUpperCase() === activeFilter;
+        (activeFilter === 'STUDENT' 
+          ? ((a.audience || '').toUpperCase() === 'STUDENT' || (a.audience || '').toUpperCase() === 'STUDENTS')
+          : (a.audience || '').toUpperCase() === activeFilter);
 
       return matchesSearch && matchesFilter;
     });
@@ -99,7 +107,7 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                 <Text className={`text-[10px] font-inter-black uppercase tracking-[1.5px] ${
                     activeFilter === filter ? 'text-white' : 'text-gray-400'
                 }`}>
-                    {filter}
+                    {filter} ({counts[filter]})
                 </Text>
                 </TouchableOpacity>
             ))}
@@ -157,6 +165,7 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                     date={a.date || a.created_at}
                     category={cardCategory}
                     senderName={a.sender_name}
+                    senderRole={a.sender_role}
                     isNew={isNew}
                     showDelete={!!canDelete}
                     onDelete={() => handleDelete(a.id)}
