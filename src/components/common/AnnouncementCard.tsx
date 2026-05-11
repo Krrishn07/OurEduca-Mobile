@@ -85,7 +85,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         title={cleanTitle}
         alignItems="flex-start"
         leftElement={
-          <View className="items-center mt-0.5">
+          <View className="items-center mt-0.5 w-14">
             <View 
               className="w-9 h-9 rounded-xl items-center justify-center mb-1"
               style={{ backgroundColor: config.bg }}
@@ -98,7 +98,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
                 style={{ backgroundColor: config.bg, borderColor: config.color + '20' }}
               >
                 <Text 
-                  className="text-[7px] font-inter-black uppercase tracking-widest"
+                  className="text-[6px] font-inter-black uppercase tracking-tighter"
                   style={{ color: config.color }}
                 >
                   {extractedType}
