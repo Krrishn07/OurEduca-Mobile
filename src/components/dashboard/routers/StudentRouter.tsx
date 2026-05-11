@@ -127,6 +127,7 @@ export const StudentRouter: React.FC<StudentRouterProps> = ({ bundle, common }) 
                     attendanceRate={data.studentAttendanceRate || '...'}
                     announcements={data.announcements} 
                     onNavigate={(screen: any) => onNavigate(screen)}
+                    onShowHistory={() => actions.setShowAnnouncementHistoryModal(true)}
                     currentSchool={currentSchool}
                 />
             );

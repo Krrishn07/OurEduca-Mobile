@@ -350,6 +350,15 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
               );
             })}
 
+            {mentorAnnouncements.length > 0 && (
+              <TouchableOpacity 
+                onPress={onShowHistory}
+                className="py-4 border-t border-gray-50 items-center bg-gray-50/30 active:bg-gray-100"
+              >
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Notices</Text>
+              </TouchableOpacity>
+            )}
+
             {mentorAnnouncements.length === 0 && (
               <View className="items-center py-12">
                 <View className="w-14 h-14 rounded-2xl bg-gray-50 items-center justify-center mb-4 border border-gray-100">

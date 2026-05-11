@@ -297,6 +297,15 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
                 />
               );
             })}
+
+            {studentAnnouncements.length > 0 && (
+              <TouchableOpacity 
+                onPress={onShowHistory}
+                className="py-4 border-t border-gray-50 items-center bg-gray-50/30 active:bg-gray-50"
+              >
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Notices</Text>
+              </TouchableOpacity>
+            )}
         </AppCard>
 
         {/* Today's Schedule Registry */}
