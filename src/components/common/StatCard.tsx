@@ -98,10 +98,10 @@ export const StatCard: React.FC<StatCardProps> = ({
             {value}
           </Text>
           
-          <View className="flex-row items-center mt-1 mb-2">
-            <Text className={`${AppTypography.meta} text-gray-400 mr-1.5`}>{label}</Text>
+          <View className="items-center mt-1 mb-2">
+            <Text className={`${AppTypography.meta} text-gray-400`}>{label}</Text>
             {trend && (
-              <View className={`flex-row items-center px-1.5 py-0.5 rounded-full ${
+              <View className={`flex-row items-center px-1.5 py-0.5 rounded-full mt-1.5 ${
                 trendType === 'up' ? 'bg-emerald-100' : trendType === 'down' ? 'bg-rose-100' : 'bg-gray-100'
               }`}>
                 {trendType === 'up' && <Icons.ArrowUp size={8} color="#059669" />}

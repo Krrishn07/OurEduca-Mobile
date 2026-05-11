@@ -67,8 +67,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.GraduationCap size={22} color={AppTheme.colors.primary} />,
       onPress: () => onNavigate?.('manage'),
-      subtitle: 'School roster',
-      subtitleTone: 'info' as const,
+      trend: '+4',
+      trendType: 'up' as const,
     },
     {
       label: 'Faculty',
@@ -76,8 +76,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-orange-50',
       icon: <Icons.Users size={22} color="#ea580c" />,
       onPress: () => onNavigate?.('manage'),
-      subtitle: 'Teaching staff',
-      subtitleTone: 'warning' as const,
+      trend: '+1',
+      trendType: 'up' as const,
     },
     {
       label: 'Classes',
@@ -85,8 +85,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.BookOpen size={22} color={AppTheme.colors.success} />,
       onPress: () => onNavigate?.('manage'),
-      subtitle: 'Class units',
-      subtitleTone: 'success' as const,
+      trend: 'Stable',
+      trendType: 'neutral' as const,
     },
     {
       label: 'Attendance',
@@ -94,8 +94,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
       toneClassName: 'bg-blue-50',
       icon: <Icons.Calendar size={22} color={AppTheme.colors.info} />,
       onPress: undefined,
-      subtitle: 'Live rate',
-      subtitleTone: 'info' as const,
+      trend: '+0.5%',
+      trendType: 'up' as const,
     },
   ];
 
@@ -188,6 +188,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
                   label={stat.label}
                   icon={stat.icon}
                   tone={mappedTone as any}
+                  trend={(stat as any).trend}
+                  trendType={(stat as any).trendType}
                   onPress={stat.onPress}
                 />
               </View>

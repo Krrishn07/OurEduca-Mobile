@@ -111,8 +111,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.Inbox size={22} color={AppTheme.colors.primary} />,
       onPress: () => onNavigate?.('leads'),
-      subtitle: newInquiries.length > 0 ? `${newInquiries.length} new` : 'Up to date',
-      subtitleTone: 'info' as const,
+      trend: '+2',
+      trendType: 'up' as const,
     },
     {
       label: 'Billing Audit',
@@ -120,8 +120,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: autoOverdueCount > 0 ? 'bg-amber-50' : 'bg-emerald-50',
       icon: <Icons.Shield size={22} color={autoOverdueCount > 0 ? AppTheme.colors.warning : AppTheme.colors.success} />,
       onPress: () => onNavigate?.('billing'),
-      subtitle: autoOverdueCount > 0 ? 'Action required' : 'Synced',
-      subtitleTone: autoOverdueCount > 0 ? 'warning' as const : 'success' as const,
+      trend: autoOverdueCount > 0 ? 'Urgent' : 'Synced',
+      trendType: autoOverdueCount > 0 ? 'down' : 'neutral' as const,
     },
     {
       label: 'Active Institutes',
@@ -129,8 +129,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.School size={22} color={AppTheme.colors.primary} />,
       onPress: () => onNavigate?.('institutes'),
-      subtitle: `${institutes.length} total`,
-      subtitleTone: 'info' as const,
+      trend: '+1',
+      trendType: 'up' as const,
     },
     {
       label: 'Active Users',
@@ -138,8 +138,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Users size={22} color={AppTheme.colors.success} />,
       onPress: () => onNavigate?.('roles'),
-      subtitle: `${onlineNow} online now`,
-      subtitleTone: 'success' as const,
+      trend: '+15',
+      trendType: 'up' as const,
     },
     {
       label: 'System Health',
@@ -147,8 +147,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-emerald-50',
       icon: <Icons.Signal size={22} color={AppTheme.colors.success} />,
       onPress: () => setIsHealthModalVisible(true),
-      subtitle: systemStatus.health || 'Optimal',
-      subtitleTone: systemStatus.health === 'Optimal' ? 'success' as const : 'warning' as const,
+      trend: 'Peak',
+      trendType: 'up' as const,
     },
     {
       label: 'DB Latency',
@@ -156,8 +156,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
       toneClassName: 'bg-indigo-50',
       icon: <Icons.Activity size={22} color={AppTheme.colors.primary} />,
       onPress: () => setIsHealthModalVisible(true),
-      subtitle: (systemStatus.latency || 0) < 100 ? 'Peak' : 'Fair',
-      subtitleTone: (systemStatus.latency || 0) < 100 ? 'success' as const : 'warning' as const,
+      trend: '-5ms',
+      trendType: 'up' as const,
     },
   ];
 
@@ -224,6 +224,8 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
                   label={stat.label}
                   icon={stat.icon}
                   tone={mappedTone as any}
+                  trend={(stat as any).trend}
+                  trendType={(stat as any).trendType}
                   onPress={stat.onPress}
                 />
               </View>
