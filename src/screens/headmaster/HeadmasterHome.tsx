@@ -319,7 +319,9 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
                 </TouchableOpacity>
             }
           />
-          <CalendarWidget compact={true} />
+          <AppCard className="p-2 border border-white shadow-xl shadow-indigo-100/30 overflow-hidden">
+            <CalendarWidget compact={true} />
+          </AppCard>
         </View>
 
         {/* Section: Activity Log */}

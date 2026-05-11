@@ -314,7 +314,9 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
           subtitle="EVENTS & HOLIDAYS"
           className="mb-4"
         />
-        <CalendarWidget compact={true} canAddEvents={false} className="mb-8" />
+        <AppCard className="p-2 border border-white shadow-xl shadow-indigo-100/30 overflow-hidden">
+          <CalendarWidget compact={true} canAddEvents={false} />
+        </AppCard>
 
         {/* Today's Schedule Registry */}
         <SectionHeader 

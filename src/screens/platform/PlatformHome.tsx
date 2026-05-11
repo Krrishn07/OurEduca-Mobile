@@ -331,7 +331,9 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
             subtitle="GLOBAL CYCLES & MAINTENANCE"
             className="mb-4 px-2"
           />
-          <CalendarWidget compact={true} canAddEvents={true} className="mb-0" />
+          <AppCard className="p-2 border border-white shadow-xl shadow-indigo-100/30 overflow-hidden">
+            <CalendarWidget compact={true} canAddEvents={true} />
+          </AppCard>
         </View>
 
         {/* Activity Log Section — Compact Eyebrow Style */}

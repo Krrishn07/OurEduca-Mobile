@@ -209,7 +209,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
   };
 
   return (
-    <View className={`${compact ? 'p-0' : 'bg-white p-6 rounded-[32px] shadow-sm border border-gray-100'} flex-1 ${className}`}>
+    <View className={`${compact ? 'p-0' : 'bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex-1'} ${className}`}>
       {/* Header Row — Hidden in compact mode */}
       {!compact && (
         <View className="flex-row items-center mb-6">
@@ -244,7 +244,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
         ))}
       </View>
       
-      <View className="flex-row flex-wrap mb-0 h-48">
+      <View className="flex-row flex-wrap mb-0 h-56">
         {Array(firstDayOfMonth).fill(null).map((_, i) => <View key={`blank-${i}`} className="w-[14.28%] aspect-square" />)}
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
             const dateEvents = getEventsForDate(day);
