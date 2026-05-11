@@ -138,6 +138,16 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                     ['SCHOOL_ADMIN', 'HEADMASTER'].includes(currentUser?.role?.toUpperCase())
                 );
 
+                // Intelligent Category Mapping (Keyword-based fallback)
+                let cardCategory: any = a.category;
+                if (!cardCategory || cardCategory === 'general') {
+                    const titleUpper = (a.title || '').toUpperCase();
+                    if (titleUpper.includes('[URGENT]') || titleUpper.includes('URGENT:')) cardCategory = 'urgent';
+                    else if (titleUpper.includes('[ACADEMIC]') || titleUpper.includes('ACADEMIC:')) cardCategory = 'academic';
+                    else if (titleUpper.includes('[EVENT]') || titleUpper.includes('EVENT:')) cardCategory = 'event';
+                    else cardCategory = a.audience === 'ALL' ? 'urgent' : 'general';
+                }
+
                 return (
                     <AnnouncementCard 
                     key={a.id || idx}
@@ -145,7 +155,7 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                     title={a.title}
                     message={a.message}
                     date={a.date || a.created_at}
-                    category={a.category || (a.audience === 'ALL' ? 'urgent' : 'general')}
+                    category={cardCategory}
                     isNew={isNew}
                     showDelete={!!canDelete}
                     onDelete={() => handleDelete(a.id)}

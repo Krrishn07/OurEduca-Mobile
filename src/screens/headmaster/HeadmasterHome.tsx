@@ -175,6 +175,28 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
       >
+        {/* Quick Actions Row */}
+        <View className="flex-row gap-3 mb-6">
+          <ActionTile
+            label="Post Notice"
+            icon={<Icons.Plus size={18} color="white" />}
+            toneClassName="bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-100/50"
+            iconShellClassName="bg-white/15 border-white/20"
+            textClassName="text-white"
+            className="py-4"
+            onPress={onPostNotice}
+          />
+          <ActionTile
+            label="View Reports"
+            icon={<Icons.Activity size={18} color="#4f46e5" />}
+            toneClassName="bg-white border-gray-100 shadow-md shadow-indigo-100/20"
+            iconShellClassName="bg-indigo-50 border-indigo-100"
+            textClassName="text-indigo-700"
+            className="py-4"
+            onPress={() => onNavigate?.('manage')}
+          />
+        </View>
+
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
           {stats.map((stat, idx) => {
             const mappedTone = 

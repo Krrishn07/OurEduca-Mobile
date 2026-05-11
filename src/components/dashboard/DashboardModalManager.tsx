@@ -219,12 +219,6 @@ export const DashboardModalManager: React.FC<DashboardModalManagerProps> = ({ ro
     // General School Modals (Headmaster, Teacher)
     const renderSchoolModals = () => (
         <>
-            <AnnouncementModal 
-                visible={state.showAnnouncementModal}
-                onClose={() => actions.setShowAnnouncementModal(false)}
-                onSave={actions.handlePostAnnouncement}
-                userRole={role}
-            />
             <AnnouncementHistoryModal 
                 visible={state.showAnnouncementHistoryModal}
                 onClose={() => actions.setShowAnnouncementHistoryModal(false)}
@@ -334,6 +328,13 @@ export const DashboardModalManager: React.FC<DashboardModalManagerProps> = ({ ro
         <>
             {getRoleModals()}
             
+            <AnnouncementModal 
+                visible={state.showAnnouncementModal}
+                onClose={() => actions.setShowAnnouncementModal(false)}
+                onSave={actions.handlePostAnnouncement}
+                userRole={role}
+            />
+
             <UploadVideoModal 
                 visible={state.showUploadVideoModal}
                 onClose={() => actions.setShowUploadVideoModal(false)}
