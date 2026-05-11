@@ -13,6 +13,7 @@ interface AnnouncementCardProps {
   message: string;
   date: string;
   category?: AnnouncementCategory;
+  senderName?: string;
   isNew?: boolean;
   index?: number;
   onPress?: () => void;
@@ -52,6 +53,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   message,
   date,
   category = 'general',
+  senderName,
   isNew = false,
   index = 0,
   onPress,
@@ -66,12 +68,30 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
     >
       <AppRow
         title={title}
-        subtitle={message}
+        subtitle={
+          <View className="mt-0.5">
+            <Text 
+              className="text-[11px] font-inter-medium text-gray-500 leading-relaxed"
+              numberOfLines={2}
+            >
+              {message}
+            </Text>
+            {senderName && (
+              <View className="flex-row items-center mt-1.5">
+                <View className="bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100/50 flex-row items-center">
+                  <Icons.User size={8} color="#6366f1" />
+                  <Text className="text-[8px] font-inter-black text-indigo-600 uppercase tracking-tight ml-1">
+                    Posted by {senderName}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        }
         meta={date}
         avatarIcon={config.icon}
         avatarBg={config.bg}
         onPress={onPress}
-        statusDot={isNew ? 'info' : 'none'}
         rightElement={
           showDelete ? (
             <TouchableOpacity

@@ -433,7 +433,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       try {
           let query = supabase
               .from('announcements')
-              .select('*')
+              .select('*, users:sender_id(name, avatar, role)')
               .or(`school_id.eq.${schoolId},school_id.is.null`);
           
           if (roles && roles.length > 0) {
@@ -449,9 +449,11 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
               title: a.title,
               message: a.message,
               date: new Date(a.created_at).toLocaleDateString(),
-              sender: 'Administration',
+              sender_name: a.users?.name || 'Administration',
+              sender_role: a.users?.role || 'SYSTEM',
               audience: a.audience,
-              category: a.category || 'general'
+              category: a.category || 'general',
+              sender_id: a.sender_id
           }));
 
           // TACTICAL DEDUPLICATION: Ensure unique announcement IDs

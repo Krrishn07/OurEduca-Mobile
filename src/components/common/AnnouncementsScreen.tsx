@@ -145,7 +145,7 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                     if (titleUpper.includes('[URGENT]') || titleUpper.includes('URGENT:')) cardCategory = 'urgent';
                     else if (titleUpper.includes('[ACADEMIC]') || titleUpper.includes('ACADEMIC:')) cardCategory = 'academic';
                     else if (titleUpper.includes('[EVENT]') || titleUpper.includes('EVENT:')) cardCategory = 'event';
-                    else cardCategory = a.audience === 'ALL' ? 'urgent' : 'general';
+                    else cardCategory = 'general'; // Standardized: No more defaulting ALL to urgent
                 }
 
                 return (
@@ -156,6 +156,7 @@ export const AnnouncementsScreen: React.FC<AnnouncementsScreenProps> = ({
                     message={a.message}
                     date={a.date || a.created_at}
                     category={cardCategory}
+                    senderName={a.sender_name}
                     isNew={isNew}
                     showDelete={!!canDelete}
                     onDelete={() => handleDelete(a.id)}

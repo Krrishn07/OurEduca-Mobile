@@ -31,7 +31,7 @@ export interface AppRowProps {
   /** Main text — bold, 13px (can be a component for animations) */
   title: string | React.ReactNode;
   /** Detail below title — 11px muted */
-  subtitle?: string;
+  subtitle?: string | React.ReactNode;
   /** Far-right tiny meta label OR custom right element */
   meta?: string;
   /** Single letter shown in avatar bubble */
@@ -109,13 +109,17 @@ const RowContent = ({
       {(subtitle || pills) && (
         <View className="flex-row items-center flex-wrap gap-1.5 mt-0.5">
           {subtitle && (
-            <Text
-              className={`text-[11px] font-medium font-inter-medium ${subtitleClassName || 'text-gray-400'}`}
-              numberOfLines={1}
-              {...subtitleProps}
-            >
-              {subtitle}
-            </Text>
+            typeof subtitle === 'string' ? (
+              <Text
+                className={`text-[11px] font-medium font-inter-medium ${subtitleClassName || 'text-gray-400'}`}
+                numberOfLines={1}
+                {...subtitleProps}
+              >
+                {subtitle}
+              </Text>
+            ) : (
+              subtitle
+            )
           )}
           {pills}
         </View>
