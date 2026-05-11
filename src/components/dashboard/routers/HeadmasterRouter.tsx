@@ -37,6 +37,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     onShowNoticeDetail={actions.handleShowNoticeDetail}
                     currentSchool={currentSchool}
                     onNavigate={onNavigate}
+                    currentUser={currentUser}
                     userName={currentUser?.name || ''}
                 />
             );
@@ -194,6 +195,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     onShowNoticeDetail={actions.handleShowNoticeDetail}
                     currentSchool={currentSchool}
                     onNavigate={onNavigate}
+                    currentUser={currentUser}
                     userName={currentUser?.name || ''}
                 />
             );
