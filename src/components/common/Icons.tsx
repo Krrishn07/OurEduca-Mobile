@@ -73,7 +73,8 @@ import {
   Star,
   CheckCheck,
   AlertCircle,
-  Link
+  Link,
+  Briefcase
 } from 'lucide-react-native';
 
 export const Icons = {
@@ -168,5 +169,6 @@ export const Icons = {
   MicOff,
   Radio,
   Star,
-  Link
+  Link,
+  Briefcase
 };
