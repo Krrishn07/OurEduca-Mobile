@@ -29,6 +29,7 @@ interface HeadmasterHomeProps {
   attendanceRate?: string;
   systemLogs?: any[];
   onNavigate?: (tab: string) => void;
+  currentUser: any;
   userName?: string;
 }
 
@@ -44,6 +45,8 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
   attendanceRate = '0%',
   systemLogs = [],
   onNavigate,
+  onDeleteNotice,
+  currentUser,
   userName = 'Principal',
 }) => {
   const scrollY = useRef(new Animated.Value(0)).current;

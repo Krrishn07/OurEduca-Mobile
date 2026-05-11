@@ -100,15 +100,15 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
   onShowHistory,
   onDeleteNotice,
   onDeleteMaterial,
-  currentSchool,
-  systemLogs = [],
-  assignments = [],
   onGradeAssignment,
   onAddAssignment,
   onRefresh,
   refreshing = false,
   isLoading = false,
-  pendingGradesCount = 0
+  pendingGradesCount = 0,
+  currentSchool,
+  systemLogs = [],
+  assignments = []
 }) => {
   const insets = useSafeAreaInsets();
   const HEADER_MAX_HEIGHT = insets.top + 260;

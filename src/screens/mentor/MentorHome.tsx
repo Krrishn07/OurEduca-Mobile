@@ -345,8 +345,6 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
                   date={a.date}
                   category={a.category || 'general'}
                   isNew={isNew}
-                  showDelete={onDeleteNotice && a.sender_id === currentUser.id}
-                  onDelete={() => onDeleteNotice && onDeleteNotice(a.id)}
                   onPress={() => {}}
                 />
               );
