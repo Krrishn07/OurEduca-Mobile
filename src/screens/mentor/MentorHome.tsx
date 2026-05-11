@@ -119,32 +119,32 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
       value: mentorRoster.length,
       icon: <Icons.Users size={22} color={AppTheme.colors.primary} />,
       toneClassName: 'bg-indigo-50',
-      subtitle: 'Class Roster',
-      subtitleTone: 'info' as const,
+      trend: mentorRoster.length > 0 ? 'Active' : 'Empty',
+      trendType: 'neutral' as const,
     },
     {
       label: 'Subjects',
       value: subjectCount,
       icon: <Icons.BookOpen size={22} color={AppTheme.colors.success} />,
       toneClassName: 'bg-emerald-50',
-      subtitle: 'Active Courses',
-      subtitleTone: 'success' as const,
+      trend: subjectCount > 0 ? 'Loaded' : 'None',
+      trendType: 'up' as const,
     },
     {
       label: 'Attendance',
       value: attendanceRate,
       icon: <Icons.Calendar size={22} color={AppTheme.colors.warning} />,
       toneClassName: 'bg-amber-50',
-      subtitle: 'Average Rate',
-      subtitleTone: 'warning' as const,
+      trend: parseFloat(attendanceRate) > 90 ? 'Optimal' : parseFloat(attendanceRate) < 75 ? 'Alert' : 'Stable',
+      trendType: parseFloat(attendanceRate) > 90 ? 'up' : parseFloat(attendanceRate) < 75 ? 'down' : 'neutral' as const,
     },
     {
       label: 'Parents',
       value: parentCount || mentorRoster.length * 2,
       icon: <Icons.Users size={22} color={AppTheme.colors.error} />,
       toneClassName: 'bg-rose-50',
-      subtitle: 'Linked Contacts',
-      subtitleTone: 'danger' as const,
+      trend: (parentCount || mentorRoster.length) > 0 ? 'Linked' : 'Zero',
+      trendType: 'up' as const,
     },
   ];
 
@@ -256,6 +256,8 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
                   label={stat.label}
                   icon={stat.icon}
                   tone={mappedTone as any}
+                  trend={(stat as any).trend}
+                  trendType={(stat as any).trendType}
                   onPress={() => {
                     if (stat.label === 'Students') onNavigate?.('manage');
                     else if (stat.label === 'Subjects') onNavigate?.('classes');
