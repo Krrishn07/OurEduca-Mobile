@@ -23,7 +23,7 @@ import {
   AppTypography, 
   AppButton, 
   ModalShell, 
-  PlatinumHeader 
+  PlatinumSearchHeader 
 } from '@components/common';
 import { UploadMaterialModal } from '@components/modals/UploadMaterialModal';
 

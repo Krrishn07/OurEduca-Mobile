@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Icons } from '@components/common/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppCard, SectionHeader, AppRow, StatusPill, PlatinumHeader, SkeletonRow } from '@components/common';
+import { AppCard, SectionHeader, AppRow, StatusPill, PlatinumSearchHeader, SkeletonRow } from '@components/common';
 import { formatAcademicTime } from '@utils/timeUtils';
 import { triggerHaptic } from '@utils/haptics';
 

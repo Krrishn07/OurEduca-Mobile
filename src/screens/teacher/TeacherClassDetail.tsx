@@ -4,7 +4,7 @@ import { View, Text, FlatList, Platform, Pressable, Animated, Dimensions, TextIn
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icons } from '@components/common/Icons';
-import { SectionHeader, AppRow, StatusPill, PlatinumHeader } from '@components/common';
+import { SectionHeader, AppRow, StatusPill, PlatinumSearchHeader } from '@components/common';
 
 function useDebounce<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);

@@ -62,7 +62,7 @@ import {
   AppButton,
   SkeletonCard,
   SkeletonRow,
-  PlatinumHeader,
+  PlatinumSearchHeader,
 } from '@components/common';
 // FIX-18: Removed unused import → import { CreateAssignmentModal } from '../modals/CreateAssignmentModal';
 import { supabase } from '@lib/supabase';

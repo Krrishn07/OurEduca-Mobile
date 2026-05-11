@@ -11,7 +11,7 @@ import {
   StatusPill, 
   AppTypography, 
   AppButton, 
-  PlatinumHeader, 
+  PlatinumSearchHeader, 
   SkeletonCard, 
   SkeletonRow 
 } from '@components/common';

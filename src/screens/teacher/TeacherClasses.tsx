@@ -3,7 +3,7 @@ import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { FlatList, Text, TouchableOpacity, View, RefreshControl, Platform, TextInput, UIManager, Pressable, Animated } from 'react-native';
 import { Icons } from '@components/common/Icons';
 import { triggerHaptic, ImpactFeedbackStyle } from '@utils/haptics';
-import { AppCard, AppTheme, AppRow, StatusPill, PlatinumHeader, SkeletonCard, SkeletonRow } from '@components/common';
+import { AppCard, AppTheme, AppRow, StatusPill, PlatinumSearchHeader, SkeletonCard, SkeletonRow } from '@components/common';
 import { useMockAuth } from '@context/MockAuthContext';
 
 interface AnimatedCountProps {

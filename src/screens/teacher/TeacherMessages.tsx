@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeOut, Layout, useSharedValue, withSpring, withTiming, useAnimatedStyle, FadeInDown, FadeOutUp, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icons } from '@components/common/Icons';
-import { PlatinumHeader } from '@components/common';
+import { PlatinumHeader, PlatinumSearchHeader } from '@components/common';
 import { User, ChatMessage, UserRole } from '@/types';
 import { isSameDay, formatDetailedDate } from '@utils/timeUtils';
 import { triggerHaptic, HapticPatterns } from '@utils/haptics';

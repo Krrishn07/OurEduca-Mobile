@@ -7,7 +7,7 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icons } from '@components/common/Icons';
-import { SkeletonCard, SkeletonRow, PlatinumHeader } from '@components/common';
+import { SkeletonCard, SkeletonRow, PlatinumSearchHeader } from '@components/common';
 import { supabase } from '@lib/supabase';
 import { useMockAuth } from '@context/MockAuthContext';
 
