@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput, ScrollView } from 'react-native';
+import { Icons } from '@components/common/Icons';
 import { AppTheme, ModalShell, AppCard, AnnouncementCard } from '@components/common';
 import { triggerHaptic } from '@utils/haptics';
 
@@ -54,14 +55,6 @@ export const AnnouncementHistoryModal: React.FC<AnnouncementHistoryModalProps> =
         }
       ]
     );
-  };
-
-  const getAudienceColor = (audience: string) => {
-    const aud = (audience || '').toUpperCase();
-    if (aud === 'STAFF') return { text: '#4f46e5', bg: 'bg-indigo-50' };
-    if (aud === 'PARENT') return { text: '#d97706', bg: 'bg-amber-50' };
-    if (aud === 'STUDENT') return { text: '#10b981', bg: 'bg-emerald-50' };
-    return { text: '#9333ea', bg: 'bg-purple-50' };
   };
 
   return (
