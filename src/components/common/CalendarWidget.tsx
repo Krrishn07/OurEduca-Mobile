@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Modal, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from './Icons';
-
-
+import { useSchoolData } from '@context/SchoolDataContext';
+import { useMockAuth } from '@context/MockAuthContext';
 
 const StyledLinearGradient = LinearGradient;
 
@@ -184,6 +184,9 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
       setShowModal(true);
   };
 
+   const { logSystemActivity } = useSchoolData();
+   const { currentSchool, currentUser } = useMockAuth();
+
   const handleSaveEvent = () => {
       if (!selectedDate || !newEvent.title.trim()) return;
 
@@ -199,6 +202,17 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
           ...prev,
           [key]: [...(prev[key] || []), eventToAdd]
       }));
+
+      // Log activity for recent activity feed
+      logSystemActivity(
+          currentSchool?.id,
+          `New Event: ${newEvent.title}`,
+          'Calendar',
+          '#6366f1',
+          currentUser?.id,
+          'SYSTEM'
+      );
+
       setShowModal(false);
   };
 

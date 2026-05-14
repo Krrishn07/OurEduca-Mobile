@@ -124,6 +124,28 @@ export interface Assignment {
   created_at: string;
 }
 
+export interface Submission {
+  id: string;
+  school_id: string;
+  assignment_id: string;
+  student_id: string;
+  content_url?: string;
+  content_type?: 'FILE' | 'LINK' | 'TEXT';
+  file_name?: string;
+  submitted_at: string;
+  status: 'PENDING' | 'GRADED';
+}
+
+export interface Grade {
+  id: string;
+  student_id: string;
+  assignment_id: string;
+  class_id: string;
+  marks: number;
+  feedback?: string;
+  graded_at: string;
+}
+
 export interface RegistrationMessage {
   id: string;
   name: string;
@@ -219,8 +241,13 @@ export interface SchoolDataContextType {
 
   // Assignment Management
   assignments: Assignment[];
+  submissions: Submission[];
+  dbGrades: Grade[];
   fetchAssignments: (schoolId: string) => Promise<void>;
+  fetchSubmissions: (schoolId: string, studentId: string) => Promise<void>;
+  fetchGrades: (studentId: string) => Promise<void>;
   addAssignment: (assignment: Partial<Assignment>) => Promise<any>;
+  submitAssignment: (submission: Partial<Submission>) => Promise<any>;
   gradeAssignment: (gradeData: { student_id: string, assignment_id: string, class_id: string, marks: number, feedback?: string }) => Promise<any>;
 
   // Roster Management (Supabase Sync)
@@ -297,6 +324,8 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
   const [dbCameraNodes, setDbCameraNodes] = useState<CameraNode[]>([]);
   const [dbClasses, setDbClasses] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [dbGrades, setDbGrades] = useState<Grade[]>([]);
   const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [dbRolePermissions, setDbRolePermissions] = useState<DbRolePermission[]>([]);
   const [isLiveSessionActive, setIsLiveSessionActive] = useState(false);
@@ -349,6 +378,17 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
               });
           
           if (error) throw error;
+          
+          // Log activity for Recent Activity feed
+          await logSystemActivity(
+              null, 
+              `Institute Registered: ${details.institute_name}`, 
+              'Shield', 
+              '#4f46e5', 
+              undefined, 
+              'SYSTEM'
+          );
+
           fetchInstitutes();
       } catch (err: any) {
           console.error('registerInstitute error:', err.message);
@@ -364,8 +404,28 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
             .order('created_at', { ascending: false })
             .range(offset, offset + 49);
         
+        // A. School Scoping
         if (schoolId) {
             query = query.eq('school_id', schoolId);
+        }
+
+        // B. Role-Based Privacy Filtering (Server-Side)
+        // Teachers/Mentors should only fetch logs they created OR logs for their students
+        const isTeacher = currentUserRole === UserRole.TEACHER || currentUserRole === UserRole.ADMIN_TEACHER;
+        if (isTeacher && currentUser?.id) {
+            // Find student IDs in teacher's classes
+            const myClassIds = dbRoster
+                .filter(r => r.user_id === currentUser.id && (r.role_in_class === 'teacher' || r.role_in_class === 'mentor'))
+                .map(r => r.class_id);
+            
+            const myStudentIds = dbRoster
+                .filter(r => myClassIds.includes(r.class_id) && r.role_in_class === 'student')
+                .map(r => r.user_id);
+            
+            // Filter: (user_id = me) OR (user_id IN myStudentIds)
+            // Note: .or() syntax for Supabase
+            const orFilter = `user_id.eq.${currentUser.id}${myStudentIds.length > 0 ? `,user_id.in.(${myStudentIds.join(',')})` : ''}`;
+            query = query.or(orFilter);
         }
 
         const { data, error } = await query;
@@ -376,13 +436,15 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         } else if (data && data.length > 0) {
             setSystemLogs(prev => {
                 const combined = [...prev, ...data];
-                return Array.from(new Map(combined.map(item => [item.id, item])).values());
+                const deduplicated = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                console.log('[FETCH_LOGS] Paginated Success. New Total:', deduplicated.length);
+                return deduplicated;
             });
         }
     } catch (err: any) {
         console.error('fetchSystemLogs error:', err.message);
     }
-  }, []);
+  }, [currentUserRole, currentUser?.id, dbRoster]);
 
   const logSystemActivity = useCallback(async (
       schoolId: string | null | undefined, 
@@ -393,7 +455,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       category: SystemLog['category'] = 'SYSTEM'
   ) => {
     try {
-        await supabase
+        const { error } = await supabase
             .from('system_logs')
             .insert({ 
                 school_id: schoolId || null, 
@@ -403,6 +465,9 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
                 icon, 
                 color 
             });
+        
+        if (error) throw error;
+        
         fetchSystemLogs(schoolId || undefined);
     } catch (err: any) {
         console.error('logSystemActivity error:', err.message);
@@ -502,17 +567,32 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const deleteAnnouncement = useCallback(async (id: string, schoolId: string) => {
       try {
+          // Fetch title before deletion for audit log
+          const { data: notice } = await supabase
+              .from('announcements')
+              .select('title')
+              .eq('id', id)
+              .single();
+
           const { error } = await supabase
               .from('announcements')
               .delete()
               .eq('id', id);
           if (error) throw error;
-          await logSystemActivity(schoolId, `Institutional Notice Deleted (ID: ${id})`, 'Trash', '#ef4444', undefined, 'SECURITY');
+          
+          await logSystemActivity(
+              schoolId, 
+              `Institutional Notice Deleted: ${notice?.title || id}`, 
+              'Trash', 
+              '#ef4444', 
+              currentUser?.id, 
+              'SECURITY'
+          );
           fetchAnnouncements(schoolId);
       } catch (err: any) {
           console.error('deleteAnnouncement error:', err.message);
       }
-  }, [fetchAnnouncements, logSystemActivity]);
+  }, [fetchAnnouncements, logSystemActivity, currentUser?.id]);
 
   // Original fetchAnnouncements position (removed to fix hoisting)
 
@@ -646,25 +726,69 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     };
   }, [currentUser?.id]);
 
+  // Realtime Handshake: System Activity Subscription
+  useEffect(() => {
+    const isPlatformAdmin = currentUserRole === UserRole.PLATFORM_ADMIN;
+    
+    if (!currentSchool?.id && !isPlatformAdmin) {
+      console.log('[REALTIME_LOGS] Subscription skipped: No school context');
+      return;
+    }
+
+    console.log('[REALTIME_LOGS] Initializing system activity channel for:', isPlatformAdmin ? 'GLOBAL/PLATFORM' : currentSchool?.id);
+
+    const channel = supabase
+      .channel('system_activity_logs')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'system_logs',
+          // Privacy Filter: Only receive logs for this school (unless platform admin)
+          ...(!isPlatformAdmin && currentSchool?.id ? { filter: `school_id=eq.${currentSchool.id}` } : {})
+        },
+        (payload) => {
+          console.log('[REALTIME_LOGS] New log received:', payload.new.id);
+          setSystemLogs(prev => {
+            const exists = prev.some(l => l.id === payload.new.id);
+            if (exists) return prev;
+            return [payload.new as SystemLog, ...prev];
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[REALTIME_LOGS] Channel status: ${status}`);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentSchool?.id, currentUserRole]);
+
   const markMessagesAsRead = useCallback(async (senderId: string, receiverId: string) => {
     if (!senderId || !receiverId) return;
 
     try {
+        // 1. Optimistic UI update - do this FIRST for instant feedback
+        setChatMessages(prev => prev.map(m => 
+            (m.sender_id === senderId && m.receiver_id === receiverId && m.status !== 'read') 
+            ? { ...m, status: 'read' } 
+            : m
+        ));
+
+        // 2. Persistent Database Update
         const { error } = await supabase
             .from('messages')
             .update({ status: 'read' })
             .eq('sender_id', senderId)
             .eq('receiver_id', receiverId)
-            .or('status.is.null,status.neq.read');
+            .neq('status', 'read'); // Only update what isn't already read
 
-        if (error) throw error;
-
-        // Optimistic UI update
-        setChatMessages(prev => prev.map(m => 
-            (m.sender_id === senderId && m.receiver_id === receiverId) 
-            ? { ...m, status: 'read' } 
-            : m
-        ));
+        if (error) {
+            console.error('[MESSAGING_DB_ERROR] Failed to update status in Supabase:', error.message);
+            // Revert is complex with array states, but usually Realtime will fix it if it fails
+        }
     } catch (err: any) {
         console.error('[MESSAGING_ERROR] Failed to mark messages as read:', err.message);
     }
@@ -701,6 +825,26 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!error && data) setAssignments(data);
   }, []);
 
+  const fetchSubmissions = useCallback(async (schoolId: string, studentId: string) => {
+    if (!schoolId || !studentId) return;
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId)
+      .order('submitted_at', { ascending: false });
+    if (!error && data) setSubmissions(data);
+  }, []);
+
+  const fetchGrades = useCallback(async (studentId: string) => {
+    if (!studentId) return;
+    const { data, error } = await supabase
+      .from('grades')
+      .select('*, assignments(title, max_marks)')
+      .eq('student_id', studentId);
+    if (!error && data) setDbGrades(data);
+  }, []);
+
   const addAssignment = useCallback(async (assignment: Partial<Assignment>) => {
     // Optimistic UI: Pre-emptively update state
     const tempId = `temp-${Date.now()}`;
@@ -724,6 +868,30 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     } catch (err: any) {
       // Rollback on failure
       setAssignments(prev => prev.filter(a => a.id !== tempId));
+      throw err;
+    }
+  }, []);
+
+  const submitAssignment = useCallback(async (submission: Partial<Submission>) => {
+    const tempId = `temp-sub-${Date.now()}`;
+    const optimisticEntry = { ...submission, id: tempId, submitted_at: new Date().toISOString(), status: 'PENDING' } as Submission;
+    
+    setSubmissions(prev => [optimisticEntry, ...prev]);
+
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .insert([submission])
+        .select();
+
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        setSubmissions(prev => prev.map(s => s.id === tempId ? data[0] : s));
+        return data[0];
+      }
+    } catch (err: any) {
+      setSubmissions(prev => prev.filter(s => s.id !== tempId));
       throw err;
     }
   }, []);
@@ -799,7 +967,18 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
               .from('registration_inquiries')
               .update({ status })
               .eq('id', id);
-          if (error) throw error;
+           if (error) throw error;
+
+          // Log activity for Recent Activity feed
+          await logSystemActivity(
+              null, 
+              `Admission Inquiry Status: ${status} (ID: ${id})`, 
+              'Clipboard', 
+              '#6366f1', 
+              undefined, 
+              'SYSTEM'
+          );
+
           await fetchRegistrationMessages();
       } catch (err: any) {
           console.error('updateRegistrationStatus error:', err.message);
@@ -813,7 +992,18 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
               .from('registration_inquiries')
               .delete()
               .eq('id', id);
-          if (error) throw error;
+           if (error) throw error;
+
+          // Log activity for Recent Activity feed
+          await logSystemActivity(
+              null, 
+              `Admission Inquiry Removed (ID: ${id})`, 
+              'Trash', 
+              '#ef4444', 
+              undefined, 
+              'SECURITY'
+          );
+
           await fetchRegistrationMessages();
       } catch (err: any) {
           console.error('deleteRegistrationMessage error:', err.message);
@@ -921,7 +1111,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
         const { data, error } = await supabase
             .from('fee_transactions')
-            .select('*, users:student_id(id, name, avatar, role)')
+            .select('*, users:student_id(id, name, avatar, role), fees:fee_id(id, title)')
             .eq('school_id', schoolId)
             .order('paid_at', { ascending: false });
         
@@ -1091,6 +1281,11 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const sendInstitutionalReminders = useCallback(async (schoolId: string, senderId: string) => {
     try {
+        if (!schoolId || !senderId) {
+            console.warn('[FINANCE_REMIT] Missing context:', { schoolId, senderId });
+            return 0;
+        }
+
         const { data, error } = await supabase
             .from('fees')
             .select('student_id, title, status')
@@ -1111,6 +1306,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
             sender_id: senderId,
             receiver_id: sid,
             content: `[OUREDUCA FINANCE] Notification: You have ${count} outstanding invoice(s) marked as PENDING or OVERDUE. Please visit your Fee Desk to settle institutional dues immediately.`,
+            message_type: 'TEXT',
             created_at: new Date().toISOString()
         }));
 
@@ -1120,7 +1316,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
         
         if (msgError) throw msgError;
 
-        await logSystemActivity(schoolId, `Debt Reminders Dispatched: ${messagesToInsert.length} Notification(s)`, 'Bell', '#ea580c');
+        await logSystemActivity(schoolId, `Debt Reminders Dispatched: ${messagesToInsert.length} Notification(s)`, 'Bell', '#ea580c', senderId);
         return messagesToInsert.length;
     } catch (err: any) {
         console.error('sendInstitutionalReminders error:', err.message);
@@ -1162,17 +1358,35 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const deleteVideo = useCallback(async (videoId: string, schoolId: string) => {
     try {
+        // Fetch title before deletion for audit log
+        const { data: video } = await supabase
+            .from('videos')
+            .select('title')
+            .eq('id', videoId)
+            .single();
+
         const { error } = await supabase
             .from('videos')
             .delete()
             .eq('id', videoId);
         if (error) throw error;
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            schoolId, 
+            `Lecture Content Deleted: ${video?.title || videoId}`, 
+            'Trash', 
+            '#ef4444', 
+            currentUser?.id, 
+            'SECURITY'
+        );
+
         fetchVideos(schoolId);
     } catch (err: any) {
         console.error('deleteVideo error:', err.message);
         throw err;
     }
-  }, [fetchVideos]);
+  }, [fetchVideos, logSystemActivity, currentUser?.id]);
 
   const fetchLiveStreams = useCallback(async (schoolId: string) => {
     if (!schoolId) return;
@@ -1398,7 +1612,18 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
                 target_section: node.target_section,
                 status: 'ONLINE' 
             });
-        if (error) throw error;
+         if (error) throw error;
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            node.school_id, 
+            `Surveillance Node Active: ${node.name}`, 
+            'Camera', 
+            '#10b981', 
+            currentUser?.id, 
+            'SECURITY'
+        );
+
         fetchCameraNodes(node.school_id);
     } catch (err: any) {
         console.error('registerCameraNode error:', err.message);
@@ -1412,7 +1637,18 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
             .from('camera_nodes')
             .delete()
             .eq('id', nodeId);
-        if (error) throw error;
+         if (error) throw error;
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            schoolId, 
+            `Surveillance Node Offline (ID: ${nodeId})`, 
+            'Trash', 
+            '#ef4444', 
+            currentUser?.id, 
+            'SECURITY'
+        );
+
         fetchCameraNodes(schoolId);
     } catch (err: any) {
         console.error('deleteCameraNode error:', err.message);
@@ -1459,17 +1695,35 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const deleteMaterial = useCallback(async (materialId: string, schoolId: string) => {
     try {
+        // Fetch title before deletion for audit log
+        const { data: material } = await supabase
+            .from('materials')
+            .select('title')
+            .eq('id', materialId)
+            .single();
+
         const { error } = await supabase
             .from('materials')
             .delete()
             .eq('id', materialId);
         if (error) throw error;
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            schoolId, 
+            `Resource Deleted: ${material?.title || materialId}`, 
+            'Trash', 
+            '#ef4444', 
+            currentUser?.id, 
+            'SECURITY'
+        );
+
         fetchMaterials(schoolId);
     } catch (err: any) {
         console.error('deleteMaterial error:', err.message);
         throw err;
     }
-  }, [fetchMaterials]);
+  }, [fetchMaterials, logSystemActivity, currentUser?.id]);
 
   const setGlobalMentorRoster = (data: any[]) => setDbRoster(data);
 
@@ -1698,6 +1952,8 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       dbClasses, fetchClasses,
       fetchTeacherClasses, teacherClasses,
       assignments, fetchAssignments, addAssignment, gradeAssignment,
+      submissions, fetchSubmissions, submitAssignment,
+      dbGrades, fetchGrades,
       fetchUsers, fetchSchoolData,
       isLiveSessionActive, setIsLiveSessionActive, activeSessionData, setActiveSessionData, sessionEndedAt,
       registrationMessages,
@@ -1711,6 +1967,7 @@ export const SchoolDataProvider: React.FC<{ children: ReactNode }> = ({ children
       dbFees, dbTransactions, institutes, isLoadingInstitutes, dbRolePermissions, systemLogs,
       dbRoster, mentorAttendanceMap, mentorMaterials, mentorVideos, mentorAssignedClassId, mentorAssignedSection,
       dbVideos, liveStreams, dbCameraNodes, dbClasses, teacherClasses, assignments,
+      submissions, dbGrades,
       registrationMessages, isLoadingInquiries,
       fetchRegistrationMessages, updateRegistrationStatus, deleteRegistrationMessage, syncBillingAudit,
       fetchAnnouncements, addAnnouncement, deleteAnnouncement, fetchSchoolDetails, updateSchoolDetails,

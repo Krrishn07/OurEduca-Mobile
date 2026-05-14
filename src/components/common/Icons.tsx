@@ -2,6 +2,7 @@ import {
   Home, 
   BookOpen, 
   MessageCircle, 
+  MessageSquare,
   Bell, 
   User, 
   Settings, 
@@ -170,5 +171,7 @@ export const Icons = {
   Radio,
   Star,
   Link,
-  Briefcase
+  Briefcase,
+  MessageSquare,
+  MessageCircle
 };

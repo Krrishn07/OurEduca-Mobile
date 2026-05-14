@@ -52,6 +52,8 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -157,6 +159,11 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
   const [searchQuery,        setSearchQuery]        = useState('');
   // FIX-13: Error state so user sees a retry prompt instead of silent empty screen
   const [fetchError,         setFetchError]         = useState<string | null>(null);
+  
+  // NEW: Submissions state
+  const [submissions,        setSubmissions]        = useState<any[]>([]);
+  const [viewingSubmission,  setViewingSubmission]  = useState<any>(null);
+  const [showPreviewModal,   setShowPreviewModal]   = useState(false);
 
 
 
@@ -211,8 +218,8 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
     try {
       const classId = selectedClass.class_id ?? selectedClass.id ?? '';
 
-      // FIX-04: Fetch roster AND grades simultaneously — not sequentially
-      const [rosterRes, gradesRes] = await Promise.all([
+      // FIX-04: Fetch roster, grades and submissions simultaneously
+      const [rosterRes, gradesRes, submissionsRes] = await Promise.all([
         supabase
           .from('class_roster')
           .select('user_id, users(id, name, roll_number)')
@@ -225,13 +232,20 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
               .select('student_id, marks')
               .eq('assignment_id', selectedAssignment.id)
           : Promise.resolve({ data: null, error: null }),
+
+        selectedAssignment
+          ? supabase
+              .from('submissions')
+              .select('*')
+              .eq('assignment_id', selectedAssignment.id)
+          : Promise.resolve({ data: null, error: null }),
       ]);
 
       // Roster
       if (rosterRes.error) throw rosterRes.error;
       setStudents(normaliseRoster(rosterRes.data ?? []));
 
-      // Assignments for this class (FIX-03: direct Supabase, not context)
+      // Assignments for this class
       const { data: asnData, error: asnErr } = await supabase
         .from('assignments')
         .select('id, title, max_marks, pass_percentage, due_date, class_id')
@@ -239,6 +253,12 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
         .order('created_at', { ascending: false });
       if (asnErr) throw asnErr;
       setAssignments(asnData ?? []);
+
+      // Submissions (NEW)
+      if (selectedAssignment && submissionsRes) {
+          if (submissionsRes.error) throw submissionsRes.error;
+          setSubmissions(submissionsRes.data || []);
+      }
 
       // Grades
       if (selectedAssignment) {
@@ -378,8 +398,9 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
 
       // Log activity for Recent Activity feed
       if (logSystemActivity) {
+          const targetSchoolId = (selectedClass as any).school_id || currentUser?.school_id || currentUser?.schoolId || null;
           await logSystemActivity(
-          (selectedClass as any).school_id || null,
+              targetSchoolId,
               `Graded: ${selectedAssignment.title} (${unsyncedIds.length} students)`,
               'BarChart2',
               '#10b981',
@@ -713,21 +734,38 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
                             </Text>
 
                             {/* FIX-11: PASS / FAIL badge actually shown */}
-                            {marksNum !== null && (
-                              <View
-                                className={`mt-1.5 self-start px-2 py-0.5 rounded-full ${
-                                  isPassing ? 'bg-emerald-50' : 'bg-red-50'
-                                }`}
-                              >
-                                <Text
-                                  className={`text-[8px] font-inter-black uppercase tracking-[1px] ${
-                                    isPassing ? 'text-emerald-600' : 'text-red-500'
+                            <View className="flex-row items-center gap-2 mt-1.5">
+                              {marksNum !== null && (
+                                <View
+                                  className={`px-2 py-0.5 rounded-full ${
+                                    isPassing ? 'bg-emerald-50' : 'bg-red-50'
                                   }`}
                                 >
-                                  {isPassing ? '✓ Pass' : '✗ Fail'}
-                                </Text>
-                              </View>
-                            )}
+                                  <Text
+                                    className={`text-[8px] font-inter-black uppercase tracking-[1px] ${
+                                      isPassing ? 'text-emerald-600' : 'text-red-500'
+                                    }`}
+                                  >
+                                    {isPassing ? '✓ Pass' : '✗ Fail'}
+                                  </Text>
+                                </View>
+                              )}
+
+                              {/* NEW: View Work Button */}
+                              {submissions.some(s => s.student_id === sId) && (
+                                <TouchableOpacity 
+                                  onPress={() => {
+                                    const sub = submissions.find(s => s.student_id === sId);
+                                    setViewingSubmission(sub);
+                                    setShowPreviewModal(true);
+                                  }}
+                                  className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 flex-row items-center"
+                                >
+                                  <Icons.BookOpen size={10} color="#4f46e5" style={{ marginRight: 4 }} />
+                                  <Text className="text-[8px] font-inter-black uppercase tracking-[1px] text-indigo-600">View Work</Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
                           </View>
 
                           {/* Grade input */}
@@ -817,6 +855,75 @@ export const TeacherGrading = React.memo<TeacherGradingProps>(({
           )}
         </View>
       )}
+      
+      {/* NEW: Submission Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '80%', padding: 24 }}>
+            <View className="flex-row justify-between items-center mb-6">
+              <View>
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 font-inter-black">Student Submission</Text>
+                <Text className="text-xl font-black text-gray-900 font-inter-black">
+                  {students.find(s => s.user_id === viewingSubmission?.student_id)?.displayName || 'Review Work'}
+                </Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setShowPreviewModal(false)}
+                className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+              >
+                <Icons.Plus size={20} color="#64748b" style={{ transform: [{ rotate: '45deg' }] }} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+              {viewingSubmission?.content_type === 'IMAGE' && viewingSubmission?.content_url && (
+                <View className="mb-6">
+                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 font-inter-black">Handwritten Work Attachment</Text>
+                  <View className="bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
+                    <Image 
+                      source={{ uri: viewingSubmission.content_url }} 
+                      style={{ width: '100%', height: 400 }} 
+                      resizeMode="contain" 
+                    />
+                  </View>
+                </View>
+              )}
+
+              <View className="mb-6">
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 font-inter-black">Submission Content / Notes</Text>
+                <View className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                  <Text className="text-gray-800 text-sm font-inter-medium leading-6">
+                    {viewingSubmission?.content || 'No text provided with this submission.'}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="mb-10">
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 font-inter-black">Metadata</Text>
+                <View className="flex-row flex-wrap gap-2">
+                   <View className="px-3 py-1.5 bg-gray-100 rounded-lg border border-gray-200">
+                      <Text className="text-[9px] font-black text-gray-500 uppercase font-inter-black">Submitted: {viewingSubmission?.submitted_at ? new Date(viewingSubmission.submitted_at).toLocaleString() : 'N/A'}</Text>
+                   </View>
+                   <View className="px-3 py-1.5 bg-gray-100 rounded-lg border border-gray-200">
+                      <Text className="text-[9px] font-black text-gray-500 uppercase font-inter-black">Type: {viewingSubmission?.content_type || 'TEXT'}</Text>
+                   </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            <AppButton 
+              title="Close Preview" 
+              onPress={() => setShowPreviewModal(false)}
+              className="py-4 bg-gray-900 rounded-2xl mt-4"
+            />
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 });

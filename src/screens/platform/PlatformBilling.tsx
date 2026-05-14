@@ -7,7 +7,22 @@ import { RevenueConfigModal } from './modals/RevenueConfigModal';
 import { BillingFilterModal } from './modals/BillingFilterModal';
 import { InstitutionDetailsModal } from './modals/InstitutionDetailsModal';
 import { useSchoolData } from '@context/SchoolDataContext';
-import { AppTheme, AppCard, AppTypography, AppRow, AppFilterBar, StatusPill, inferPillType, RestrictedAccessView } from '@components/common';
+import { 
+    AppTheme, 
+    AppCard, 
+    AppTypography, 
+    AppRow, 
+    AppFilterBar, 
+    StatusPill, 
+    inferPillType, 
+    RestrictedAccessView,
+    PlatinumSearchHeader,
+    SectionHeader,
+    StatCard,
+    PlatinumChart 
+} from '@components/common';
+import { triggerHaptic } from '@utils/haptics';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { UserRole } from '@/types';
 import * as FileSystem from 'expo-file-system';
 const { Paths, File } = FileSystem;
@@ -165,143 +180,130 @@ export const PlatformBilling: React.FC<PlatformBillingProps> = ({
     };
 
     return (
-        <View className="flex-1 bg-[#f5f7ff]">
-            {/* 1. Control Stage - High-Fidelity Hero Header */}
-            <LinearGradient 
-                colors={AppTheme.colors.gradients.brand} 
-                start={{x: 0, y: 0}} 
-                end={{x: 1, y: 1}} 
-                className="px-6 pt-5 pb-10 rounded-b-[40px] shadow-2xl shadow-indigo-200 z-20"
-            >
-                <View className="absolute right-[-20] bottom-[-20] opacity-10 transform rotate-12">
-                    <Icons.Payment size={160} color="white" />
-                </View>
-                <View className="flex-row justify-between items-center relative z-10 mb-5">
-                    <View className="flex-1 mr-4">
-                        <Text className={`${AppTypography.heroTitle} text-white`} numberOfLines={1}>Billing Center</Text>
-                        <Text className={`${AppTypography.eyebrow} text-white/60 mt-1.5`}>Subscription Overview</Text>
-                    </View>
-                    <View className="items-end gap-3 flex-row">
+        <View className="flex-1 bg-[#fbfbfe]">
+            {/* 1. Control Stage - High-Fidelity Platinum Header */}
+            <PlatinumSearchHeader 
+                title="Billing Center"
+                subtitle="SUBSCRIPTION OVERVIEW"
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                placeholder="Search school billing..."
+                rightAction={
+                    <View className="flex-row gap-3">
                         <TouchableOpacity 
-                            onPress={() => { setIsDemoMode(!isDemoMode); Alert.alert(!isDemoMode ? "Test Mode Active" : "Live Data Active", !isDemoMode ? "Mock records injected for testing." : "Real-time records synced."); }}
-                            className={`px-4 py-2.5 rounded-2xl border active:scale-95 transition-all ${isDemoMode ? 'bg-orange-500 border-orange-400 shadow-lg' : 'bg-white/10 border-white/20'}`}
+                            onPress={() => { triggerHaptic(); setIsDemoMode(!isDemoMode); }}
+                            className={`w-10 h-10 rounded-full items-center justify-center border transition-all ${isDemoMode ? 'bg-orange-500 border-orange-400' : 'bg-white border-slate-200'}`}
                         >
-                            <Text className={`text-[10px] font-black uppercase tracking-widest ${isDemoMode ? 'text-white' : 'text-white'}`}>{isDemoMode ? 'Testing' : 'Test Mode'}</Text>
+                            <Icons.Activity size={18} color={isDemoMode ? 'white' : '#64748b'} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setIsConfigVisible(true)} className="w-10 h-10 bg-white/10 rounded-2xl items-center justify-center border border-white/20 active:scale-95">
-                            <Icons.Settings size={18} color="white" />
+                        <TouchableOpacity 
+                            onPress={() => { triggerHaptic(); setIsConfigVisible(true); }} 
+                            className="w-10 h-10 bg-white border border-slate-200 rounded-full items-center justify-center active:scale-95 shadow-sm"
+                        >
+                            <Icons.Settings size={18} color="#64748b" />
                         </TouchableOpacity>
                     </View>
-                </View>
-            </LinearGradient>
+                }
+            />
 
             <ScrollView 
-                className="flex-1 px-6 pt-8" 
+                className="flex-1" 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
             >
                 {/* 2. Stats Grid - High-Density Metrics */}
-                <View className="flex-row gap-3 mb-5">
+                <View className="flex-row gap-3 mb-8 px-5">
                     {stats.map((stat, i) => {
+                        const tone = i === 0 ? 'emerald' : i === 1 ? 'indigo' : 'rose';
                         const IconComp = (Icons as any)[stat.icon] || Icons.Payment;
+                        
                         return (
-                            <AppCard key={i} className="flex-1 p-3.5 border border-gray-100 shadow-sm">
-                                <View className={`w-9 h-9 rounded-[12px] ${stat.bg} items-center justify-center mb-3 border shadow-sm`}>
-                                    <IconComp size={16} color={stat.color} />
-                                </View>
-                                <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{stat.label}</Text>
-                                <Text className="text-[15px] font-black text-gray-900 tracking-tighter" numberOfLines={1} adjustsFontSizeToFit>{stat.value}</Text>
-                            </AppCard>
+                            <View key={i} className="flex-1">
+                                <StatCard 
+                                    index={i}
+                                    label={stat.label}
+                                    value={stat.value}
+                                    icon={<IconComp size={14} color={stat.color} />}
+                                    tone={tone as any}
+                                />
+                            </View>
                         );
                     })}
                 </View>
 
-                {/* Income Overview Section — Compact Dashboard Consistency */}
-                <View className="mb-6">
-                    <View className="flex-row items-center justify-between mb-3 px-2">
-                        <View className="flex-row items-center">
-                            <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Income Overview</Text>
-                        </View>
-                        <StatusPill label="+15%" type="success" className="self-center" />
-                    </View>
+                {/* 3. Income Overview Section */}
+                <View className="mb-8 px-5">
+                    <SectionHeader 
+                        title="REVENUE GROWTH"
+                        className="px-1 mb-4"
+                        rightElement={<StatusPill label="+15%" type="success" />}
+                    />
 
-                    <AppCard className="p-5 border border-gray-100">
-                    <View className="h-40 flex-row items-end justify-between px-2">
-                        {revenueGrowth.map((d, i) => {
-                            const isCurrent = i === revenueGrowth.length - 1;
-                            return (
-                                <View key={i} className="items-center flex-1">
-                                    <LinearGradient 
-                                        colors={isCurrent ? AppTheme.colors.gradients.brand : ['#e0e7ff', '#c7d2fe']} 
-                                        className="rounded-t-2xl w-8 shadow-sm" 
-                                        style={{ height: `${d.value}%` }} 
-                                    />
-                                    <Text className={`text-[9px] font-black mt-3 uppercase tracking-widest ${isCurrent ? 'text-indigo-600' : 'text-gray-400'}`}>{d.month}</Text>
-                                </View>
-                            );
-                        })}
-                    </View>
-                </AppCard>
-            </View>
+                    <AppCard className="p-5 border-white shadow-xl shadow-indigo-100/20 rounded-[16px]">
+                        <PlatinumChart 
+                            data={revenueGrowth.map(d => ({ label: d.month, value: d.value }))}
+                            height={180}
+                        />
+                    </AppCard>
+                </View>
 
                 {/* 4. Quick Actions */}
-                <View className="flex-row gap-3 mb-5">
-                    <TouchableOpacity onPress={handleExportRegistry} className="flex-1 bg-white p-4 rounded-[20px] border border-gray-100 items-start justify-between shadow-sm active:scale-95 transition-all min-h-[110px]">
-                        <View className="w-10 h-10 rounded-xl bg-indigo-50 items-center justify-center mb-3 border border-indigo-100/50 shadow-sm">
-                            <Icons.FileText size={18} color="#4f46e5" />
+                <View className="flex-row gap-4 mb-8 px-5">
+                    <TouchableOpacity 
+                        onPress={() => { triggerHaptic(); handleExportRegistry(); }} 
+                        className="flex-1 bg-white p-5 rounded-[16px] border border-white items-start justify-between shadow-xl shadow-slate-200/50 active:scale-95 min-h-[130px]"
+                    >
+                        <View className="w-12 h-12 rounded-[16px] bg-indigo-50 items-center justify-center mb-4 border border-indigo-100/50 shadow-inner">
+                            <Icons.FileText size={20} color="#4f46e5" />
                         </View>
                         <View>
-                            <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Reports</Text>
-                            <Text className="text-[13px] font-black text-gray-900 tracking-tight">Download Data</Text>
+                            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 font-inter-black">Reports</Text>
+                            <Text className="text-[14px] font-black text-slate-900 tracking-tight font-inter-black">Export Registry</Text>
                         </View>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleBulkReminders} className="flex-1 bg-white p-4 rounded-[20px] border border-gray-100 items-start justify-between shadow-sm active:scale-95 transition-all min-h-[110px]">
-                        <View className="w-10 h-10 rounded-xl bg-rose-50 items-center justify-center mb-3 border border-rose-100/50 shadow-sm">
-                            <Icons.Bell size={18} color="#f43f5e" />
+                    <TouchableOpacity 
+                        onPress={() => { triggerHaptic(); handleBulkReminders(); }} 
+                        className="flex-1 bg-white p-5 rounded-[16px] border border-white items-start justify-between shadow-xl shadow-slate-200/50 active:scale-95 min-h-[130px]"
+                    >
+                        <View className="w-12 h-12 rounded-[16px] bg-rose-50 items-center justify-center mb-4 border border-rose-100/50 shadow-inner">
+                            <Icons.Bell size={20} color="#f43f5e" />
                         </View>
                         <View>
-                            <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Reminders</Text>
-                            <Text className="text-[13px] font-black text-rose-600 tracking-tight">Send Reminders</Text>
+                            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 font-inter-black">Recovery</Text>
+                            <Text className="text-[14px] font-black text-rose-600 tracking-tight font-inter-black">Send Reminders</Text>
                         </View>
                     </TouchableOpacity>
                 </View>
 
                 {/* 5. Billing History Register */}
-                <View className="mb-4">
-                    {/* Billing Eyebrow — Compactness consistent with dashboard */}
-                    <View className="flex-row items-center justify-between mb-3 px-2">
-                        <View className="flex-row items-center">
-                            <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                            <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Billing Records</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => setIsFilterVisible(true)} className={`w-9 h-9 rounded-xl items-center justify-center border active:scale-95 transition-all shadow-sm ${isFilterActive ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100'}`}>
-                            <Icons.Filter size={16} color={isFilterActive ? '#4f46e5' : '#64748b'} />
-                        </TouchableOpacity>
-                    </View>
+                <View className="px-5">
+                    <SectionHeader 
+                        title="INSTITUTIONAL BILLING"
+                        className="px-1 mb-4"
+                        rightElement={
+                            <TouchableOpacity 
+                                onPress={() => { triggerHaptic(); setIsFilterVisible(true); }} 
+                                className={`w-10 h-10 rounded-full items-center justify-center border active:scale-95 transition-all shadow-sm ${isFilterActive ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}
+                            >
+                                <Icons.Filter size={18} color={isFilterActive ? '#4f46e5' : '#64748b'} />
+                            </TouchableOpacity>
+                        }
+                    />
                     
-                    <View className="bg-gray-50/50 flex-row items-center px-4 py-3 rounded-[20px] border border-gray-100 mb-6 shadow-inner">
-                        <Icons.Search size={18} color="#94a3b8" />
-                        <TextInput className="flex-1 ml-3 text-sm font-bold text-gray-800 p-0" placeholder="Search school list..." placeholderTextColor="#94a3b8" value={searchQuery} onChangeText={setSearchQuery} />
-                    </View>
-
                     <View className="gap-2">
                         {isLoading ? (
-                            <View className="p-10 items-center">
-                                <ActivityIndicator color={AppTheme.colors.primary} size="small" />
-                                <Text className="text-[10px] text-gray-400 mt-4 font-black uppercase tracking-widest font-inter-black">Updating List...</Text>
+                            <View className="p-20 items-center">
+                                <ActivityIndicator color="#4f46e5" size="large" />
+                                <Text className="text-[11px] font-black text-slate-400 mt-6 uppercase tracking-widest font-inter-black">Syncing Ledger...</Text>
                             </View>
                         ) : filteredInstitutes.length > 0 ? (
-                            <AppCard className="p-0 overflow-hidden">
+                            <AppCard className="p-0 overflow-hidden border-white shadow-xl shadow-indigo-100/20 rounded-[16px] mb-8">
                                 {filteredInstitutes.map((inst, index) => {
                                     const status = (inst.billing_status || 'Pending').toLowerCase();
                                     const isPaid = status === 'paid' || status === 'active';
                                     const isOverdue = status === 'overdue';
                                     const dotStatus = isPaid ? 'active' : isOverdue ? 'danger' : 'pending';
                                     const pillType = isPaid ? 'success' : isOverdue ? 'danger' : 'warning';
-                                    const dueDate = inst.due_date
-                                        ? new Date(inst.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' })
-                                        : null;
 
                                     return (
                                         <AppRow
@@ -309,17 +311,17 @@ export const PlatformBilling: React.FC<PlatformBillingProps> = ({
                                             title={inst.name}
                                             subtitle={inst.email || inst.phone || 'No contact'}
                                             avatarLetter={inst.name?.charAt(0)?.toUpperCase() || 'S'}
-                                            avatarBg="#f0fdf4"
-                                            avatarColor="#16a34a"
+                                            avatarBg={isPaid ? '#f0fdf4' : isOverdue ? '#fff1f2' : '#fefce8'}
+                                            avatarColor={isPaid ? '#16a34a' : isOverdue ? '#f43f5e' : '#ca8a04'}
                                             statusDot={dotStatus}
                                             pills={
-                                                <>
+                                                <View className="flex-row gap-1">
                                                     <StatusPill label={inst.plan || 'Standard'} type={inferPillType(inst.plan || 'standard')} />
                                                     <StatusPill label={inst.billing_status || 'Pending'} type={pillType} />
-                                                </>
+                                                </View>
                                             }
                                             showBorder={index < filteredInstitutes.length - 1}
-                                            onPress={() => { setSelectedInstitution(inst); setIsDetailsVisible(true); }}
+                                            onPress={() => { triggerHaptic(); setSelectedInstitution(inst); setIsDetailsVisible(true); }}
                                             swipeAction={!isPaid ? {
                                                 label: 'Mark Paid',
                                                 bgColor: 'bg-emerald-500',
@@ -330,7 +332,7 @@ export const PlatformBilling: React.FC<PlatformBillingProps> = ({
                                                 ]),
                                             } : undefined}
                                             rightElement={
-                                                <Icons.ChevronRight size={14} color="#d1d5db" />
+                                                <Icons.ChevronRight size={14} color="#cbd5e1" />
                                             }
                                         />
                                     );
@@ -338,20 +340,21 @@ export const PlatformBilling: React.FC<PlatformBillingProps> = ({
                             </AppCard>
                         ) : (
                             <View className="py-20 items-center">
-                                <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-4 border border-gray-100">
-                                    <Icons.Info size={32} color="#94a3b8" />
+                                <View className="w-16 h-16 bg-slate-50 rounded-3xl items-center justify-center mb-6 border border-slate-100 shadow-inner">
+                                    <Icons.Info size={32} color="#cbd5e1" />
                                 </View>
-                                <Text className="text-sm font-black text-gray-400 uppercase tracking-widest font-inter-black">No Schools Found</Text>
+                                <Text className="text-[16px] font-black text-slate-900 tracking-tight font-inter-black">No Records Found</Text>
+                                <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 font-inter-black">Refine your search or filters</Text>
                             </View>
                         )}
                     </View>
                 </View>
 
-                <InstitutionDetailsModal visible={isDetailsVisible} onClose={() => setIsDetailsVisible(false)} institution={selectedInstitution} onAction={(type, id) => { Alert.alert("Action Started", `Action ${type} initiated for school ${id}.`); setIsDetailsVisible(false); }} />
-                <RevenueConfigModal visible={isConfigVisible} onClose={() => setIsConfigVisible(false)} currentRates={planRates} onSave={setPlanRates} />
-                <BillingFilterModal visible={isFilterVisible} onClose={() => setIsFilterVisible(false)} currentFilters={filters} onApply={setFilters} />
-                <DispatchProgressModal visible={isDispatching} onClose={() => setIsDispatching(false)} itemsToProcess={finalInstitutes.filter(inst => inst.billing_status?.toLowerCase() === 'overdue')} onProcessItem={async (inst) => { await logSystemActivity(null, `Payment Reminder Sent: ${inst.name}`, 'Bell', '#ea580c', undefined, 'BILLING'); }} />
-            </ScrollView>
-        </View>
+            <InstitutionDetailsModal visible={isDetailsVisible} onClose={() => setIsDetailsVisible(false)} institution={selectedInstitution} onAction={(type, id) => { Alert.alert("Action Started", `Action ${type} initiated for school ${id}.`); setIsDetailsVisible(false); }} />
+            <RevenueConfigModal visible={isConfigVisible} onClose={() => setIsConfigVisible(false)} currentRates={planRates} onSave={setPlanRates} />
+            <BillingFilterModal visible={isFilterVisible} onClose={() => setIsFilterVisible(false)} currentFilters={filters} onApply={setFilters} />
+            <DispatchProgressModal visible={isDispatching} onClose={() => setIsDispatching(false)} itemsToProcess={finalInstitutes.filter(inst => inst.billing_status?.toLowerCase() === 'overdue')} onProcessItem={async (inst) => { await logSystemActivity(null, `Payment Reminder Sent: ${inst.name}`, 'Bell', '#ea580c', undefined, 'BILLING'); }} />
+        </ScrollView>
+    </View>
     );
 };

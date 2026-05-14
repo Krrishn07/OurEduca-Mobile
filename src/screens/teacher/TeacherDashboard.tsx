@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert, TextInput, Pressable, RefreshControl, InteractionManager } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Alert, TextInput, Pressable, RefreshControl, InteractionManager, Modal } from 'react-native';
 import { Icons } from '@components/common/Icons';
 import { HapticPatterns } from '@utils/haptics';
 import { useSchoolData } from '@context/SchoolDataContext';
@@ -7,6 +7,9 @@ import { supabase } from '@lib/supabase';
 import { useMockAuth } from '@context/MockAuthContext';
 import { UserRole, User, ChatMessage, LiveStream as LiveStreamType } from '@/types';
 import { RestrictedAccessView } from '@components/common/RestrictedAccessView';
+import { InstitutionalActivityLog } from '@screens/common/InstitutionalActivityLog';
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 
 // Modular Screens
 import { TeacherHome } from '@screens/teacher/TeacherHome';
@@ -20,6 +23,7 @@ import { AnnouncementsScreen } from '@components/common';
 import { TeacherGrading } from '@screens/teacher/TeacherGrading';
 import { TeacherClassDetail } from '@screens/teacher/TeacherClassDetail';
 import { TeacherReports } from '@screens/teacher/TeacherReports';
+import { TeacherApprovals } from '@screens/teacher/TeacherApprovals';
 
 // Modular Modals
 import { 
@@ -57,11 +61,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [showReports, setShowReports] = useState(false);
   const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
   const [showAllNotices, setShowAllNotices] = useState(false);
   const [showGrading, setShowGrading] = useState(false);
   const [showClassDetail, setShowClassDetail] = useState(false);
+  const [showApprovals, setShowApprovals] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [modalInitialClassId, setModalInitialClassId] = useState<string | null>(null);
   
@@ -92,7 +98,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   
   // --- Context & Supabase ---
-  const { currentUser: mockAuthUser, currentSchool, setSession } = useMockAuth();
+  const { currentUser: mockAuthUser, currentSchool, setSession, currentUserRole } = useMockAuth();
   const { 
     announcements, meetings, addAnnouncement, fetchAnnouncements, deleteAnnouncement, 
     chatMessages, sendChatMessage, fetchMessages,
@@ -109,7 +115,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     uploadMessageFile,
     markMessagesAsRead,
     fetchMoreMessages,
-    logSystemActivity
+    logSystemActivity,
+    deleteMaterial
   } = useSchoolData();
 
   // Teacher Profile
@@ -132,15 +139,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   const [editProfilePhone, setEditProfilePhone] = useState('');
   const [editProfileOffice, setEditProfileOffice] = useState('');
 
-  // --- Navigation & State Sync ---
-  // RESET GATE: When the main tab changes, reset all internal sub-page flags
-  // This prevents the dashboard from being "stuck" in a sub-view (like Materials)
-  // when the user navigates between main tabs (Classes, Videos, etc.)
   useEffect(() => {
     setShowAllMaterials(false);
     setShowAllNotices(false);
     setShowGrading(false);
     setShowReports(false);
+    setShowApprovals(false);
     setShowClassDetail(false);
     setSelectedClass(null);
   }, [activeTab]);
@@ -216,17 +220,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
           if (rosterError) throw rosterError;
 
           // Flatten for easier UI consumption with Metadata Recovery
-          const flattenedSections = (rosterData || []).map((r: any) => ({
-              ...r,
-              ...r.classes,
-              name: r.classes?.name || 'Class Section',
-              section: r.section || 'A',
-              displayName: `${r.classes?.name || 'Class'} - Section ${r.section || 'A'}`,
-              subject: r.subject || r.classes?.subject || 'Direct Instruction',
-              room_no: r.classes?.room_no || '302',
-              class_time: r.classes?.class_time || null,
-              rosterId: r.id
-          }));
+          const flattenedSections = (rosterData || []).map((r: any) => {
+              const subjectName = r.subject || r.classes?.subject || (r.role_in_class === 'mentor' ? 'General Instruction' : 'Academic Subject');
+              const className = r.classes?.name || 'Class Section';
+              const sectionLabel = r.section ? `Section ${r.section}` : '';
+              
+              return {
+                  ...r,
+                  ...r.classes,
+                  name: className,
+                  section: r.section || 'A',
+                  displayName: `${subjectName} - ${className}${sectionLabel ? ` (${sectionLabel})` : ''}`,
+                  subject: subjectName,
+                  room_no: r.classes?.room_no || '302',
+                  class_time: r.classes?.class_time || null,
+                  rosterId: r.id
+              };
+          });
           setAssignedSections(flattenedSections);
           
           if (rosterData && (rosterData || []).length > 0) {
@@ -235,7 +245,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               // 2. Fetch Materials & Student Counts (Concurrent)
               const materialsPromise = supabase
                   .from('materials')
-                  .select('*, classes(name)')
+                  .select('*, classes(subject, name)')
                   .in('class_id', classIds)
                   .eq('created_by', mockAuthUser.id)
                   .order('created_at', { ascending: false })
@@ -355,19 +365,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     return Array.from(uniqueContactsMap.values()) as User[];
   }, [dbPrincipals, classStudents, chatMessages, mockAuthUser?.id]);
 
-  const teacherRecentActivity = useMemo(() => {
-    // TACTICAL SYNC: Merge institutional logs with teacher-specific ones
-    const logs = (systemLogs || []).filter(log => {
-      const isOwner = log.user_id === mockAuthUser?.id;
-      const isRelevantSystemLog = log.category === 'SYSTEM' && 
-                                  (log.title?.includes(mockAuthUser?.name || '') || 
-                                   log.title?.includes('Resource') || 
-                                   log.title?.includes('Graded'));
-      return isOwner || isRelevantSystemLog;
-    });
-    
-    return logs.slice(0, 5);
-  }, [systemLogs, mockAuthUser?.id, mockAuthUser?.name]);
+  // teacherRecentActivity memo removed
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -436,12 +434,30 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   }, [assignedSections]);
 
   const handleQuickAction = useCallback((action: string) => {
-      switch (action) {
+      const schoolId = currentSchool?.id || mockAuthUser?.school_id || mockAuthUser?.schoolId;
+      const normalizedAction = action.trim();
+      console.log(`[DASHBOARD] Triggering Action: "${normalizedAction}"`);
+
+      switch (normalizedAction) {
           case 'Upload Material':
               setShowUploadModal(true);
               break;
           case 'Post Announcement':
               setShowAnnouncementModal(true);
+              break;
+          case 'Mark Attendance':
+              // Institutional Attendance Registry Placeholder
+              if (schoolId && mockAuthUser?.id) {
+                logSystemActivity(
+                  schoolId,
+                  `Attendance Marked: ${selectedClass?.subject || 'Class Session'}`,
+                  'CheckCircle',
+                  '#10b981',
+                  mockAuthUser.id,
+                  'SYSTEM'
+                );
+                showToast("Attendance Synchronized");
+              }
               break;
           case 'GRADE':
           case 'Grade Quiz':
@@ -454,14 +470,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               setGradingInitialClass(selectedClass); 
               setShowReports(true);
               break;
+          case 'Class Roster':
+              setShowClassDetail(false);
+              onNavigate?.('classes');
+              break;
+          case 'Attendance Hub':
+              showToast("Opening Institutional Attendance Registry...");
+              onNavigate?.('classes'); 
+              break;
           case 'Create Assignment':
               setModalInitialClassId(null);
               setShowAssignmentModal(true);
               break;
-          default:
-              console.log(`Action: ${action}`);
+          case 'Verification Hub':
+              // Access Control: Allow Mentors, Admin Teachers, and Super Admins
+              const canAccess = currentUserRole === UserRole.ADMIN_TEACHER || 
+                               currentUserRole === UserRole.SUPER_ADMIN || 
+                               mockAuthUser?.role === 'mentor';
+              
+              if (canAccess) {
+                setShowApprovals(true);
+              } else {
+                Alert.alert("Access Restricted", "The Verification Hub is reserved for Class Mentors and Headmasters.");
+              }
+              break;
       }
-  }, [selectedClass]);
+  }, [selectedClass, currentSchool?.id, mockAuthUser, currentUserRole, logSystemActivity, setShowApprovals, setShowGrading, setShowReports, onNavigate, showToast]);
 
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const handleCreateAssignment = useCallback(async (assignment: any) => {
@@ -543,27 +577,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         }
         if (data.type === 'PDF' && data.file) {
             const fileExt = data.file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
+            const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
             const filePath = `materials/${mockAuthUser.id}/${fileName}`;
 
-            // React Native File Upload
-            setUploadStatus("Uploading Document...");
-            
-            // OPTION B: fetch + blob (Memory Efficient)
-            const response = await fetch(data.file.uri);
-            const blob = await response.blob();
+            // Use ArrayBuffer for most robust React Native upload (Bypasses FormData polyfill bugs)
+            setUploadStatus("Processing File...");
+            let arrayBuffer;
+            try {
+                const base64 = await FileSystem.readAsStringAsync(data.file.uri, { encoding: FileSystem.EncodingType.Base64 });
+                arrayBuffer = decode(base64);
+            } catch (err) {
+                console.error('[FILE_READ_ERROR]', err);
+                throw new Error("Could not read local file. Please try again.");
+            }
 
+            setUploadStatus("Uploading to Storage...");
             const { error: uploadError } = await supabase.storage
-                .from('materials') // Fixed: Should go to materials bucket
-                .upload(filePath, blob, {
-                    contentType: 'application/pdf',
+                .from('materials')
+                .upload(filePath, arrayBuffer, {
+                    contentType: data.file.mimeType || 'application/octet-stream',
                     upsert: false
                 });
 
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabase.storage
-                .from('videos') 
+                .from('materials') 
                 .getPublicUrl(filePath);
             
             finalUrl = publicUrl;
@@ -593,7 +632,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             class_id: targetClassId, 
             school_id: mockAuthUser.school_id,
             section: targetSection,
-            subject: selectedRoster?.subject || 'Lecture', 
+            subject: selectedRoster?.subject || selectedRoster?.name || 'Academic Resource', 
             type: data.type,
             url: finalUrl, 
             created_by: mockAuthUser.id
@@ -695,6 +734,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         if (rosterError) throw rosterError;
         
         showToast("Student Registered & Synchronized!");
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            mockAuthUser.school_id || mockAuthUser.schoolId, 
+            `Student Enrolled: ${data.name.trim()}`, 
+            'UserPlus', 
+            '#4f46e5', 
+            mockAuthUser.id, 
+            'SYSTEM'
+        );
+
         setShowAddStudentModal(false);
         fetchTeacherData();
     } catch (err: any) {
@@ -731,6 +781,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
 
         // GLOBAL SYNC: Refresh the auth context so changes reflect everywhere immediately
         await setSession(teacherProfile.id);
+
+        // Log activity for Recent Activity feed
+        await logSystemActivity(
+            mockAuthUser?.school_id || mockAuthUser?.schoolId, 
+            `Profile Updated: ${data.name.trim()}`, 
+            'User', 
+            '#6366f1', 
+            teacherProfile.id, 
+            'SYSTEM'
+        );
 
         showToast("Identity Updates Synchronized");
         setShowEditProfileModal(false);
@@ -814,6 +874,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
       if (schoolId && senderId) {
           try {
               await sendChatMessage(schoolId, senderId, chatToUse, finalContent, type as any, url, name);
+              
               // Success is handled by context Realtime listener
           } catch (err: any) {
               console.error('Teacher send error:', err.message);
@@ -825,17 +886,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   }, [mockAuthUser, teacherProfile.id, selectedChat, sendChatMessage]);
   const handleDeleteMaterial = useCallback(async (id: string) => {
     const originalMaterials = [...teacherMaterials];
-    // LayoutAnimation.configureNext removed
     setTeacherMaterials(prev => prev.filter(m => m.id !== id));
     try {
-      const { error } = await supabase.from('materials').delete().eq('id', id);
-      if (error) throw error;
+      const schoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId || '';
+      await deleteMaterial(id, schoolId);
       showToast("Material Removed");
-    } catch (err) {
+      // Optional: fetchTeacherData() to sync everything, but state update is already optimistic
+    } catch (err: any) {
       setTeacherMaterials(originalMaterials);
-      showToast("Delete Failed");
+      showToast(`Delete Failed: ${err.message}`);
     }
-  }, [teacherMaterials, showToast]);
+  }, [teacherMaterials, showToast, deleteMaterial, mockAuthUser]);
 
   const handleNavigateToClass = useCallback((cls: any) => { 
     // Deep navigation: Pass full context including classId, section, and subject
@@ -848,6 +909,104 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
     onNavigate?.('classes'); 
   }, [onNavigate]);
 
+
+  const renderHomeContent = () => {
+    if (showAllMaterials) {
+        return (
+          <TeacherMaterials 
+            materials={teacherMaterials}
+            isLoading={isLoading}
+            onDeleteMaterial={handleDeleteMaterial}
+            onShowUploadModal={() => setShowUploadModal(true)}
+            onBack={() => setShowAllMaterials(false)}
+          />
+        );
+    }
+    if (showAllNotices) {
+        return (
+          <AnnouncementsScreen 
+            announcements={announcements as any}
+            currentUser={teacherProfile}
+            onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
+            onBack={() => setShowAllNotices(false)}
+          />
+        );
+    }
+    if (showGrading) {
+        return (
+          <TeacherGrading 
+            assignedSections={assignedSections}
+            onBack={() => { 
+              setShowGrading(false); 
+              setGradingInitialClass(null); 
+              setSelectedAssignmentForGrading(null);
+              fetchTeacherData(); 
+            }}
+            initialClass={gradingInitialClass}
+            initialAssignment={selectedAssignmentForGrading}
+            onAddAssignment={(cid) => {
+              setModalInitialClassId(cid || null);
+              setShowAssignmentModal(true);
+            }}
+            logSystemActivity={logSystemActivity as any}
+          />
+        );
+    }
+    if (showReports) {
+        return (
+          <TeacherReports 
+            assignedSections={assignedSections}
+            onBack={() => setShowReports(false)}
+            onShowToast={showToast}
+            initialClassId={gradingInitialClass?.class_id || gradingInitialClass?.id}
+            onMessageStudent={handleMessageStudentFromReport}
+          />
+        );
+    }
+    if (showApprovals) {
+        return <TeacherApprovals onBack={() => setShowApprovals(false)} />;
+    }
+
+    return (
+      <TeacherHome 
+        currentUser={teacherProfile}
+        assignedSections={assignedSections}
+        teacherMaterials={teacherMaterials || []}
+        totalStudents={(classStudents || []).length}
+        pendingGradesCount={pendingGradesCount}
+        announcements={announcements || []}
+        onQuickAction={handleQuickAction}
+        onNavigateToClass={handleNavigateToClass}
+        onGradeAssignment={handleGradeAssignment}
+        onAddAssignment={(classId) => {
+          setModalInitialClassId(classId);
+          setShowAssignmentModal(true);
+        }}
+        logSystemActivity={logSystemActivity}
+        assignments={assignments}
+        onShowHistory={() => setShowAnnouncementHistoryModal(true)}
+        onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
+        onDeleteMaterial={handleDeleteMaterial}
+        onStatPress={(target) => {
+          if (target === 'materials') setShowAllMaterials(true);
+          else if (target === 'notices') setShowAllNotices(true);
+          else if (target === 'assignments') {
+            setGradingInitialClass(selectedClass);
+            setShowGrading(true);
+          }
+          else if (target === 'classes') {
+              if (!selectedClass) setShowClassDetail(false);
+              onNavigate?.('classes');
+          }
+          else onNavigate?.(target);
+        }}
+        currentSchool={currentSchool}
+        isLoading={isLoading}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+      />
+    );
+  };
 
   const transformedChatMessages = useMemo(() => (chatMessages || []).map((msg: any) => ({
       ...msg,
@@ -863,103 +1022,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
   return (
     <View className="flex-1 bg-gray-50">
       <>
-        {activeTab === 'home' && (
-              showAllMaterials ? (
-                <TeacherMaterials 
-                  materials={teacherMaterials}
-                  isLoading={isLoading}
-                  onDeleteMaterial={handleDeleteMaterial}
-                  onShowUploadModal={() => setShowUploadModal(true)}
-                  onBack={() => setShowAllMaterials(false)}
-                />
-
-              ) : showAllNotices ? (
-                <AnnouncementsScreen 
-                  announcements={announcements as any}
-                  currentUser={teacherProfile}
-                  onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
-                  onBack={() => setShowAllNotices(false)}
-                />
-              ) : showGrading ? (
-                <TeacherGrading 
-                  assignedSections={assignedSections}
-                  onBack={() => { 
-                    setShowGrading(false); 
-                    setGradingInitialClass(null); 
-                    setSelectedAssignmentForGrading(null);
-                    fetchTeacherData(); // Refresh activity feed on return
-                  }}
-                  initialClass={gradingInitialClass}
-                  initialAssignment={selectedAssignmentForGrading}
-                  onAddAssignment={(cid) => {
-                    setModalInitialClassId(cid || null);
-                    setShowAssignmentModal(true);
-                  }}
-                  logSystemActivity={logSystemActivity as any}
-                />
-              ) : showReports ? (
-                <TeacherReports 
-                  assignedSections={assignedSections}
-                  onBack={() => setShowReports(false)}
-                  onShowToast={showToast}
-                  initialClassId={gradingInitialClass?.class_id || gradingInitialClass?.id}
-                  onMessageStudent={handleMessageStudentFromReport}
-                />
-              ) : (
-                <TeacherHome 
-                  currentUser={teacherProfile}
-                  assignedSections={assignedSections}
-                  teacherMaterials={teacherMaterials || []}
-                  totalStudents={(classStudents || []).length}
-                  pendingGradesCount={pendingGradesCount}
-                  announcements={announcements || []}
-                  onQuickAction={handleQuickAction}
-                  onNavigateToClass={handleNavigateToClass}
-
-                  onGradeAssignment={handleGradeAssignment}
-                  onAddAssignment={() => {
-                    setModalInitialClassId(null);
-                    setShowAssignmentModal(true);
-                  }}
-                  assignments={assignments}
-                  onShowHistory={() => setShowAnnouncementHistoryModal(true)}
-                  onDeleteNotice={(id) => deleteAnnouncement(id, mockAuthUser?.school_id || '')}
-                  onDeleteMaterial={async (id) => {
-                    try {
-                      await supabase.from('materials').delete().eq('id', id);
-                      showToast("Material Removed");
-                      fetchTeacherData();
-                    } catch (err) {
-                      showToast("Delete Failed");
-                    }
-                  }}
-                  onStatPress={(target) => {
-                    // Context-Aware KPI Routing
-                    if (target === 'materials') {
-                      setShowAllMaterials(true);
-                    }
-                    else if (target === 'notices') {
-                      setShowAllNotices(true);
-                    }
-                    else if (target === 'assignments') {
-                      // Pass current class context to Grading if available
-                      setGradingInitialClass(selectedClass);
-                      setShowGrading(true);
-                    }
-                    else if (target === 'classes') {
-                        // If a class is already focused, keep it, otherwise show list
-                        if (!selectedClass) setShowClassDetail(false);
-                        onNavigate?.('classes');
-                    }
-                    else onNavigate?.(target);
-                  }}
-                  currentSchool={currentSchool}
-                  systemLogs={teacherRecentActivity}
-                  isLoading={isLoading}
-                  refreshing={refreshing}
-                  onRefresh={handleRefresh}
-                />
-              )
+        {activeTab === 'home' && renderHomeContent()}
+            {activeTab === 'approvals' && (
+              <TeacherApprovals />
             )}
             {activeTab === 'classes' && (
               canAccessSection('classes') ? (
@@ -1076,7 +1141,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
               )
             )}
             {activeTab === 'profile' && (
-              <TeacherProfile currentUser={teacherProfile} onLogout={() => {}} onEdit={() => setShowEditProfileModal(true)} />
+              <TeacherProfile 
+                currentUser={teacherProfile} 
+                onLogout={() => {}} 
+                onEdit={() => setShowEditProfileModal(true)} 
+                onViewAll={() => setShowActivityLog(true)}
+              />
             )}
         </>
 
@@ -1112,9 +1182,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
             // Log activity for Recent Activity feed
             await logSystemActivity(
                 targetSchoolId, 
-                `Notice Posted: ${data.title}`, 
+                `Announcement Posted: ${data.title}`, 
                 'Bell', 
-                '#ea580c', 
+                '#f59e0b', 
                 mockAuthUser?.id, 
                 'SYSTEM'
             );
@@ -1151,6 +1221,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
                     school_id: mockAuthUser?.school_id || '',
                     created_by: mockAuthUser?.id || ''
                 });
+
+                // Log activity for Recent Activity feed
+                await logSystemActivity(
+                    mockAuthUser?.school_id || '', 
+                    `Lecture Shared: ${data.title}`, 
+                    'Video', 
+                    '#ef4444', 
+                    mockAuthUser?.id, 
+                    'SYSTEM'
+                );
+
                 showToast("Lecture Shared!");
                 setShowVideoUploadModal(false);
             } catch (err: any) {
@@ -1201,6 +1282,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ activeTab, o
         initialClassId={modalInitialClassId || selectedClass?.id}
         isCreating={assignmentSaving}
       />
+      <Modal
+        visible={showActivityLog}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowActivityLog(false)}
+      >
+        <InstitutionalActivityLog 
+          onBack={() => setShowActivityLog(false)} 
+          isDark={false}
+        />
+      </Modal>
     </View>
   );
 };

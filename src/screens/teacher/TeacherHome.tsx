@@ -20,10 +20,12 @@ import {
   SkeletonCard, 
   SkeletonRow 
 } from '@components/common';
+import { QuickActionsGrid } from '@components/dashboard/QuickActionsGrid';
 import { AppTheme } from '@constants/Theme';
 import { formatGreetingName } from '@utils/nameUtils';
 import { formatAcademicTime } from '@utils/timeUtils';
 import { SwipeableRow } from '@screens/teacher/components/SwipeableRow';
+import { UnifiedActivityFeed } from '@components/dashboard/UnifiedActivityFeed';
 
 const StyledLinearGradient = LinearGradient;
 
@@ -78,7 +80,6 @@ interface TeacherHomeProps {
   onShowHistory?: () => void;
   onDeleteNotice?: (id: string) => void;
   currentSchool?: any;
-  systemLogs?: any[];
   assignments?: Assignment[];
   onGradeAssignment?: (assignment: Assignment) => void;
   onAddAssignment?: () => void;
@@ -107,7 +108,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
   isLoading = false,
   pendingGradesCount = 0,
   currentSchool,
-  systemLogs = [],
   assignments = []
 }) => {
   const insets = useSafeAreaInsets();
@@ -119,20 +119,6 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
   const displayAnnouncements = (announcements || []).slice(0, 3);
   
   // LIVE LOGIC: Pending grades count is now passed as a prop from the optimized parent query
-
-  const recentActivity = useMemo(() => {
-    return (systemLogs || []).slice(0, 5).map((act: any) => {
-      const IconComp = (Icons as any)[act.icon] || Icons.Notifications;
-      return {
-        id: act.id,
-        title: act.title,
-        user: act.category || 'System',
-        time: formatAcademicTime(act.created_at),
-        icon: <IconComp size={16} color={act.color || '#4f46e5'} />,
-        bg: `${act.color || '#4f46e5'}10`, 
-      };
-    });
-  }, [systemLogs]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -301,7 +287,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
           colors={AppTheme.colors.gradients.brand}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="flex-1 rounded-[24px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
+          className="flex-1 rounded-[16px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
         >
           <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center justify-between relative z-10">
             <View className="flex-row items-center flex-1 mr-4">
@@ -409,7 +395,7 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
           {isLoading ? (
             <SkeletonCard className="border-none shadow-none bg-white/50" />
           ) : sortedAgenda.length > 0 ? (
-            <View className="bg-white rounded-[32px] p-6 border border-white shadow-xl shadow-indigo-100/20 relative overflow-hidden">
+            <View className="bg-white rounded-[16px] p-5 border border-white shadow-xl shadow-indigo-100/20 relative overflow-hidden">
               {/* The Path Line - Removed absolute line to use dynamic item-level lines */}
 
               {sortedAgenda.map((item, idx) => {
@@ -648,44 +634,12 @@ export const TeacherHome = React.memo<TeacherHomeProps>(({
           </AppCard>
         </View>
 
-        {/* QUICK ACTIONS - Below Faculty News */}
-         <View className="mb-8">
-            <SectionHeader title="QUICK ACTIONS" className="" />
-            <View className="flex-row flex-wrap justify-between gap-y-4">
-              {[
-                { label: 'Add Lesson', icon: <Icons.Plus size={24} color="#4f46e5" />, bg: 'bg-indigo-50', text: 'text-indigo-900', action: 'Upload Material' },
-                { label: 'Notice', icon: <Icons.Notifications size={24} color="#f59e0b" />, bg: 'bg-amber-50', text: 'text-amber-900', action: 'Post Announcement' },
-                { label: 'Assignment', icon: <Icons.Plus size={24} color="#8b5cf6" />, bg: 'bg-violet-50', text: 'text-violet-900', action: 'Create Assignment' },
-                { label: 'Grade Work', icon: <Icons.Check size={24} color="#10b981" />, bg: 'bg-emerald-50', text: 'text-emerald-900', action: 'Grade Quiz' },
-                { label: 'Class Reports', icon: <Icons.FileText size={24} color="#0ea5e9" />, bg: 'bg-sky-50', text: 'text-sky-900', action: 'View Report' },
-              ].map((item, idx) => {
-                const isFeatured = idx === 4;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => {
-                      triggerHaptic();
-                      onQuickAction(item.action);
-                    }}
-                    activeOpacity={0.7}
-                    className={`${isFeatured ? 'w-full py-6 flex-row' : 'w-[48%] aspect-square flex-col'} justify-center items-center ${item.bg} rounded-[28px] border border-white shadow-sm active:scale-95`}
-                  >
-                    <View className={`bg-white/90 p-3 rounded-2xl shadow-md shadow-indigo-100/20 ${isFeatured ? 'mr-4' : 'mb-3'}`}>
-                      {item.icon}
-                    </View>
-                    <View className={isFeatured ? 'items-start' : 'items-center'}>
-                      <Text className={`text-[10px] font-inter-bold ${item.text} uppercase tracking-[1px] text-center px-2`}>
-                        {item.label}
-                      </Text>
-                      {isFeatured && (
-                        <Text className="text-[10px] text-gray-400 uppercase tracking-[1px] mt-1 font-inter-bold">Generate Analytics</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-         </View>
+        {/* QUICK ACTIONS - Centralized Component */}
+        <QuickActionsGrid 
+          role={currentUser?.role || 'teacher'}
+          onAction={onQuickAction}
+          className="mb-8"
+        />
 
         {/* MY UPLOADED MATERIALS */}
          <View className="mb-8">

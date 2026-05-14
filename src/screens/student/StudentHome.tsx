@@ -1,17 +1,18 @@
 import React, { useMemo, useRef } from 'react';
-import { Animated, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, ScrollView, Text, TouchableOpacity, View, Platform, RefreshControl, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from '@components/common/Icons';
 import { CalendarWidget } from '@components/common/CalendarWidget';
 import { User } from '@/types';
-import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppTypography, StatusPill, AppRow, AnnouncementCard } from '@components/common';
+import { AppCard, AppTheme, SectionHeader, StatCard, AppTypography, StatusPill, AppRow, AnnouncementCard } from '@components/common';
+import { QuickActionsGrid } from '@components/dashboard/QuickActionsGrid';
 import { formatGreetingName } from '@utils/nameUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { triggerHaptic } from '@utils/haptics';
 
 const StyledLinearGradient = LinearGradient || View;
 
-const HEADER_MAX_HEIGHT = 280;
-const HEADER_MIN_HEIGHT = 100;
-const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+const HEADER_MIN_HEIGHT = Platform.OS === 'ios' ? 100 : 80;
 
 interface StudentHomeProps {
   currentUser: User;
@@ -21,9 +22,13 @@ interface StudentHomeProps {
   announcements: any[];
   allStudentClasses?: any[];
   onNavigate: (tab: string) => void;
+  onQuickCapture?: (assignmentId: string) => void;
   onShowHistory?: () => void;
   currentSchool?: any;
   attendanceRate?: string;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  studentSubmissions?: any[];
 }
 
 export const StudentHome: React.FC<StudentHomeProps> = ({
@@ -34,10 +39,18 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
   announcements = [],
   allStudentClasses = [],
   onNavigate,
+  onQuickCapture,
   onShowHistory,
   currentSchool,
   attendanceRate = '0%',
+  onRefresh,
+  refreshing = false,
+  studentSubmissions = [],
 }) => {
+  const insets = useSafeAreaInsets();
+  const HEADER_MAX_HEIGHT = insets.top + 260;
+  const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const studentAnnouncements = useMemo(() => {
@@ -66,16 +79,13 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
     return filtered;
   }, [announcements, studentPrimaryClass, allStudentClasses]);
 
-  const displayAnnouncements = studentAnnouncements.slice(0, 5);
   const displayClasses = allStudentClasses.length > 0 ? allStudentClasses : (studentPrimaryClass ? [studentPrimaryClass] : []);
 
-  const learningSubjects = useMemo(() => {
-    const subjects = new Set<string>();
-    allStudentClasses?.forEach((c) => c.subject && subjects.add(c.subject));
-    studentMaterials?.forEach((m) => m.subject && subjects.add(m.subject));
-    studentAssignments?.forEach((a) => a.subject && subjects.add(a.subject));
-    return Array.from(subjects).slice(0, 5);
-  }, [allStudentClasses, studentMaterials, studentAssignments]);
+  const pendingAssignments = useMemo(() => {
+    return (studentAssignments || []).filter(a => 
+      !(studentSubmissions || []).some(s => s.assignment_id === a.id)
+    );
+  }, [studentAssignments, studentSubmissions]);
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
@@ -83,6 +93,24 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
     if (hour < 17) return 'Good afternoon,';
     if (hour < 22) return 'Good evening,';
     return 'Working late? Hello,';
+  };
+
+  const handleOpenMaterial = async (url?: string) => {
+    if (!url) {
+        onNavigate('materials');
+        return;
+    }
+    try {
+        const finalUrl = url.startsWith('http') ? url : `https://${url}`;
+        const canOpen = await Linking.canOpenURL(finalUrl);
+        if (canOpen) {
+            await Linking.openURL(finalUrl);
+        } else {
+            onNavigate('materials');
+        }
+    } catch (e) {
+        onNavigate('materials');
+    }
   };
 
   const stats = [
@@ -128,7 +156,7 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
 
   const headerZindex = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 1000],
+    outputRange: [10, 100],
     extrapolate: 'clamp',
   });
 
@@ -152,7 +180,6 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
 
   return (
     <View className="flex-1 bg-[#f5f7ff]">
-      {/* Platinum Animated Hero */}
       <Animated.View
         style={{
           height: headerHeight,
@@ -162,53 +189,65 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
           left: 0,
           right: 0,
           paddingHorizontal: 16,
-          paddingTop: 16,
+          paddingTop: insets.top + 8,
         }}
       >
         <StyledLinearGradient
           colors={AppTheme.colors.gradients.brand}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="flex-1 rounded-[40px] p-6 shadow-2xl shadow-indigo-200/50 relative overflow-hidden"
+          className="flex-1 rounded-[24px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
         >
-          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center relative z-10">
-            <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30 backdrop-blur-md">
-              {currentSchool?.logo_url ? (
-                <Image
-                  source={{ uri: currentSchool.logo_url }}
-                  style={{ width: '100%', height: '100%', borderRadius: 16 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Icons.School size={32} color="white" />
-              )}
-            </Animated.View>
-            <View className="flex-1">
-              <Text className="text-2xl font-black text-white tracking-tighter leading-tight font-inter-black">
-                {currentSchool?.name || 'Academy Hub'}
-              </Text>
-              <Text className="text-white/60 text-[10px] font-black uppercase tracking-[3px] mt-1 font-inter-black">Institutional Portal</Text>
+          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center justify-between relative z-10">
+            <View className="flex-row items-center flex-1 mr-4">
+              <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30 flex-none">
+                {currentSchool?.logo_url ? (
+                  <Image
+                    source={{ uri: currentSchool.logo_url }}
+                    style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Icons.School size={20} color="white" />
+                )}
+              </Animated.View>
+              <View className="flex-1">
+                <Text className="text-[18px] text-white tracking-tighter leading-6 font-inter-black" numberOfLines={1}>
+                  {currentSchool?.name || 'Academy Hub'}
+                </Text>
+                <Text className="text-white text-[9px] uppercase tracking-[2px] opacity-90 font-inter-black">Institutional Portal</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+                onPress={() => onShowHistory?.()}
+                className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20 flex-none"
+            >
+                <Icons.Notifications size={16} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-3">
+            <View>
+                <Text className="text-white/90 text-[9px] uppercase tracking-[2px] mb-0.5 font-inter-black">Scholar Workflow</Text>
+                <Text className="text-white text-[20px] tracking-tighter leading-7 font-inter-black">{getDynamicGreeting()}</Text>
+                <Text className="text-[26px] text-brand-accent tracking-tighter leading-8 font-inter-black">
+                    {formatGreetingName(currentUser?.name, 'Student')}!
+                </Text>
+                
+                <Text 
+                    className="text-[14px] text-white mt-2.5 leading-6 font-inter-medium opacity-95"
+                    style={{ maxWidth: '95%' }}
+                >
+                    You have <Text className="text-brand-accent font-inter-black">{studentAssignments.length}</Text> pending tasks, 
+                    <Text className="text-brand-accent font-inter-black"> {studentMaterials.length}</Text> new resources, 
+                    and <Text className="text-brand-accent font-inter-black">{studentAnnouncements.length}</Text> academy updates.
+                </Text>
             </View>
           </Animated.View>
 
-          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-8">
-            <Text className="text-white/70 text-[9px] font-black uppercase tracking-[2px] mb-1 font-inter-black">Scholar Dashboard</Text>
-            <Text className="text-white text-xl font-black tracking-tighter leading-6 font-inter-black">{getDynamicGreeting()}</Text>
-            <View className="flex-row items-center mt-0.5">
-              <Text className="text-3xl font-black text-[#fde047] tracking-tight leading-tight font-inter-black">
-                {formatGreetingName(currentUser?.name, 'Student')} ✦
-              </Text>
-            </View>
-            <View className="flex-row items-center bg-white/10 self-start px-3 py-1.5 rounded-full border border-white/20 mt-5 backdrop-blur-sm">
-              <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2" />
-              <Text className="text-white text-[10px] font-black font-inter-black">
-                Focus Today: <Text className="text-emerald-300">{studentMaterials.length} Study Items</Text>
-              </Text>
-            </View>
-          </Animated.View>
-
-          <View className="absolute right-[-30] bottom-[-30] opacity-10 -rotate-12">
-            <Icons.GraduationCap size={180} color="white" />
+          <View style={{ position: 'absolute', right: -40, bottom: -30, opacity: 0.05, transform: [{ rotate: '12deg' }] }}>
+            <Icons.GraduationCap size={140} color="white" />
           </View>
         </StyledLinearGradient>
       </Animated.View>
@@ -219,27 +258,18 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={AppTheme.colors.primary}
+            colors={[AppTheme.colors.primary]}
+            progressViewOffset={HEADER_MAX_HEIGHT}
+          />
+        }
       >
-        {/* Quick Actions — Platinum Row */}
-        <View className="flex-row gap-3 mb-6">
-          <ActionTile
-            title="Classes"
-            subtitle="My Schedule"
-            icon={Icons.Classes}
-            type="brand"
-            onPress={() => onNavigate('classes')}
-          />
-          <ActionTile
-            title="Study Hub"
-            subtitle="Resource Vault"
-            icon={Icons.Video}
-            type="neutral"
-            onPress={() => onNavigate('videos')}
-          />
-        </View>
-
-        {/* Stats Registry */}
-        <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
+        {/* 1. Stats Registry */}
+        <View className="flex-row flex-wrap justify-between mb-8 gap-y-3.5">
           {stats.map((stat, idx) => {
             const mappedTone = 
               stat.toneClassName === 'bg-emerald-50' ? 'emerald' :
@@ -248,7 +278,7 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
               stat.toneClassName === 'bg-rose-50' ? 'rose' : 'indigo';
 
             return (
-              <View key={`student-stat-${idx}`} className="w-[48%]">
+              <View key={`student-stat-${idx}`} className="w-[48.2%]">
                 <StatCard
                   index={idx}
                   value={stat.value}
@@ -258,8 +288,8 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
                   trend={(stat as any).trend}
                   trendType={(stat as any).trendType}
                   onPress={() => {
-                    if (stat.label === 'Materials') onNavigate?.('videos');
-                    else if (stat.label === 'Assignments') onNavigate?.('assignments' as any);
+                    if (stat.label === 'Materials') onNavigate?.('materials');
+                    else if (stat.label === 'Assignments') onNavigate?.('assignments');
                   }}
                 />
               </View>
@@ -267,20 +297,228 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
           })}
         </View>
 
-        {/* Institutional Announcements */}
+        {/* 2. Assignments & Homework Registry (COMPACT CORE) */}
+        <SectionHeader 
+          title="ASSIGNMENTS DUE" 
+          className="mb-4 px-1"
+          rightElement={
+            <TouchableOpacity onPress={() => onNavigate('assignments')} className="flex-row items-center">
+                <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black mr-1">Task Hub</Text>
+                <Icons.ChevronRight size={10} color="#4f46e5" />
+            </TouchableOpacity>
+          }
+        />
+        <View className="mb-8">
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {pendingAssignments.length > 0 ? (
+              pendingAssignments
+                .sort((a, b) => new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime())
+                .slice(0, 3)
+                .map((task, idx) => {
+                  const isLast = idx === 2 || idx === pendingAssignments.length - 1;
+                  const dueDate = task.due_date ? new Date(task.due_date) : null;
+                  const isToday = dueDate?.toDateString() === new Date().toDateString();
+                  const isTomorrow = dueDate?.toDateString() === new Date(Date.now() + 86400000).toDateString();
+                  
+                  let urgencyLabel = task.due_date ? new Date(task.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Date';
+                  let urgencyType: 'error' | 'warning' | 'info' = 'info';
+
+                  if (isToday) {
+                    urgencyLabel = 'DUE TODAY';
+                    urgencyType = 'error';
+                  } else if (isTomorrow) {
+                    urgencyLabel = 'TOMORROW';
+                    urgencyType = 'warning';
+                  }
+
+                  return (
+                    <View 
+                      key={task.id || idx}
+                      className={`flex-row items-center p-4 ${!isLast ? 'border-b border-gray-50' : ''}`}
+                    >
+                      <View className="w-10 h-10 rounded-xl bg-gray-50 items-center justify-center mr-4 border border-gray-100">
+                         <Icons.Report size={18} color={isToday ? AppTheme.colors.error : AppTheme.colors.primary} />
+                      </View>
+
+                      <View className="flex-1 mr-3">
+                        <Text className="font-black text-gray-900 text-[13px] tracking-tight font-inter-black" numberOfLines={1}>
+                          {task.title}
+                        </Text>
+                        <View className="flex-row items-center mt-0.5">
+                            <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-inter-black mr-2">
+                                {task.subject || 'Academic'}
+                            </Text>
+                            <StatusPill label={urgencyLabel} type={urgencyType} className="scale-[0.8] origin-left" />
+                        </View>
+                      </View>
+
+                      <TouchableOpacity 
+                        onPress={() => onQuickCapture?.(task.id)}
+                        className="w-10 h-10 bg-indigo-50 rounded-full items-center justify-center border border-indigo-100 active:bg-indigo-100"
+                      >
+                        <Icons.Camera size={16} color={AppTheme.colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })
+            ) : (
+              <View className="py-12 items-center">
+                 <Icons.Check size={32} color="#e2e8f0" />
+                 <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-4 font-inter-black">All Tasks Completed</Text>
+              </View>
+            )}
+          </AppCard>
+        </View>
+
+        {/* 3. LATEST ACADEMIC MATERIALS (TEACHER-STYLED VERTICAL GRID) */}
+        <SectionHeader 
+          title="LATEST MATERIALS" 
+          className="mb-4 px-1"
+          rightElement={
+            <TouchableOpacity onPress={() => onNavigate('materials')} className="flex-row items-center">
+                <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black mr-1">Study Hub</Text>
+                <Icons.ChevronRight size={10} color="#4f46e5" />
+            </TouchableOpacity>
+          }
+        />
+        <View className="mb-8">
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {studentMaterials.length > 0 ? (
+              studentMaterials.slice(0, 5).map((mat, idx) => {
+                const isPDF = mat.type === 'PDF' || (mat.file_url && mat.file_url.toLowerCase().endsWith('.pdf'));
+                const isVideo = mat.type === 'VIDEO' || (mat.file_url && (mat.file_url.includes('youtube') || mat.file_url.includes('vimeo')));
+                
+                return (
+                  <AppRow
+                    key={mat.id || idx}
+                    title={mat.title}
+                    titleProps={{ numberOfLines: 1, ellipsizeMode: 'tail' }}
+                    subtitle={`${mat.subject || 'Academic Resource'} • By ${mat.teacher_name || 'Faculty'}`}
+                    avatarIcon={
+                      isPDF ? <Icons.FileText size={16} color="#4f46e5" /> : 
+                      isVideo ? <Icons.Video size={16} color="#0ea5e9" /> :
+                      <Icons.Globe size={16} color="#0ea5e9" />
+                    }
+                    avatarBg={isPDF ? '#eef2ff' : '#f0f9ff'}
+                    showBorder={idx < Math.min(studentMaterials.length, 5) - 1}
+                    onPress={() => {
+                        triggerHaptic();
+                        handleOpenMaterial(mat.url || mat.file_url);
+                    }}
+                    rightElement={
+                       <View className={`px-2 py-1 rounded ${isPDF ? 'bg-indigo-50' : 'bg-sky-50'}`}>
+                         <Text className={`text-[9px] font-inter-black uppercase tracking-tighter ${isPDF ? 'text-indigo-600' : 'text-sky-600'}`}>
+                            {isPDF ? 'PDF' : isVideo ? 'VIDEO' : 'LINK'}
+                         </Text>
+                       </View>
+                    }
+                  />
+                );
+              })
+            ) : (
+              <View className="py-12 items-center">
+                 <Icons.FileText size={32} color="#e2e8f0" />
+                 <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-4 font-inter-black">No resources shared yet</Text>
+              </View>
+            )}
+            
+            {studentMaterials.length > 5 && (
+              <TouchableOpacity 
+                onPress={() => onNavigate('materials')}
+                className="py-4 border-t border-gray-50 items-center bg-gray-50/30 active:bg-gray-50"
+              >
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">Open Material Library</Text>
+              </TouchableOpacity>
+            )}
+          </AppCard>
+        </View>
+
+        {/* 4. Daily Academic Timeline (HIGH FIDELITY) */}
+        <SectionHeader 
+          title="DAILY TIMELINE" 
+          className="mb-4 px-1"
+          rightElement={
+            <TouchableOpacity onPress={() => onNavigate('classes')} className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
+                <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-wider font-inter-black">Full Table</Text>
+            </TouchableOpacity>
+          }
+        />
+        <View className="mb-8">
+          {displayClasses.length > 0 ? (
+            <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+              {displayClasses.slice(0, 2).map((item, idx) => {
+                const isLast = idx === 1 || idx === displayClasses.length - 1;
+                const classTime = item.class_time || `${9 + idx}:00 AM`;
+                const isLive = idx === 0;
+
+                return (
+                  <TouchableOpacity 
+                    key={item.id || idx} 
+                    onPress={() => onNavigate('classes')} 
+                    activeOpacity={0.7}
+                    className={`flex-row p-5 ${!isLast ? 'border-b border-gray-50' : ''}`}
+                  >
+                    <View className="items-center mr-6">
+                      <Text className="text-[10px] font-black text-indigo-600 font-inter-black uppercase tracking-tighter mb-1">
+                        {classTime.split(' ')[0]}
+                      </Text>
+                      <Text className="text-[8px] font-black text-gray-400 font-inter-black uppercase">
+                        {classTime.split(' ')[1] || 'AM'}
+                      </Text>
+                      <View className="w-0.5 flex-1 bg-indigo-50 my-2 relative">
+                        {isLive && <View className="absolute top-0 left-[-3px] w-2 h-2 bg-emerald-500 rounded-full border-2 border-white" />}
+                      </View>
+                    </View>
+
+                    <View className="flex-1">
+                      <View className="flex-row justify-between items-start">
+                        <View className="flex-1 mr-2">
+                          <Text className={`font-black text-lg tracking-tighter font-inter-black ${isLive ? 'text-indigo-900' : 'text-gray-700'}`}>
+                            {item.subject}
+                          </Text>
+                          <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5 font-inter-black">
+                            {item.teacher_name || 'Academic Faculty'} • Rm {item.room_no || '302'}
+                          </Text>
+                        </View>
+                        {isLive && (
+                          <View className="bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex-row items-center">
+                            <View className="w-1 h-1 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
+                            <Text className="text-[8px] font-black text-emerald-600 uppercase font-inter-black">LIVE</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {isLive && (
+                        <View className="mt-3 flex-row items-center bg-indigo-600 self-start px-4 py-1.5 rounded-full shadow-lg shadow-indigo-200">
+                          <Text className="text-white font-black text-[9px] uppercase tracking-widest font-inter-black mr-2">Join Session</Text>
+                          <Icons.ChevronRight size={10} color="white" />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </AppCard>
+          ) : (
+            <AppCard className="items-center py-12 border border-dashed border-gray-200">
+              <View className="bg-gray-50 w-16 h-16 rounded-3xl items-center justify-center mb-6 border border-gray-100 shadow-inner">
+                <Icons.Classes size={32} color="#e2e8f0" />
+              </View>
+              <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest font-inter-black text-center leading-5">No active sessions found.</Text>
+            </AppCard>
+          )}
+        </View>
+
+        {/* 5. Academy Notices (NEWS) */}
         <SectionHeader 
           title="ACADEMY NOTICES" 
-          subtitle={`${studentAnnouncements.length} Active Records`}
-          className="mb-4"
+          className="mb-4 px-1"
           rightElement={
-            <StatusPill 
-              label={`${studentAnnouncements.length} New`} 
-              type="info" 
-            />
+            <StatusPill label={`${studentAnnouncements.length} New`} type="info" />
           }
         />
         <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 mb-8">
-            {studentAnnouncements.slice(0, 3).map((a: any, idx) => {
+            {studentAnnouncements.slice(0, 2).map((a: any, idx) => {
               const diff = Date.now() - new Date(a.date || Date.now()).getTime();
               const isNew = diff < 24 * 60 * 60 * 1000;
 
@@ -297,123 +535,29 @@ export const StudentHome: React.FC<StudentHomeProps> = ({
                 />
               );
             })}
-
-            {studentAnnouncements.length > 0 && (
-              <TouchableOpacity 
-                onPress={onShowHistory}
-                className="py-4 border-t border-gray-50 items-center bg-gray-50/30 active:bg-gray-50"
-              >
-                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">View All Notices</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              onPress={onShowHistory}
+              className="py-4 border-t border-gray-50 items-center bg-gray-50/30 active:bg-gray-50"
+            >
+              <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">Official Bulletins</Text>
+            </TouchableOpacity>
         </AppCard>
-        
-        {/* Personal Calendar */}
+
+        {/* 6. Quick Actions (UTILITY) */}
+        <QuickActionsGrid 
+          role="student"
+          onAction={onNavigate}
+          className="mb-8"
+        />
+
+        {/* 7. Institutional Calendar (SCHEDULE) */}
         <SectionHeader 
-          title="MY SCHEDULE" 
-          subtitle="PERSONAL REMINDERS"
-          className="mb-4"
+          title="INSTITUTIONAL CALENDAR" 
+          className="mb-4 px-1"
         />
         <AppCard className="p-5 border border-white shadow-xl shadow-indigo-100/30">
           <CalendarWidget compact={true} canAddEvents={false} />
         </AppCard>
-
-        {/* Today's Schedule Registry */}
-        <SectionHeader 
-          title="ACTIVE SCHEDULE" 
-          subtitle="REAL-TIME SESSIONS"
-          className="mb-4"
-          rightElement={
-            <TouchableOpacity onPress={() => onNavigate('classes')} className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-                <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-wider font-inter-black">Full Table</Text>
-            </TouchableOpacity>
-          }
-        />
-        <View className="mb-8">
-          {displayClasses.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 8 }}>
-              {displayClasses.map((item, idx) => (
-                <TouchableOpacity key={item.id || idx} onPress={() => onNavigate('classes')} activeOpacity={0.92}>
-                  <AppCard className="w-[280px] p-5 mr-4 border border-white shadow-xl shadow-indigo-100/30">
-                    <View className="flex-row justify-between items-start mb-4">
-                      <View className="flex-1 mr-3">
-                        <View className="flex-row items-center mb-1.5">
-                          <View className="bg-emerald-500 w-1.5 h-1.5 rounded-full mr-2 shadow-sm shadow-emerald-500/50" />
-                          <Text className="text-[9px] font-black text-emerald-600 uppercase tracking-widest font-inter-black">Live Session</Text>
-                        </View>
-                        <Text className="font-black text-gray-900 text-lg tracking-tighter mb-1 font-inter-black" numberOfLines={1}>
-                          {item.subject}
-                        </Text>
-                        <View className="flex-row items-center opacity-60">
-                            <Icons.Profile size={10} color="#64748b" />
-                            <Text className="text-[10px] font-black text-gray-500 ml-1.5 font-inter-black">{item.teacher_name || 'Academic Faculty'}</Text>
-                        </View>
-                      </View>
-
-                      <View className="bg-indigo-50 px-3 py-2 rounded-2xl border border-indigo-100 items-center justify-center">
-                        <Text className="text-[14px] text-indigo-700 font-black tracking-tighter font-inter-black">{item.grade_score || 'A+'}</Text>
-                      </View>
-                    </View>
-
-                    <View className="bg-gray-50/80 p-3 rounded-2xl mb-4 border border-gray-100 flex-row items-center">
-                      <Icons.Classes size={12} color="#4f46e5" />
-                      <Text className="text-[10px] font-black text-indigo-900 ml-2 font-inter-black" numberOfLines={1}>
-                        Topic: {item.last_topic || 'Institutional Introduction'}
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity onPress={() => onNavigate('classes')} className="w-full bg-indigo-600 py-3.5 rounded-2xl items-center justify-center shadow-xl shadow-indigo-200 active:scale-95">
-                      <View className="flex-row items-center">
-                        <Text className="text-white font-black uppercase tracking-[1.5px] text-[10px] mr-2 font-inter-black">Join Session</Text>
-                        <Icons.ChevronRight size={12} color="white" />
-                      </View>
-                    </TouchableOpacity>
-                  </AppCard>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <AppCard className="items-center py-12 border border-dashed border-gray-200">
-              <View className="bg-gray-50 w-16 h-16 rounded-3xl items-center justify-center mb-6 border border-gray-100 shadow-inner">
-                <Icons.Classes size={32} color="#e2e8f0" />
-              </View>
-              <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest font-inter-black text-center leading-5">No active sessions found.{'\n'}Review portal schedule for updates.</Text>
-            </AppCard>
-          )}
-        </View>
-
-        {/* Learning Snapshot & Snapshot */}
-        <SectionHeader title="ACADEMIC SNAPSHOT" subtitle="CURRENT PERFORMANCE" className="mb-4" />
-        <View className="flex-row gap-3 mb-8">
-            <AppCard className="flex-1 p-5 border border-white shadow-xl shadow-indigo-100/30">
-                <Text className="text-[9px] text-emerald-600 font-black uppercase tracking-[2px] mb-1.5 font-inter-black">Attendance</Text>
-                <Text className="text-2xl font-black text-gray-900 font-inter-black">{attendanceRate}</Text>
-                <View className="h-1 bg-emerald-100 rounded-full mt-3 overflow-hidden">
-                    <View className="h-full bg-emerald-500 rounded-full" style={{ width: attendanceRate }} />
-                </View>
-            </AppCard>
-            <AppCard className="flex-1 p-5 border border-white shadow-xl shadow-indigo-100/30">
-                <Text className="text-[9px] text-amber-600 font-black uppercase tracking-[2px] mb-1.5 font-inter-black">Curriculum</Text>
-                <Text className="text-2xl font-black text-gray-900 font-inter-black">{learningSubjects.length}</Text>
-                <Text className="text-[8px] text-gray-400 font-black uppercase tracking-widest mt-2 font-inter-black">Active Courses</Text>
-            </AppCard>
-        </View>
-
-        {/* Institutional Resource Link */}
-        <StyledLinearGradient colors={AppTheme.colors.gradients.brand} className="p-8 rounded-[40px] shadow-2xl shadow-indigo-200/50 mb-12 relative overflow-hidden">
-            <View className="relative z-10">
-                <Text className="text-white font-black text-xl mb-2 font-inter-black">Institutional Vault</Text>
-                <Text className="text-indigo-100 text-[11px] leading-5 mb-8 font-inter-medium opacity-80">
-                    Access your full academic transcript, official report cards, and comprehensive learning history.
-                </Text>
-                <TouchableOpacity className="bg-white self-start px-6 py-3.5 rounded-2xl shadow-xl active:scale-95">
-                    <Text className="text-indigo-600 font-black text-[10px] uppercase tracking-widest font-inter-black">Open Archive</Text>
-                </TouchableOpacity>
-            </View>
-            <View className="absolute right-[-20] bottom-[-20] opacity-10">
-                <Icons.Verified size={160} color="white" />
-            </View>
-        </StyledLinearGradient>
 
         <View className="h-10" />
       </Animated.ScrollView>

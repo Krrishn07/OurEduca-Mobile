@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserRole } from '@/types';
 
-import { PlatformHome } from '@screens/platform/PlatformHome';
+import { PlatformDashboard } from '@screens/platform/PlatformDashboard';
 import { PlatformRoles } from '@screens/platform/PlatformRoles';
 import { AdminInstitutes } from '@screens/admin/AdminInstitutes';
 import { AdminProfile } from '@screens/admin/AdminProfile';
@@ -99,6 +99,7 @@ export const PlatformRouter: React.FC<PlatformRouterProps> = ({ bundle, common }
                     onEditProfile={() => actions.setShowEditProfileModal(true)}
                     onAccountSecurity={() => actions.setShowSecurityModal(true)}
                     onLogout={onLogout || (() => {})}
+                    recentActivity={data.systemLogs}
                 />
             );
         case 'AuditTrail':
@@ -110,7 +111,7 @@ export const PlatformRouter: React.FC<PlatformRouterProps> = ({ bundle, common }
             );
         default: 
             return (
-                <PlatformHome 
+                <PlatformDashboard 
                     institutes={data.institutes} 
                     registrationMessages={data.registrationMessages}
                     isLoadingInquiries={data.isLoadingInquiries}

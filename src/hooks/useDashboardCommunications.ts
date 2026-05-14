@@ -125,17 +125,19 @@ export const useDashboardCommunications = (
     return [...recognizedContacts, ...mysteryContacts];
   }, [role, dbStaff, dbStudents, chatMessages, currentUser.id]);
 
-  const handleSendMessage = useCallback(async (type?: string, url?: string, name?: string, customContent?: string) => {
+  const handleSendMessage = useCallback(async (type: string = 'text', url?: string, name?: string, customContent?: string, targetId?: string) => {
+    const finalChat = targetId || selectedChat;
     const finalContent = customContent || msgInput;
-    if (!finalContent.trim() || !selectedChat) return;
+    if (!finalChat) return;
+    if (type === 'text' && !finalContent.trim()) return;
     
     const schoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId;
     const senderId = currentUser.id || mockAuthUser?.id;
 
     if (schoolId && senderId) {
       try {
-        await sendChatMessage(schoolId, senderId, selectedChat, finalContent);
-        setMsgInput('');
+        await sendChatMessage(schoolId, senderId, finalChat, finalContent, type, url, name);
+        if (!customContent) setMsgInput('');
       } catch (err: any) {
         console.error('Failed to send message:', err.message);
         showToast(`Send failed: ${err.message || 'Check database permissions'}`, 'error');

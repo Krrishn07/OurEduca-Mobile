@@ -11,7 +11,8 @@ import {
     AnnouncementHistoryModal, 
     UploadVideoModal, 
     VideoPlayerModal, 
-    EditProfileModal 
+    EditProfileModal,
+    CreateAssignmentModal
 } from '@components/modals';
 
 // Feature-Specific Modals (Consolidated to @screens)
@@ -82,6 +83,9 @@ interface DashboardModalManagerProps {
         playingVideo: any;
         dbStudents?: any[];
         dbFees?: any[];
+        showAssignmentModal: boolean;
+        modalInitialClassId: string | null;
+        selectedClass?: any;
     };
     actions: {
         setShowAddInstituteModal: (show: boolean) => void;
@@ -136,6 +140,8 @@ interface DashboardModalManagerProps {
         handleInstituteAction: (type: string, inst: any) => void;
         handleUpdateInstituteLogo: (instId: string) => void;
         showToast: (msg: string, type?: any) => void;
+        setShowAssignmentModal: (show: boolean) => void;
+        handleCreateAssignment: (data: any) => Promise<void>;
     };
 }
 
@@ -298,11 +304,6 @@ export const DashboardModalManager: React.FC<DashboardModalManagerProps> = ({ ro
                         onAdd={actions.handleSaveStudent}
                         isEditing={!!state.editingUserId}
                     />
-                    <IssueFeeModal 
-                        visible={state.showIssueFeeModal}
-                        onClose={() => actions.setShowIssueFeeModal(false)}
-                        onIssue={() => {}} // Placeholder
-                    />
                     <FeeLedgerModal 
                         visible={state.showFeeLedgerModal}
                         onClose={() => actions.setShowFeeLedgerModal(false)}
@@ -346,6 +347,14 @@ export const DashboardModalManager: React.FC<DashboardModalManagerProps> = ({ ro
                 visible={state.showVideoPlayerModal}
                 onClose={() => actions.setShowVideoPlayerModal(false)}
                 video={state.playingVideo}
+            />
+
+            <CreateAssignmentModal 
+                visible={state.showAssignmentModal}
+                onClose={() => actions.setShowAssignmentModal(false)}
+                onCreate={actions.handleCreateAssignment}
+                assignedSections={state.teacherAssignedSections}
+                initialClassId={state.modalInitialClassId || state.selectedClass?.id}
             />
         </>
     );

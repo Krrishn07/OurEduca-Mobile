@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from '@components/common/Icons';
 import { Video, LiveStream, useSchoolData } from '@context/SchoolDataContext';
-import { AppTheme, AppCard, AppTypography, SectionHeader, StatusPill, AppRow } from '@components/common';
+import { AppTheme, AppCard, AppTypography, SectionHeader, StatusPill, AppRow, PlatinumSearchHeader } from '@components/common';
 
 const StyledLinearGradient = LinearGradient || View;
 
@@ -167,58 +167,40 @@ export const StudentVideos: React.FC<StudentVideosProps> = ({
       <View className="h-40" />
     </ScrollView>
   );
-
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Student Dashboard Header */}
-      <View className="bg-indigo-900 px-6 pt-12 pb-6 shadow-2xl">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <View className="w-12 h-12 bg-white/10 rounded-2xl items-center justify-center border border-white/20">
-              <Text className="text-white font-black text-lg font-inter-black">
-                {currentUser?.name?.split(' ').map((n: string) => n[0]).join('') || 'S'}
-              </Text>
-            </View>
-            <View className="ml-4">
-              <Text className="text-white/40 text-[9px] font-black uppercase tracking-[2px] font-inter-black">Academy Student</Text>
-              <Text className="text-white font-black text-lg tracking-tight font-inter-black">{currentUser?.name}</Text>
-              <Text className="text-white/50 text-[10px] font-black tracking-widest font-inter-black">Springfield Academy</Text>
-            </View>
-          </View>
-          
-          <TouchableOpacity 
-            onPress={() => setParentMode(!parentMode)}
-            className={`px-4 py-2 rounded-full border ${parentMode ? 'bg-amber-400 border-amber-300' : 'bg-white/10 border-white/20'}`}
-          >
-            <Text className="text-white font-black text-[10px] uppercase tracking-widest font-inter-black">
-              {parentMode ? '👤 STUDENT' : '👨‍👩‍👦 PARENT'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View className="flex-1 bg-white">
+      <PlatinumSearchHeader
+        title="Study Hub"
+        subtitle={activeTab === 'LIVE' ? 'Real-time Classroom Broadcasts' : 'Institutional Recorded Archive'}
+        onBack={() => onNavigate?.('home')}
+        searchValue={videoSearch}
+        onSearchChange={setVideoSearch}
+        placeholder="Filter by subject or title..."
+      />
 
-      {/* Role Tabs */}
-      <View className="flex-row bg-indigo-900 border-t border-white/5">
+      {/* Role Tabs - Integrated Style */}
+      <View className="flex-row bg-white border-b border-gray-100 px-4">
         {[
-          { id: 'LIVE', label: 'Live Now', icon: '📡' },
-          { id: 'LIBRARY', label: 'Library', icon: '🎬' }
+          { id: 'LIVE', label: 'LIVE NOW', icon: <Icons.Radio size={12} color={activeTab === 'LIVE' ? '#4f46e5' : '#94a3b8'} /> },
+          { id: 'LIBRARY', label: 'LIBRARY', icon: <Icons.Play size={12} color={activeTab === 'LIBRARY' ? '#4f46e5' : '#94a3b8'} /> }
         ].map((t) => (
           <TouchableOpacity 
             key={t.id}
             onPress={() => setActiveTab(t.id as any)}
-            className={`flex-1 py-4 items-center border-b-[3px] ${activeTab === t.id ? 'border-amber-400' : 'border-transparent'}`}
+            className={`flex-1 py-4 flex-row items-center justify-center border-b-2 ${activeTab === t.id ? 'border-indigo-600' : 'border-transparent'}`}
           >
-            <Text className={`text-[11px] font-black tracking-widest font-inter-black ${activeTab === t.id ? 'text-white' : 'text-white/30'}`}>
-              {t.icon} {t.label}
+            {t.icon}
+            <Text className={`ml-2 text-[10px] font-black tracking-widest font-inter-black ${activeTab === t.id ? 'text-indigo-600' : 'text-gray-400'}`}>
+              {t.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <View className="flex-1">
+      <View className="flex-1 bg-[#f5f7ff]">
         {activeTab === 'LIVE' && renderLiveTab()}
         {activeTab === 'LIBRARY' && renderLibraryTab()}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };

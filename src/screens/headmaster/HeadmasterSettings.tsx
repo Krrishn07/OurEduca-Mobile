@@ -3,7 +3,13 @@ import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Ke
 import { Icons } from '@components/common/Icons';
 import { useSchoolData } from '@context/SchoolDataContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AppTheme, AppCard, AppTypography, AppButton, AppRow, StatusPill, SectionHeader } from '@components/common';
+import { AppTheme, AppCard, AppTypography,  AppButton, 
+  AppRow, 
+  StatusPill, 
+  SectionHeader,
+  PlatinumHeader
+} from '@components/common';
+import { triggerHaptic } from '@utils/haptics';
 
 interface HeadmasterSettingsProps {
     onSave: (settings: any) => void;
@@ -109,43 +115,36 @@ export const HeadmasterSettings: React.FC<HeadmasterSettingsProps> = ({ onSave }
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
             className="flex-1 bg-[#f5f7ff]"
         >
-            {/* 1. Platinum Settings Header — 140px Sync */}
-            <LinearGradient 
-                colors={AppTheme.colors.gradients.brand} 
-                start={{x: 0, y: 0}} 
-                end={{x: 1, y: 1}} 
-                className="h-[140px] px-6 pt-5 rounded-b-[40px] shadow-2xl shadow-indigo-200/50 relative z-30"
-            >
-                <View className="flex-row justify-between items-start w-full relative z-10">
-                    <View className="flex-1 pr-4">
-                        <Text className={`${AppTypography.heroTitle} text-white font-inter-black`} numberOfLines={1}>School Settings</Text>
-                        <Text className={`${AppTypography.eyebrow} text-indigo-100/60 mt-1.5 font-inter-black`}>
-                            MANAGE INSTITUTION
-                        </Text>
-                    </View>
-
-                    {!editMode ? (
+        <View className="flex-1 bg-[#fbfbfe]">
+            <PlatinumHeader 
+                title="School Settings"
+                subtitle="MANAGE INSTITUTION"
+                rightAction={
+                    !editMode ? (
                         <TouchableOpacity 
-                            onPress={() => setEditMode(true)}
-                            className="bg-white/10 rounded-2xl px-5 py-3 flex-row items-center active:scale-95 border border-white/20"
+                            onPress={() => { triggerHaptic(); setEditMode(true); }}
+                            className="w-10 h-10 bg-indigo-50 rounded-full items-center justify-center border border-indigo-100 active:scale-95 shadow-sm"
                         >
-                            <Icons.Edit size={12} color="white" />
-                            <Text className="text-white text-[10px] font-black uppercase tracking-widest ml-2 font-inter-black">Edit</Text>
+                            <Icons.Edit size={18} color="#4f46e5" />
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity 
-                            onPress={handleSave}
-                            className="bg-emerald-500 rounded-2xl px-5 py-3 flex-row items-center active:scale-95 border border-emerald-400"
-                        >
-                            <Icons.Check size={12} color="white" />
-                            <Text className="text-white text-[10px] font-black uppercase tracking-widest ml-2 font-inter-black">Apply</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-                <View className="absolute right-[-20] bottom-[-20] opacity-10 rotate-12">
-                    <Icons.Grid size={140} color="white" />
-                </View>
-            </LinearGradient>
+                        <View className="flex-row items-center">
+                            <TouchableOpacity 
+                                onPress={() => { triggerHaptic(); setEditMode(false); }}
+                                className="mr-2 w-10 h-10 bg-gray-50 rounded-full items-center justify-center border border-gray-200 active:scale-95"
+                            >
+                                <Icons.Close size={18} color="#64748b" />
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => { triggerHaptic(); handleSave(); }}
+                                className="w-10 h-10 bg-emerald-500 rounded-full items-center justify-center border border-emerald-400 active:scale-95 shadow-md shadow-emerald-200"
+                            >
+                                <Icons.Check size={18} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                    )
+                }
+            />
 
             <ScrollView 
                 className="flex-1" 
@@ -360,7 +359,8 @@ export const HeadmasterSettings: React.FC<HeadmasterSettingsProps> = ({ onSave }
                     <Text className="text-[8px] font-bold text-gray-400 mt-1.5 uppercase tracking-widest font-inter-black">Secure Connection Established</Text>
                 </View>
             </ScrollView>
-        </KeyboardAvoidingView>
-    );
+        </View>
+    </KeyboardAvoidingView>
+  );
 };
 

@@ -1,154 +1,249 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, Pressable, FlatList, Alert, ActivityIndicator, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import { Icons } from '@components/common/Icons';
-import { AppTheme } from '@constants/Theme';
+import { supabase } from '@lib/supabase';
 import { 
-  AppCard, 
-  AppTypography, 
-  SectionHeader 
+  SectionHeader, 
+  AppRow, 
+  StatusPill, 
+  PlatinumSearchHeader, 
+  SkeletonRow 
 } from '@components/common';
+import { triggerHaptic } from '@utils/haptics';
 
-if (LinearGradient) {  }
-const StyledLinearGradient = styled(LinearGradient || View);
-
-interface MentorMaterialsProps {
-  materials: any[];
-  onUpload: () => void;
+export interface Material {
+  id: string;
+  title: string;
+  subject?: string;
+  type: 'PDF' | 'LINK' | 'VIDEO';
+  url?: string;
+  created_at?: string;
+  section?: string;
+  classes?: { name: string };
 }
 
-export const MentorMaterials: React.FC<MentorMaterialsProps> = ({
-  materials,
-  onUpload,
-}) => {
-  const [searchQuery, setSearchQuery] = React.useState('');
-  
-  const filteredMaterials = (materials || []).filter(m => 
-    m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    m.subject?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+interface MentorMaterialsProps {
+  materials: Material[];
+  isLoading?: boolean;
+  onUpload: () => void;
+  onDelete?: (id: string) => void;
+  onBack: () => void;
+}
 
-  const getIconForType = (type: string) => {
-    switch (type.toUpperCase()) {
-      case 'PDF': return <Icons.Report size={20} color="#ef4444" />;
-      case 'LINK': return <Icons.Globe size={20} color="#3b82f6" />;
-      case 'VIDEO': return <Icons.Video size={20} color="#6366f1" />;
-      default: return <Icons.Plus size={20} color="#94a3b8" />;
+export const MentorMaterials = React.memo<MentorMaterialsProps>(({
+  materials = [],
+  isLoading = false,
+  onUpload,
+  onDelete,
+  onBack
+}) => {
+  const [search, setSearch] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('ALL');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<string[]>([]);
+
+  const allSubjects = useMemo(() => {
+    return ['ALL', ...Array.from(new Set(materials.map(m => (m.subject || 'General').trim()))).sort()];
+  }, [materials]);
+
+  const filtered = useMemo(() => {
+    return materials
+      .filter(m => !optimisticDeletedIds.includes(m.id))
+      .filter(m => {
+        const q = search.toLowerCase();
+        const matchesSearch = (m.title?.toLowerCase().includes(q) || m.subject?.toLowerCase().includes(q));
+        const matchesSubject = selectedSubject === 'ALL' || (m.subject || 'General').trim() === selectedSubject;
+        return matchesSearch && matchesSubject;
+      });
+  }, [materials, search, selectedSubject, optimisticDeletedIds]);
+
+  const handleOpen = async (url?: string) => {
+    if (!url) {
+      Alert.alert('No Resource', 'This material has no URL or document attached.');
+      return;
+    }
+
+    let finalUrl = url;
+    if (url.startsWith('/storage/') || url.startsWith('storage/')) {
+      const { data } = supabase.storage
+        .from('materials')
+        .getPublicUrl(url.replace(/^\/?(storage\/v1\/object\/public\/materials\/)/, ''));
+      finalUrl = data.publicUrl;
+    } else if (!url.startsWith('http')) {
+      finalUrl = `https://${url}`;
+    }
+
+    try {
+      const canOpen = await Linking.canOpenURL(finalUrl);
+      if (!canOpen) {
+        Alert.alert('Cannot Open', 'Your device does not have an app installed that can open this resource type.');
+        return;
+      }
+      await Linking.openURL(finalUrl);
+    } catch (err) {
+      Alert.alert('Error', 'Could not open this resource. The link might be broken or expired.');
     }
   };
 
-  return (
-    <View className="flex-1 bg-[#f5f7ff]">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Premium Resource Header */}
-        <StyledLinearGradient
-          colors={AppTheme.colors.gradients.brand}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="px-8 pt-16 pb-20 rounded-b-[48px] shadow-2xl shadow-indigo-200/50"
-        >
-          <View className="flex-row justify-between items-center mb-8">
-            <View>
-              <Text className="text-3xl font-black text-white tracking-tighter font-inter-black">Resource Vault</Text>
-              <Text className="text-indigo-100/60 text-[10px] font-black uppercase tracking-[3px] mt-2 font-inter-black">ACADEMIC ASSETS</Text>
-            </View>
-            <TouchableOpacity 
-              onPress={onUpload}
-              className="w-14 h-14 bg-white/10 rounded-2xl items-center justify-center border border-white/20 backdrop-blur-md active:bg-white/20 shadow-lg"
-            >
-              <Icons.Plus size={28} color="white" />
-            </TouchableOpacity>
-          </View>
+  const handleDeletePress = useCallback((id: string) => {
+    Alert.alert(
+      "Remove Resource",
+      "Are you sure you want to delete this material from the repository?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!onDelete) return;
+            setDeletingId(id);
+            setOptimisticDeletedIds(prev => [...prev, id]);
+            try {
+              await onDelete(id);
+            } catch (err) {
+              setOptimisticDeletedIds(prev => prev.filter(oid => oid !== id));
+              Alert.alert("Sync Error", "Failed to remove material from institution database.");
+            } finally {
+              setDeletingId(null);
+            }
+          }
+        }
+      ]
+    );
+  }, [onDelete]);
 
-          <View className="bg-white/10 border border-white/20 rounded-2xl px-5 py-4 flex-row items-center backdrop-blur-md shadow-inner">
-            <Icons.Search size={18} color="white" />
-            <TextInput
-              className="flex-1 ml-4 text-sm font-black text-white placeholder:text-indigo-200 font-inter-black"
-              placeholder="Find institutional resources..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-        </StyledLinearGradient>
-
-        <View className="px-6 -mt-10">
-          <SectionHeader 
-            title="INSTITUTIONAL REGISTRY" 
-            subtitle={`${filteredMaterials.length} CURATED ASSETS AVAILABLE`}
-            className="px-2"
-          />
-
-          {filteredMaterials.length > 0 ? (
-            <View className="space-y-4 mb-8">
-              {filteredMaterials.map((item) => (
-                <AppCard 
-                  key={item.id}
-                  className="p-4 flex-row items-center border-gray-100"
-                >
-                  <View className="w-14 h-14 bg-gray-50 rounded-2xl items-center justify-center border border-gray-100 mr-4 shadow-sm">
-                    {getIconForType(item.type)}
-                  </View>
-                  
-                  <View className="flex-1">
-                    <Text className="font-black text-[14px] text-gray-900 tracking-tight font-inter-black mb-1" numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <View className="flex-row items-center">
-                      <View className="bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/50">
-                        <Text className="text-[8px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">
-                          {item.subject}
-                        </Text>
-                      </View>
-                      <View className="w-1 h-1 rounded-full bg-gray-200 mx-2" />
-                      <Text className="text-[9px] text-gray-400 font-black uppercase tracking-widest font-inter-black opacity-60">
-                        {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'RECENT'}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center border border-gray-100 active:bg-gray-100">
-                    <Icons.ChevronRight size={16} color="#94a3b8" />
-                  </TouchableOpacity>
-                </AppCard>
-              ))}
-            </View>
-          ) : (
-            <AppCard className="items-center py-24 mb-8 border-dashed border-gray-200">
-              <View className="w-20 h-20 bg-gray-50 rounded-[30px] items-center justify-center mb-6 border border-gray-100 shadow-inner">
-                <Icons.Report size={32} color="#cbd5e1" />
-              </View>
-              <Text className="text-[11px] font-black text-gray-400 uppercase tracking-[3px] font-inter-black">Registry Empty</Text>
-            </AppCard>
-          )}
-
-          {/* Premium Insight Banner */}
-          <StyledLinearGradient
-            colors={['#4f46e5', '#312e81']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="p-8 rounded-[40px] shadow-2xl shadow-indigo-200/50 overflow-hidden relative border border-white/10"
+  const renderMaterialItem = useCallback(({ item: mat, index: idx }: { item: Material, index: number }) => (
+    <AppRow
+      title={mat.title}
+      titleProps={{ numberOfLines: 1, ellipsizeMode: 'tail' }}
+      subtitle={`${mat.classes?.name || 'Class Level'} • Section ${mat.section || 'General'}`}
+      avatarIcon={mat.type === 'PDF' ? <Icons.FileText size={15} color="#4f46e5" /> : <Icons.Globe size={15} color="#0ea5e9" />}
+      avatarBg={mat.type === 'PDF' ? '#eef2ff' : '#f0f9ff'}
+      meta={(() => {
+        if (!mat.created_at) return 'Recently';
+        const d = new Date(mat.created_at);
+        return isNaN(d.getTime()) 
+          ? 'Recently' 
+          : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      })()}
+      showBorder={idx < filtered.length - 1}
+      onPress={() => handleOpen(mat.url)}
+      rightElement={
+        onDelete ? (
+          <Pressable
+            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+            disabled={deletingId === mat.id}
+            onPress={() => {
+              triggerHaptic();
+              handleDeletePress(mat.id);
+            }}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            className={`px-4 py-2.5 rounded-xl border ${deletingId === mat.id ? 'bg-gray-50 border-gray-100' : 'bg-rose-50 border-rose-100'} active:bg-rose-100`}
           >
-             <View className="relative z-10">
-                <View className="flex-row items-center mb-6">
-                  <View className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                    <Icons.Sparkles size={18} color="white" />
-                  </View>
-                  <Text className="text-white font-black text-[10px] uppercase tracking-[3px] ml-3 font-inter-black">Faculty Insight</Text>
-                </View>
-                <Text className="text-white text-[13px] leading-relaxed font-inter-medium opacity-80">
-                  Uploading structured materials like lesson plans and assignment briefs helps students and parents stay aligned with your curriculum.
-                </Text>
-             </View>
-             <View className="absolute -bottom-10 -right-10 opacity-10 rotate-12">
-                <Icons.Report size={160} color="white" />
-             </View>
-          </StyledLinearGradient>
-        </View>
+            {deletingId === mat.id ? (
+              <ActivityIndicator size="small" color="#ef4444" />
+            ) : (
+              <Icons.Trash size={15} color="#ef4444" />
+            )}
+          </Pressable>
+        ) : undefined
+      }
+    />
+  ), [filtered.length, deletingId, handleOpen, handleDeletePress, onDelete]);
 
-        <View className="h-20" />
-      </ScrollView>
+  const ListHeader = useMemo(() => (
+    <View>
+      <View className="px-4 pt-6">
+        <View className="mb-6 flex-row items-center justify-between">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1 pb-2">
+            {allSubjects.map((sub) => (
+              <Pressable
+                key={sub}
+                style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+                onPress={() => {
+                  triggerHaptic();
+                  setSelectedSubject(sub);
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedSubject === sub ? 'bg-indigo-600 border-indigo-700 shadow-md shadow-indigo-200' : 'bg-white border-gray-100'}`}
+              >
+                <Text className={`text-[10px] font-black uppercase tracking-[1px] font-inter-black ${selectedSubject === sub ? 'text-white' : 'text-gray-500'}`}>
+                  {sub}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={onUpload}
+            className="bg-indigo-600 w-10 h-10 rounded-xl shadow-lg shadow-indigo-100 items-center justify-center active:scale-95 ml-2"
+          >
+            <Icons.Plus size={16} color="white" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View className="px-4">
+        <SectionHeader
+          title={selectedSubject === 'ALL' ? 'ALL MATERIALS' : selectedSubject}
+          className="mb-4"
+          rightElement={<StatusPill label={`${filtered.length} Items`} type="neutral" />}
+        />
+      </View>
+    </View>
+  ), [selectedSubject, allSubjects, filtered.length, onUpload]);
+
+  return (
+    <View className="flex-1 bg-[#f8faff]">
+      <PlatinumSearchHeader
+        title="Resource Vault"
+        subtitle="Institutional Assets"
+        onBack={onBack}
+        searchValue={search}
+        onSearchChange={setSearch}
+        placeholder="Search Resources..."
+      />
+
+      {isLoading ? (
+        <View className="px-4 pt-6">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          ListHeaderComponent={ListHeader}
+          renderItem={renderMaterialItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View className="py-20 items-center px-4">
+              <View className="w-16 h-16 bg-gray-50 rounded-[28px] items-center justify-center mb-4 border border-gray-100">
+                <Icons.Inbox size={28} color="#94a3b8" />
+              </View>
+              <Text className="text-gray-900 font-black text-lg text-center font-inter-black">
+                {search.length > 0 || selectedSubject !== 'ALL' ? 'No Results Found' : 'Library Empty'}
+              </Text>
+              <Text className="text-gray-400 text-[10px] uppercase tracking-[1px] text-center mt-2 font-inter-black">
+                {search.length > 0 || selectedSubject !== 'ALL' 
+                  ? `No materials match "${search || selectedSubject}"` 
+                  : 'No institutional materials available yet'}
+              </Text>
+              {(search.length > 0 || selectedSubject !== 'ALL') && (
+                <Pressable
+                  onPress={() => { setSearch(''); setSelectedSubject('ALL'); }}
+                  className="mt-6 bg-indigo-50 px-6 py-3 rounded-2xl border border-indigo-100 active:scale-95"
+                >
+                  <Text className="text-indigo-600 text-[10px] font-inter-black uppercase tracking-[1px]">Clear Filters</Text>
+                </Pressable>
+              )}
+            </View>
+          }
+        />
+      )}
     </View>
   );
-};
+});

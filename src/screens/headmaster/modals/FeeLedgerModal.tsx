@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TextInput } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Icons } from '@components/common/Icons';
-import { AppTheme, ModalShell, AppTypography } from '@components/common';
+import { AppTheme, ModalShell, AppTypography, StatusPill } from '@components/common';
+import { triggerHaptic } from '@utils/haptics';
 
 interface StudentFeeLedgerEntry {
     id: string;
@@ -20,12 +22,12 @@ interface FeeLedgerModalProps {
     fees: any[];
 }
 
-export const FeeLedgerModal: React.FC<FeeLedgerModalProps> = ({ visible, onClose, students, fees }) => {
+export const FeeLedgerModal: React.FC<FeeLedgerModalProps> = ({ visible, onClose, students = [], fees = [] }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
     const ledgerData = useMemo(() => {
-        return (students || []).map(student => {
-            const studentFees = (fees || []).filter(f => f.student_id === student.id);
+        return students.map(student => {
+            const studentFees = fees.filter(f => f.student_id === student.id);
             const totalInvoiced = studentFees.reduce((acc, f) => acc + Number(f.amount), 0);
             const totalPaid = studentFees
                 .filter(f => f.status === 'PAID')
@@ -57,55 +59,67 @@ export const FeeLedgerModal: React.FC<FeeLedgerModalProps> = ({ visible, onClose
         <ModalShell
             visible={visible}
             onClose={onClose}
-            title="Institutional Ledger"
-            subtitle={`School Outstanding: ₹${totalSchoolOutstanding.toLocaleString()}`}
-            headerGradient={AppTheme.colors.gradients.brand}
+            title="Scholar Ledger"
+            subtitle={`INSTITUTIONAL DUE: ₹${totalSchoolOutstanding.toLocaleString()}`}
         >
-            <View>
+            <View className="flex-1">
                 {/* Search Bar */}
-                <View className="bg-white rounded-2xl flex-row items-center px-5 py-3 mb-6 border border-gray-100 shadow-sm">
-                    <Icons.Search size={16} color="#6366f1" opacity={0.6} />
+                <View className="bg-gray-50/80 rounded-[24px] flex-row items-center px-5 py-4 mb-6 border border-gray-100 shadow-sm">
+                    <Icons.Search size={18} color="#6366f1" />
                     <TextInput 
-                        placeholder="Search student ledger..."
-                        placeholderTextColor="#9ca3af"
-                        className="flex-1 ml-3 text-sm font-black text-gray-900 h-8"
+                        placeholder="Search institutional ledger..."
+                        placeholderTextColor="#94a3b8"
+                        className="flex-1 ml-3 text-[14px] font-inter-black text-gray-900"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                 </View>
 
                 {/* Ledger List */}
-                <View className="gap-3">
-                    {ledgerData.map((entry) => (
-                        <View key={entry.id} className="bg-white p-5 rounded-[24px] border border-gray-50 shadow-sm flex-row items-center justify-between">
-                            <View className="flex-1 mr-4">
-                                <Text className="text-sm font-black text-gray-900 tracking-tight mb-1">{entry.studentName}</Text>
-                                <View className="flex-row items-center">
-                                    <View className={`px-2 py-0.5 rounded-full mr-2 ${entry.totalOutstanding > 0 ? 'bg-orange-50' : 'bg-emerald-50'}`}>
-                                        <Text className={`text-[8px] font-black uppercase tracking-widest ${entry.totalOutstanding > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
-                                            {entry.totalOutstanding > 0 ? `${entry.outstandingCount} Dues` : 'Clear'}
-                                        </Text>
+                <ScrollView 
+                    className="max-h-[500px]" 
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                    <View className="gap-4">
+                        {ledgerData.map((entry, idx) => (
+                            <Animated.View key={entry.id} entering={FadeInDown.delay(idx * 40)}>
+                                <TouchableOpacity 
+                                    onPress={() => triggerHaptic()}
+                                    className="bg-white p-5 rounded-[28px] border border-gray-50 shadow-sm flex-row items-center justify-between"
+                                >
+                                    <View className="flex-1 mr-4">
+                                        <Text className="text-[14px] font-black text-slate-900 tracking-tight mb-1.5 font-inter-black">{entry.studentName}</Text>
+                                        <View className="flex-row items-center">
+                                            <View className="mr-2">
+                                                <StatusPill 
+                                                    label={entry.totalOutstanding > 0 ? `${entry.outstandingCount} DUES` : 'CLEAR'} 
+                                                    type={entry.totalOutstanding > 0 ? 'warning' : 'success'} 
+                                                    size="small"
+                                                />
+                                            </View>
+                                            <Text className="text-[9px] text-gray-400 font-black uppercase tracking-[1px] font-inter-black">Billed: ₹{entry.totalInvoiced.toLocaleString()}</Text>
+                                        </View>
                                     </View>
-                                    <Text className="text-[10px] text-gray-400 font-black uppercase tracking-widest">₹{entry.totalInvoiced.toLocaleString()}</Text>
-                                </View>
+                                    
+                                    <View className="items-end">
+                                        <Text className={`text-[16px] font-black tracking-tighter font-inter-black ${entry.totalOutstanding > 0 ? 'text-orange-600' : 'text-slate-900'}`}>
+                                            ₹{entry.totalOutstanding.toLocaleString()}
+                                        </Text>
+                                        <Text className="text-[8px] text-gray-400 font-black uppercase tracking-[1px] mt-1 font-inter-black">Outstanding</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        ))}
+                        
+                        {ledgerData.length === 0 && (
+                            <View className="py-24 items-center justify-center opacity-30">
+                                <Icons.Payment size={48} color="#6366f1" />
+                                <Text className="text-gray-900 text-[12px] mt-4 font-black uppercase tracking-[2px] font-inter-black">No Records Match</Text>
                             </View>
-                            
-                            <View className="items-end">
-                                <Text className={`text-[15px] font-black tracking-tighter ${entry.totalOutstanding > 0 ? 'text-orange-600' : 'text-gray-900'}`}>
-                                    ₹{entry.totalOutstanding.toLocaleString()}
-                                </Text>
-                                <Text className="text-[8px] text-gray-400 font-black uppercase tracking-widest mt-1">Due</Text>
-                            </View>
-                        </View>
-                    ))}
-                    
-                    {ledgerData.length === 0 && (
-                        <View className="py-20 items-center justify-center">
-                            <Icons.Search size={40} color="#d1d5db" />
-                            <Text className="text-gray-400 text-sm mt-4 font-black tracking-tight">No matching records</Text>
-                        </View>
-                    )}
-                </View>
+                        )}
+                    </View>
+                </ScrollView>
             </View>
         </ModalShell>
     );

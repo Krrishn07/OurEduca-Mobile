@@ -1,16 +1,17 @@
 import React from 'react';
-import { Animated, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Text, TouchableOpacity, View, Platform, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSchoolData } from '@context/SchoolDataContext';
 import { useSystemStatus } from '@context/SystemStatusContext';
 import { Icons } from '@components/common/Icons';
 import { SystemHealthModal } from './modals/SystemHealthModal';
-import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppRow, StatusPill, inferPillType, CalendarWidget } from '@components/common';
+import { ActionTile, AppCard, AppTheme, SectionHeader, StatCard, AppRow, StatusPill, inferPillType, CalendarWidget, PlatinumChart } from '@components/common';
 import { formatGreetingName } from '@utils/nameUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const StyledLinearGradient = LinearGradient || View;
 
-interface PlatformHomeProps {
+interface PlatformDashboardProps {
   institutes: any[];
   registrationMessages?: any[];
   isLoadingInquiries?: boolean;
@@ -19,9 +20,11 @@ interface PlatformHomeProps {
   onVerify?: (id: string) => void;
   onReview?: (inst: any) => void;
   onNavigate?: (tab: string) => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
-export const PlatformHome: React.FC<PlatformHomeProps> = ({
+export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({
   institutes,
   registrationMessages = [],
   isLoadingInquiries = false,
@@ -29,13 +32,16 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
   currentUser,
   onReview,
   onNavigate,
+  onRefresh,
+  refreshing = false,
 }) => {
   const { systemLogs, fetchSystemLogs } = useSchoolData();
   const { systemStatus } = useSystemStatus();
   const [isHealthModalVisible, setIsHealthModalVisible] = React.useState(false);
+  const insets = useSafeAreaInsets();
 
-  const HEADER_MAX_HEIGHT = 290;
-  const HEADER_MIN_HEIGHT = 100;
+  const HEADER_MIN_HEIGHT = Platform.OS === 'ios' ? 100 : 80;
+  const HEADER_MAX_HEIGHT = insets.top + 260;
   const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
   const scrollY = React.useRef(new Animated.Value(0)).current;
 
@@ -47,7 +53,7 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
 
   const headerZindex = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 1000],
+    outputRange: [10, 100],
     extrapolate: 'clamp',
   });
 
@@ -170,34 +176,77 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
     { month: 'Jun', value: institutes.length > 0 ? Math.min(100, (institutes.length * 10) + 40) : 0 },
   ];
 
+  const getDynamicGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    if (hour < 22) return 'Good evening,';
+    return 'Working late? Hello,';
+  };
+
   return (
     <View className="flex-1 bg-[#f5f7ff]">
-      <Animated.View style={{ height: headerHeight, zIndex: headerZindex, position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 16 }}>
-        <StyledLinearGradient colors={AppTheme.colors.gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="flex-1 rounded-[24px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden">
-          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center relative z-10">
-            <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-12 h-12 bg-white/20 rounded-[16px] items-center justify-center mr-3 border border-white/30">
-              <Icons.Shield size={24} color="white" />
-            </Animated.View>
-            <View className="flex-1">
-              <Text className="text-xl font-black text-white tracking-tighter leading-6 font-inter-black">Command Center</Text>
-              <Text className="text-indigo-100 text-[9px] font-black uppercase tracking-[3px] mt-0.5 opacity-85 font-inter-black">OurEduca Global</Text>
+      <Animated.View
+        style={{
+          height: headerHeight,
+          zIndex: headerZindex,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 8,
+        }}
+      >
+        <StyledLinearGradient
+          colors={AppTheme.colors.gradients.brand}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="flex-1 rounded-[24px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
+        >
+          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center justify-between relative z-10">
+            <View className="flex-row items-center flex-1 mr-4">
+              <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30 flex-none">
+                <Icons.Shield size={20} color="white" />
+              </Animated.View>
+              <View className="flex-1">
+                <Text className="text-[18px] text-white tracking-tighter leading-6 font-inter-black" numberOfLines={1}>
+                  Command Center
+                </Text>
+                <Text className="text-white text-[9px] uppercase tracking-[2px] opacity-90 font-inter-black">OurEduca Global</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+                onPress={() => onNavigate?.('audit')}
+                className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20 flex-none"
+            >
+                <Icons.Notifications size={16} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-3">
+            <View>
+                <Text className="text-white/90 text-[9px] uppercase tracking-[2px] mb-0.5 font-inter-black">Platform Workflow</Text>
+                <Text className="text-white text-[20px] tracking-tighter leading-7 font-inter-black">{getDynamicGreeting()}</Text>
+                <Text className="text-[26px] text-brand-accent tracking-tighter leading-8 font-inter-black">
+                    {formatGreetingName(currentUser?.name, 'Admin')}!
+                </Text>
+                
+                {/* Natural Language Status Sentence with Dynamic Highlighting */}
+                <Text 
+                    className="text-[14px] text-white mt-2.5 leading-6 font-inter-medium opacity-95"
+                    style={{ maxWidth: '95%' }}
+                >
+                    Currently overseeing <Text className="text-brand-accent font-inter-black">{activeInstitutes.length}</Text> institutes, 
+                    <Text className="text-brand-accent font-inter-black"> {pendingInstitutes.length}</Text> pending reviews, 
+                    and <Text className="text-brand-accent font-inter-black">{newInquiries.length}</Text> new inquiries.
+                </Text>
             </View>
           </Animated.View>
 
-          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-5">
-            <Text className="text-white/70 text-[9px] font-black uppercase tracking-[2px] mb-1 font-inter-black">Platform Administration</Text>
-            <Text className="text-white text-xl font-black tracking-tighter leading-6 font-inter-black">Welcome back,</Text>
-            <Text className="text-2xl font-black text-white tracking-tight leading-tight mt-0.5 font-inter-black">{formatGreetingName(currentUser?.name, 'Admin')} ✦</Text>
-            <View className="flex-row items-center bg-white/10 self-start px-3 py-1 rounded-full border border-white/20 mt-3">
-              <View className={`w-1.5 h-1.5 rounded-full mr-2 ${systemStatus.health === 'Optimal' ? 'bg-emerald-400' : 'bg-amber-300'}`} />
-              <Text className="text-white text-[10px] font-bold font-inter-medium">
-                System Status: <Text className={systemStatus.health === 'Optimal' ? 'text-emerald-300' : 'text-amber-200'}>{systemStatusLabel}</Text>
-              </Text>
-            </View>
-          </Animated.View>
-
-          <View className="absolute right-[-20] bottom-[-20] opacity-10 rotate-12">
-            <Icons.Shield size={120} color="white" />
+          <View style={{ position: 'absolute', right: -40, bottom: -30, opacity: 0.05, transform: [{ rotate: '12deg' }] }}>
+            <Icons.Shield size={140} color="white" />
           </View>
         </StyledLinearGradient>
       </Animated.View>
@@ -208,6 +257,15 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={AppTheme.colors.primary}
+            colors={[AppTheme.colors.primary]}
+            progressViewOffset={HEADER_MAX_HEIGHT}
+          />
+        }
       >
         <View className="flex-row flex-wrap justify-between mb-4">
           {stats.map((stat, idx) => {
@@ -302,25 +360,10 @@ export const PlatformHome: React.FC<PlatformHomeProps> = ({
           </View>
 
           <AppCard className="p-5">
-            <View className="h-52 flex-row items-end justify-between px-2 relative">
-              <View className="absolute inset-0 h-40 justify-between py-1 opacity-5">
-                {[1, 2, 3, 4].map((i) => <View key={i} className="h-[1px] bg-gray-900 w-full" />)}
-              </View>
-
-              {growthData.map((d) => (
-                <View key={d.month} className="items-center flex-1">
-                  <View className="relative w-8 items-center justify-end h-40">
-                    <View className="absolute inset-0 bg-gray-50/80 rounded-t-2xl w-full" />
-                    <StyledLinearGradient
-                      colors={AppTheme.colors.gradients.brand}
-                      className="rounded-t-2xl w-full shadow-lg shadow-indigo-100"
-                      style={{ height: `${d.value}%` }}
-                    />
-                  </View>
-                  <Text className="text-[9px] font-black mt-4 uppercase text-gray-400 tracking-widest">{d.month}</Text>
-                </View>
-              ))}
-            </View>
+            <PlatinumChart 
+                data={growthData.map(d => ({ label: d.month, value: d.value }))}
+                height={176}
+            />
           </AppCard>
         </View>
 

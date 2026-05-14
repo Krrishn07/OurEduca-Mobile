@@ -45,6 +45,16 @@ export const PERMISSION_MAP: Record<string, Record<string, string>> = {
         [UserRole.PLATFORM_ADMIN]: 'System Settings',
         [UserRole.SUPER_ADMIN]:    'School Settings',
     },
+    'assignments': {
+        [UserRole.ADMIN_TEACHER]:  'Classroom Access',
+        [UserRole.TEACHER]:        'Classroom Access',
+        [UserRole.STUDENT]:        'View Classes',
+    },
+    'reports': {
+        [UserRole.ADMIN_TEACHER]:  'Classroom Access',
+        [UserRole.TEACHER]:        'Classroom Access',
+        [UserRole.STUDENT]:        'View Classes',
+    },
 };
 
 /**

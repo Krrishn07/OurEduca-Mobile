@@ -77,7 +77,7 @@ const ClassListItem = React.memo(({ item, onPress, count }: ClassListItemProps) 
       style={({ pressed: isPressed }) => ({
         transform: [{ scale: isPressed ? 0.985 : 1 }],
       })}
-      className={`w-full bg-white rounded-[24px] p-5 flex-row items-center mb-4 border border-gray-100/50 shadow-xl shadow-indigo-100/20
+      className={`w-full bg-white rounded-[16px] p-5 flex-row items-center mb-4 border border-gray-100/50 shadow-xl shadow-indigo-100/20
         ${pressed ? "bg-indigo-50/30" : "bg-white"}
       `}
     >

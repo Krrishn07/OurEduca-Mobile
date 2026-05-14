@@ -1,19 +1,19 @@
 import React, { useRef } from 'react';
-import { Animated, Image, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Text, TouchableOpacity, View, Platform, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
 import { Icons } from '@components/common/Icons';
 import { UserRole } from '@/types';
-import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill, AnnouncementCard, CalendarWidget } from '@components/common';
+import { ActionTile, AppCard, AppRow, AppTheme, SectionHeader, StatCard, StatusPill, AnnouncementCard, CalendarWidget, PlatinumChart } from '@components/common';
 import { PlatformStatusBadge } from '@screens/platform/components/PlatformStatusBadge';
 import { formatGreetingName } from '@utils/nameUtils';
+import { UnifiedActivityFeed } from '@components/dashboard/UnifiedActivityFeed';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 const StyledLinearGradient = styled(LinearGradient || View);
 
-const HEADER_MAX_HEIGHT = 220;
-const HEADER_MIN_HEIGHT = 100;
-const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+const HEADER_MIN_HEIGHT = Platform.OS === 'ios' ? 100 : 80;
 
 interface HeadmasterHomeProps {
   dbStudents: any[];
@@ -29,8 +29,11 @@ interface HeadmasterHomeProps {
   attendanceRate?: string;
   systemLogs?: any[];
   onNavigate?: (tab: string) => void;
+  onShowActivityLog?: () => void;
   currentUser: any;
   userName?: string;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
@@ -45,10 +48,17 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
   attendanceRate = '0%',
   systemLogs = [],
   onNavigate,
+  onShowActivityLog,
   onDeleteNotice,
   currentUser,
   userName = 'Principal',
+  onRefresh,
+  refreshing = false
 }) => {
+  const insets = useSafeAreaInsets();
+  const HEADER_MAX_HEIGHT = insets.top + 260;
+  const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const getDynamicGreeting = () => {
@@ -60,8 +70,6 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
   };
 
   const facultyCount = dbStaff.filter((u) => u.role === UserRole.TEACHER || u.role === UserRole.ADMIN_TEACHER).length;
-  const recentActivity = (systemLogs || []).slice(0, 4);
-  const openNotices = announcements.length;
 
   const stats = [
     {
@@ -110,7 +118,7 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
 
   const headerZindex = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 1000],
+    outputRange: [10, 100],
     extrapolate: 'clamp',
   });
 
@@ -134,36 +142,75 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
 
   return (
     <View className="flex-1 bg-[#f5f7ff]">
-      <Animated.View style={{ height: headerHeight, zIndex: headerZindex, position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 16 }}>
+      <Animated.View
+        style={{
+          height: headerHeight,
+          zIndex: headerZindex,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 8,
+        }}
+      >
         <StyledLinearGradient
           colors={AppTheme.colors.gradients.brand}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="flex-1 rounded-[28px] p-6 shadow-xl shadow-indigo-100 relative overflow-hidden"
+          className="flex-1 rounded-[16px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
         >
-          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center relative z-10">
-            <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30">
-              {currentSchool?.logo_url ? (
-                <Image source={{ uri: currentSchool.logo_url }} style={{ width: '100%', height: '100%', borderRadius: 16 }} resizeMode="cover" />
-              ) : (
-                <Icons.School size={32} color="white" />
-              )}
-            </Animated.View>
-            <View className="flex-1">
-              <Text className="text-2xl font-black text-white tracking-tighter leading-7 font-inter-black">
-                {currentSchool?.name || 'School Dashboard'}
-              </Text>
-              <Text className="text-indigo-100 text-[10px] font-black uppercase tracking-[3px] mt-1 opacity-85 font-inter-black">Principal's Office</Text>
+          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center justify-between relative z-10">
+            <View className="flex-row items-center flex-1 mr-4">
+              <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30 flex-none">
+                {currentSchool?.logo_url ? (
+                  <Image
+                    source={{ uri: currentSchool.logo_url }}
+                    style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Icons.School size={20} color="white" />
+                )}
+              </Animated.View>
+              <View className="flex-1">
+                <Text className="text-[18px] text-white tracking-tighter leading-6 font-inter-black" numberOfLines={1}>
+                  {currentSchool?.name || 'Headmaster Portal'}
+                </Text>
+                <Text className="text-white text-[9px] uppercase tracking-[2px] opacity-90 font-inter-black">Institutional Command</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+                onPress={() => onShowHistory?.()}
+                className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20 flex-none"
+            >
+                <Icons.Notifications size={16} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-3">
+            <View>
+                <Text className="text-white/90 text-[9px] uppercase tracking-[2px] mb-0.5 font-inter-black">Academy Workflow</Text>
+                <Text className="text-white text-[20px] tracking-tighter leading-7 font-inter-black">{getDynamicGreeting()}</Text>
+                <Text className="text-[26px] text-brand-accent tracking-tighter leading-8 font-inter-black">
+                    {formatGreetingName(currentUser?.name || userName, 'Principal')}!
+                </Text>
+                
+                {/* Natural Language Status Sentence with Dynamic Highlighting */}
+                <Text 
+                    className="text-[14px] text-white mt-2.5 leading-6 font-inter-medium opacity-95"
+                    style={{ maxWidth: '95%' }}
+                >
+                    Currently managing <Text className="text-brand-accent font-inter-black">{dbStudents.length}</Text> students, 
+                    <Text className="text-brand-accent font-inter-black"> {facultyCount}</Text> faculty members, 
+                    and <Text className="text-brand-accent font-inter-black">{announcements.length}</Text> active bulletins.
+                </Text>
             </View>
           </Animated.View>
 
-          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-6">
-            <Text className="text-white text-xl font-black tracking-tighter leading-8 font-inter-black">{getDynamicGreeting()}</Text>
-            <Text className="text-3xl font-black text-yellow-300 tracking-tight leading-none mt-1 font-inter-black">{formatGreetingName(userName, 'Principal')}!</Text>
-          </Animated.View>
-
-          <View className="absolute right-[-20] bottom-[-20] opacity-10 rotate-12">
-            <Icons.Shield size={160} color="white" />
+          <View style={{ position: 'absolute', right: -40, bottom: -30, opacity: 0.05, transform: [{ rotate: '12deg' }] }}>
+            <Icons.Shield size={140} color="white" />
           </View>
         </StyledLinearGradient>
       </Animated.View>
@@ -174,6 +221,15 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={AppTheme.colors.primary}
+            colors={[AppTheme.colors.primary]}
+            progressViewOffset={HEADER_MAX_HEIGHT}
+          />
+        }
       >
         {/* Quick Actions Row */}
         <View className="flex-row gap-3 mb-6">
@@ -187,13 +243,13 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
             onPress={onPostNotice}
           />
           <ActionTile
-            label="View Reports"
+            label="View Activities"
             icon={<Icons.Activity size={18} color="#4f46e5" />}
             toneClassName="bg-white border-gray-100 shadow-md shadow-indigo-100/20"
             iconShellClassName="bg-indigo-50 border-indigo-100"
             textClassName="text-indigo-700"
             className="py-4"
-            onPress={() => onNavigate?.('manage')}
+            onPress={onShowActivityLog}
           />
         </View>
 
@@ -274,6 +330,15 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
           </AppCard>
         </View>
 
+        {/* Section: Institutional Activity */}
+        <View className="mb-6">
+          <UnifiedActivityFeed 
+            limit={5} 
+            onViewAll={onShowActivityLog}
+            emptyMessage="No institutional activity recorded yet."
+          />
+        </View>
+
         {/* Section: Growth Overview */}
         <View className="mb-6">
           <SectionHeader
@@ -282,25 +347,13 @@ export const HeadmasterHome: React.FC<HeadmasterHomeProps> = ({
             rightElement={<PlatformStatusBadge status={attendanceRate} label={attendanceRate} type="success" />}
           />
           <AppCard className="p-5">
-            <View className="h-44 flex-row items-end justify-between px-2 relative mt-2">
-              <View className="absolute inset-0 justify-between py-1 opacity-5">
-                {[1, 2, 3, 4].map((i) => <View key={i} className="h-[1px] bg-gray-900 w-full" />)}
-              </View>
-
-              {[0.6, 0.8, 0.4, 0.9, 0.7, 0.85, 0.95].map((val, i) => (
-                <View key={i} className="items-center flex-1">
-                  <View className="relative w-8 items-center justify-end h-full">
-                    <View className="absolute inset-0 bg-gray-50/80 rounded-t-2xl w-full" />
-                    <StyledLinearGradient
-                      colors={i === 6 ? AppTheme.colors.gradients.brand : ['#e0e7ff', '#c7d2fe']}
-                      className="w-8 rounded-t-2xl shadow-lg shadow-indigo-100"
-                      style={{ height: `${val * 100}%` }}
-                    />
-                  </View>
-                  <Text className="text-[9px] text-gray-400 font-black mt-4 uppercase tracking-tighter font-inter-black">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</Text>
-                </View>
-              ))}
-            </View>
+            <PlatinumChart 
+                data={[0.6, 0.8, 0.4, 0.9, 0.7, 0.85, 0.95].map((val, i) => ({ 
+                    label: ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i], 
+                    value: val * 100 
+                }))}
+                height={176}
+            />
           </AppCard>
         </View>
         

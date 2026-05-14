@@ -106,15 +106,17 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
   };
 
   const getRecipientSummary = () => {
-    if (isMentor && assignedClasses.length > 0) {
-        return `${assignedClasses[0].name || assignedClasses[0].subject} Students`;
-    }
-    if (isTeacher && selectedCompId) {
-        const cls = assignedClasses.find(c => `${c.class_id}::${c.section || 'A'}` === selectedCompId);
-        return `${cls?.name || cls?.subject || 'Class'} Students (Sec ${cls?.section || 'A'})`;
-    }
     if (audience === 'ALL') return 'Entire Institution';
-    if (audience === 'STUDENT') return 'All Students';
+    if (audience === 'STUDENT') {
+        if (isMentor && assignedClasses.length > 0) {
+            return `${assignedClasses[0].name || assignedClasses[0].subject} Students`;
+        }
+        if (isTeacher && selectedCompId) {
+            const cls = assignedClasses.find(c => `${c.class_id}::${c.section || 'A'}` === selectedCompId);
+            return `${cls?.name || cls?.subject || 'Class'} Students (Sec ${cls?.section || 'A'})`;
+        }
+        return 'All Students';
+    }
     if (audience === 'STAFF') return 'Faculty & Staff';
     return 'Undetermined Recipient';
   };
@@ -156,40 +158,39 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
           />
         </Reanimated.View>
 
-        {!isMentor && (
-          <View className="mb-6">
-            <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[0.5px] mb-3 px-1">Send To</Text>
-            <View className="flex-row gap-2">
-              {(isTeacher ? [
-                { key: 'STUDENT', label: 'My Class', sub: 'Class Only' }
-              ] : [
-                { key: 'ALL', label: 'Everyone', sub: 'Broadcast' },
-                { key: 'STUDENT', label: 'Students', sub: 'Learners' },
-                { key: 'STAFF', label: 'Teachers', sub: 'Staff' }
-              ]).map((aud) => (
-                <TouchableOpacity 
-                  key={aud.key}
-                  onPress={() => setAudience(aud.key as any)}
-                  className={`p-3 rounded-2xl border-2 flex-1 items-center ${audience === aud.key ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' : 'bg-gray-50/30 border-transparent shadow-sm'}`}
-                >
-                  <Text className={`font-inter-black text-[10px] tracking-[0.5px] uppercase ${audience === aud.key ? 'text-indigo-600' : 'text-gray-500'}`}>{aud.label}</Text>
-                  <Text className={`text-[8px] font-inter-bold mt-1 uppercase tracking-[0.5px] ${audience === aud.key ? 'text-indigo-400' : 'text-gray-400'}`}>{aud.sub}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+        <View className="mb-6">
+          <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[0.5px] mb-3 px-1">Send To</Text>
+          <View className="flex-row gap-2">
+            {(isTeacherOrMentor ? [
+              { key: 'STUDENT', label: isMentor ? 'My Class' : 'Selected Class', sub: 'Learners' },
+              { key: 'STAFF', label: 'Faculty', sub: 'Staff Only' }
+            ] : [
+              { key: 'ALL', label: 'Everyone', sub: 'Broadcast' },
+              { key: 'STUDENT', label: 'Students', sub: 'Learners' },
+              { key: 'STAFF', label: 'Teachers', sub: 'Staff' }
+            ]).map((aud) => (
+              <TouchableOpacity 
+                key={aud.key}
+                onPress={() => setAudience(aud.key as any)}
+                className={`p-3 rounded-2xl border-2 flex-1 items-center ${audience === aud.key ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' : 'bg-gray-50/30 border-transparent shadow-sm'}`}
+              >
+                <Text className={`font-inter-black text-[10px] tracking-[0.5px] uppercase ${audience === aud.key ? 'text-indigo-600' : 'text-gray-500'}`}>{aud.label}</Text>
+                <Text className={`text-[8px] font-inter-bold mt-1 uppercase tracking-[0.5px] ${audience === aud.key ? 'text-indigo-400' : 'text-gray-400'}`}>{aud.sub}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
+        </View>
 
-        {isTeacher && assignedClasses.length > 0 && (
+        {isTeacher && audience === 'STUDENT' && assignedClasses.length > 0 && (
           <Reanimated.View entering={FadeInDown.delay(400).springify().damping(SPRING_CONFIG.damping)} className="mb-6">
             <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[0.5px] mb-3 px-1">Select Class</Text>
             <View className="flex-row flex-wrap gap-2">
-              {assignedClasses.map((cls) => {
+              {assignedClasses.map((cls, idx) => {
                 const compId = `${cls.class_id}::${cls.section || 'A'}`;
                 const isSelected = selectedCompId === compId;
                 return (
                   <TouchableOpacity 
-                    key={compId}
+                    key={`${compId}-${idx}`}
                     onPress={() => { triggerHaptic(); setSelectedCompId(compId); }}
                     activeOpacity={0.75}
                     className={`px-5 py-3 rounded-2xl border-2 ${isSelected ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' : 'bg-gray-50/30 border-transparent shadow-sm'}`}
@@ -207,7 +208,7 @@ export const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
           </Reanimated.View>
         )}
 
-        {isMentor && assignedClasses.length > 0 && (
+        {isMentor && audience === 'STUDENT' && assignedClasses.length > 0 && (
           <View className="mb-6">
             <View className="bg-white border border-gray-100 rounded-2xl p-4 flex-row items-center shadow-sm">
               <View className="w-10 h-10 rounded-xl bg-indigo-50 items-center justify-center mr-4 border border-indigo-100">

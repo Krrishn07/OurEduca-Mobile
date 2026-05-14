@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, Image, Platform, RefreshControl } from 'react-native';
 import { Icons } from '@components/common/Icons';
 import { CalendarWidget } from '@components/common/CalendarWidget';
 import { LinearGradient } from 'expo-linear-gradient';
 import { styled } from 'nativewind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatGreetingName } from '@utils/nameUtils';
 import { AppTheme } from '@constants/Theme';
 import { 
@@ -16,14 +17,11 @@ import {
   AnnouncementCard,
   StatusPill 
 } from '@components/common';
+import { QuickActionsGrid } from '@components/dashboard/QuickActionsGrid';
 import { PlatformStatusBadge } from '@screens/platform/components/PlatformStatusBadge';
 
 const StyledLinearGradient = styled(LinearGradient);
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const HEADER_MAX_HEIGHT = 290;
-const HEADER_MIN_HEIGHT = 100;
-const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
 interface MentorHomeProps {
   currentUser: any;
@@ -40,10 +38,17 @@ interface MentorHomeProps {
   onShowHistory?: () => void;
   onDeleteNotice?: (id: string) => void;
   onShowAddStudentModal: () => void;
+  onQuickAction?: (action: string) => void;
   currentSchool?: any;
   attendanceRate?: string;
   subjectCount?: number;
   parentCount?: number;
+  mentorMaterials?: any[];
+  onDeleteMaterial?: (id: string) => void;
+  pendingGradesCount?: number;
+  teacherAssignedSections?: any[];
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export const MentorHome: React.FC<MentorHomeProps> = ({
@@ -61,11 +66,23 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
   onShowHistory,
   onDeleteNotice,
   onShowAddStudentModal,
+  onQuickAction,
   currentSchool,
   attendanceRate = '0%',
   subjectCount = 0,
-  parentCount = 0
+  parentCount = 0,
+  mentorMaterials = [],
+  onDeleteMaterial,
+  pendingGradesCount = 0,
+  teacherAssignedSections = [],
+  onRefresh,
+  refreshing = false
 }) => {
+  const insets = useSafeAreaInsets();
+  const HEADER_MIN_HEIGHT = Platform.OS === 'ios' ? 100 : 80;
+  const HEADER_MAX_HEIGHT = insets.top + 260;
+  const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+
   const scrollY = useRef(new Animated.Value(0)).current;
   
   const mentorAnnouncements = (announcements || []).filter((a: any) => 
@@ -78,10 +95,10 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
 
   const getDynamicGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning,";
-    if (hour < 17) return "Good Afternoon,";
-    if (hour < 22) return "Good Evening,";
-    return "Working Late? Hello,";
+    if (hour < 12) return "Good morning,";
+    if (hour < 17) return "Good afternoon,";
+    if (hour < 22) return "Good evening,";
+    return "Working late? Hello,";
   };
 
   const headerHeight = scrollY.interpolate({
@@ -92,7 +109,7 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
 
   const headerZindex = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, 1000],
+    outputRange: [10, 100],
     extrapolate: 'clamp',
   });
 
@@ -147,6 +164,14 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
       trend: (parentCount || mentorRoster.length) > 0 ? 'Linked' : 'Zero',
       trendType: 'up' as const,
     },
+    {
+      label: 'My Lessons',
+      value: mentorMaterials.length,
+      icon: <Icons.FileText size={22} color={AppTheme.colors.primary} />,
+      toneClassName: 'bg-blue-50',
+      trend: mentorMaterials.length > 0 ? 'Synced' : 'Empty',
+      trendType: 'up' as const,
+    },
   ];
 
   return (
@@ -169,43 +194,56 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
           end={{ x: 1, y: 1 }}
           className="flex-1 rounded-[24px] p-5 shadow-xl shadow-indigo-200 relative overflow-hidden"
         >
-          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center relative z-10">
-            <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-16 h-16 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30">
-              {currentSchool?.logo_url ? (
-                <Image
-                  source={{ uri: currentSchool.logo_url }}
-                  style={{ width: '100%', height: '100%', borderRadius: 16 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Icons.School size={32} color="white" />
-              )}
-            </Animated.View>
-            <View className="flex-1">
-              <Text className="text-xl font-black text-white tracking-tighter leading-6 font-inter-black">
-                {currentSchool?.name || 'Academy Hub'}
-              </Text>
-              <Text className="text-indigo-100 text-[9px] font-black uppercase tracking-[3px] mt-0.5 opacity-85 font-inter-black">Institutional Node</Text>
+          <Animated.View style={{ transform: [{ translateY: brandTranslate }] }} className="flex-row items-center justify-between relative z-10">
+            <View className="flex-row items-center flex-1 mr-4">
+              <Animated.View style={{ transform: [{ scale: logoScale }] }} className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/30 flex-none">
+                {currentSchool?.logo_url ? (
+                  <Image
+                    source={{ uri: currentSchool.logo_url }}
+                    style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Icons.School size={20} color="white" />
+                )}
+              </Animated.View>
+              <View className="flex-1">
+                <Text className="text-[18px] text-white tracking-tighter leading-6 font-inter-black" numberOfLines={1}>
+                  {currentSchool?.name || 'Academy Hub'}
+                </Text>
+                <Text className="text-white text-[9px] uppercase tracking-[2px] opacity-90 font-inter-black">Institutional Node</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+                onPress={() => onShowHistory?.()}
+                className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20 flex-none"
+            >
+                <Icons.Notifications size={16} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-3">
+            <View>
+                <Text className="text-white/90 text-[9px] uppercase tracking-[2px] mb-0.5 font-inter-black">Mentor Workflow</Text>
+                <Text className="text-white text-[20px] tracking-tighter leading-7 font-inter-black">{getDynamicGreeting()}</Text>
+                <Text className="text-[26px] text-brand-accent tracking-tighter leading-8 font-inter-black">
+                    {formatGreetingName(currentUser?.name, 'Mentor')}!
+                </Text>
+                
+                {/* Natural Language Status Sentence with Dynamic Highlighting */}
+                <Text 
+                    className="text-[14px] text-white mt-2.5 leading-6 font-inter-medium opacity-95"
+                    style={{ maxWidth: '95%' }}
+                >
+                    You have <Text className="text-brand-accent font-inter-black">{pendingGradesCount}</Text> assignments to grade, 
+                    <Text className="text-brand-accent font-inter-black"> {teacherAssignedSections.length}</Text> classes today, 
+                    and <Text className="text-brand-accent font-inter-black">{mentorAnnouncements.length}</Text> new alerts.
+                </Text>
             </View>
           </Animated.View>
 
-          <Animated.View style={{ opacity: greetingOpacity }} className="relative z-10 mt-5">
-            <Text className="text-white/70 text-[9px] font-black uppercase tracking-[2px] mb-1 font-inter-black">Mentor Dashboard</Text>
-            <Text className="text-white text-xl font-black tracking-tighter leading-6 font-inter-black">{getDynamicGreeting()}</Text>
-            <View className="flex-row items-center mt-0.5">
-              <Text className="text-2xl font-black text-[#fde047] tracking-tight leading-tight font-inter-black">
-                {formatGreetingName(currentUser?.name, 'Mentor')} ✦
-              </Text>
-            </View>
-            <View className="flex-row items-center bg-white/10 self-start px-3 py-1 rounded-full border border-white/20 mt-3">
-              <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2" />
-              <Text className="text-white text-[10px] font-bold font-inter-medium">
-                Active Group: <Text className="text-emerald-300">{assignedClassName || 'Primary Section'}</Text>
-              </Text>
-            </View>
-          </Animated.View>
-
-          <View className="absolute right-[-20] bottom-[-20] opacity-10 rotate-12">
+          <View style={{ position: 'absolute', right: -40, bottom: -30, opacity: 0.05, transform: [{ rotate: '12deg' }] }}>
             <Icons.GraduationCap size={140} color="white" />
           </View>
         </StyledLinearGradient>
@@ -217,28 +255,17 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         contentContainerStyle={{ paddingTop: HEADER_MAX_HEIGHT + 24, paddingHorizontal: 16, paddingBottom: 60 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={AppTheme.colors.primary}
+            colors={[AppTheme.colors.primary]}
+            progressViewOffset={HEADER_MAX_HEIGHT}
+          />
+        }
       >
-        {/* Quick Actions - Standardized to ActionTile Row */}
-        <View className="flex-row gap-3 mb-6">
-          <ActionTile
-            label="Add Student"
-            icon={<Icons.Plus size={18} color="white" />}
-            toneClassName="bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-100/50"
-            iconShellClassName="bg-white/15 border-white/20"
-            textClassName="text-white"
-            className="py-4"
-            onPress={onShowAddStudentModal}
-          />
-          <ActionTile
-            label="Post Notice"
-            icon={<Icons.Notifications size={18} color="#4f46e5" />}
-            toneClassName="bg-white border-gray-100 shadow-md shadow-indigo-100/20"
-            iconShellClassName="bg-indigo-50 border-indigo-100"
-            textClassName="text-indigo-700"
-            className="py-4"
-            onPress={onPostNotice || (() => {})}
-          />
-        </View>
+
 
         {/* Stats Grid */}
         <View className="flex-row flex-wrap justify-between mb-4 gap-y-4">
@@ -330,7 +357,6 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
             }
             className="px-2"
           />
-
           <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
             {mentorAnnouncements.slice(0, 3).map((a: any, idx: number) => {
               const diff = Date.now() - new Date(a.date || Date.now()).getTime();
@@ -338,7 +364,7 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
 
               return (
                 <AnnouncementCard
-                  key={a.id}
+                  key={a.id || idx}
                   index={idx}
                   title={a.title}
                   message={a.message}
@@ -370,6 +396,67 @@ export const MentorHome: React.FC<MentorHomeProps> = ({
             )}
           </AppCard>
         </View>
+        
+        {/* MY UPLOADED MATERIALS */}
+        <View className="mb-8">
+          <SectionHeader
+            title="MY LESSONS"
+            rightElement={
+              <TouchableOpacity onPress={() => onNavigate?.('materials')}>
+                <Text className="text-[10px] font-inter-black text-indigo-600 uppercase tracking-[1px]">
+                  View All
+                </Text>
+              </TouchableOpacity>
+            }
+          />
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+            {(mentorMaterials || []).slice(0, 5).map((mat, idx) => {
+              const isPDF = mat.type === 'PDF';
+              const handleOpenMaterial = (url: string) => {
+                if (!url) return;
+                const finalUrl = url.startsWith('http') ? url : `https://${url}`;
+                Linking.openURL(finalUrl).catch(() => {});
+              };
+
+              return (
+                <AppRow
+                  key={mat.id || idx}
+                  title={mat.title}
+                  titleProps={{ numberOfLines: 1, ellipsizeMode: 'middle' }}
+                  subtitle={mat.subject || 'Class Resource'}
+                  avatarIcon={
+                    isPDF ? 
+                    <Icons.FileText size={16} color="#4f46e5" /> : 
+                    <Icons.Globe size={16} color="#0ea5e9" />
+                  }
+                  avatarBg={isPDF ? '#eef2ff' : '#f0f9ff'}
+                  showBorder={idx < Math.min((mentorMaterials || []).length, 5) - 1}
+                  onPress={() => handleOpenMaterial(mat.url)}
+                  rightElement={
+                     <View className={`px-2 py-1 rounded ${isPDF ? 'bg-indigo-50' : 'bg-sky-50'}`}>
+                       <Text className={`text-[11px] font-inter-black ${isPDF ? 'text-indigo-600' : 'text-sky-600'}`}>
+                          {mat.type}
+                       </Text>
+                     </View>
+                  }
+                />
+              );
+            })}
+            {(mentorMaterials || []).length === 0 && (
+              <View className="items-center py-10">
+                <Icons.FileText size={20} color="#cbd5e1" />
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mt-2">No materials uploaded</Text>
+              </View>
+            )}
+          </AppCard>
+        </View>
+
+        {/* QUICK ACTIONS - Centralized Component */}
+        <QuickActionsGrid 
+          role="mentor"
+          onAction={(action) => onQuickAction?.(action)}
+          className="mb-10"
+        />
 
         {/* Institutional Calendar - Standardized Compact Mode */}
         <View className="mb-8">

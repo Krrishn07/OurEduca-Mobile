@@ -124,6 +124,7 @@ export const StudentRouter: React.FC<StudentRouterProps> = ({ bundle, common }) 
                     currentUser={currentUser!} 
                     onLogout={onLogout || (() => {})}
                     onEditProfile={() => actions.setShowEditProfileModal(true)}
+                    recentActivity={data.systemLogs}
                 />
             );
         default:

@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput } from 'react-native';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from '@components/common/Icons';
 import {
-  AppTheme, AppCard, AppTypography,
-  AppRow, AppFilterBar, StatusPill, SectionHeader,
+  AppTheme, 
+  AppCard, 
+  AppTypography,
+  AppRow, 
+  AppFilterBar, 
+  StatusPill, 
+  SectionHeader,
+  PlatinumHeader,
+  StatCard,
+  PlatinumChart
 } from '@components/common';
+import { triggerHaptic } from '@utils/haptics';
+import { formatDetailedDate } from '@utils/timeUtils';
 
 interface HeadmasterFeesProps {
   paymentNotifications: any[];
@@ -21,253 +32,298 @@ interface HeadmasterFeesProps {
 }
 
 export const HeadmasterFees: React.FC<HeadmasterFeesProps> = ({
-  paymentNotifications,
+  paymentNotifications = [],
   onVerify,
-  onSettleManual,
   onCreateFee,
   onSendReminder,
   onViewLedger,
   onViewReport,
-  collectionTrends,
-  totalCollected,
-  pendingVerification,
+  collectionTrends = [],
+  totalCollected = 0,
+  pendingVerification = 0,
 }) => {
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'Verify Now' | 'Verified'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const counts = {
+  const counts = useMemo(() => ({
     ALL:        paymentNotifications.length,
-    'Verify Now': paymentNotifications.filter(p => p.status === 'Verify Now').length,
+    'Verify Now': paymentNotifications.filter(p => p.status === 'Verify Now' || p.status === 'Flagged').length,
     Verified:   paymentNotifications.filter(p => p.status === 'Verified').length,
-  };
+  }), [paymentNotifications]);
 
   const filterChips = [
-    { label: 'All',     value: 'ALL'        as const, count: counts.ALL         },
-    { label: 'Pending', value: 'Verify Now' as const, count: counts['Verify Now'] },
-    { label: 'Settled', value: 'Verified'   as const, count: counts.Verified    },
+    { label: 'ALL',     value: 'ALL'        as const, count: counts.ALL         },
+    { label: 'PENDING', value: 'Verify Now' as const, count: counts['Verify Now'] },
+    { label: 'SETTLED', value: 'Verified'   as const, count: counts.Verified    },
   ];
 
-  const filteredNotifications = paymentNotifications.filter(pay =>
-    activeFilter === 'ALL' || pay.status === activeFilter
-  );
+  const filteredNotifications = useMemo(() => {
+    let list = paymentNotifications;
+    
+    // 1. Filter by Search Query
+    if (searchQuery.trim().length > 0) {
+        const query = searchQuery.toLowerCase().trim();
+        list = list.filter(pay => 
+            (pay.schoolName || '').toLowerCase().includes(query) ||
+            (pay.studentName || '').toLowerCase().includes(query) ||
+            (pay.feeTitle || '').toLowerCase().includes(query)
+        );
+    }
+
+    // 2. Filter by Chip Status
+    return list.filter(pay =>
+        activeFilter === 'ALL' || pay.status === activeFilter || (activeFilter === 'Verify Now' && pay.status === 'Flagged')
+    );
+  }, [paymentNotifications, activeFilter, searchQuery]);
 
   const stats = [
-    { label: 'Collected', value: `₹${(totalCollected / 100000).toFixed(1)}L`, icon: 'Payment', color: '#10b981', bg: 'bg-emerald-50 border-emerald-100' },
-    { label: 'Approval Pool', value: `₹${(pendingVerification / 1000).toFixed(1)}K`, icon: 'Alert', color: '#f43f5e', bg: 'bg-rose-50 border-rose-100' },
-    { label: 'To Verify', value: counts['Verify Now'].toString(), icon: 'Clock', color: '#4f46e5', bg: 'bg-indigo-50 border-indigo-100' },
+    { 
+        label: 'Collected', 
+        value: `₹${(totalCollected / 100000).toFixed(1)}L`, 
+        icon: <Icons.Payment size={14} color="#10b981" />, 
+        tone: 'emerald' as const,
+        trend: '+12.4%',
+        trendType: 'up' as const
+    },
+    { 
+        label: 'Approval Pool', 
+        value: `₹${(pendingVerification / 1000).toFixed(1)}K`, 
+        icon: <Icons.Alert size={14} color="#f43f5e" />, 
+        tone: 'rose' as const,
+        trend: 'Critical',
+        trendType: 'down' as const,
+        onPress: () => { triggerHaptic(); setActiveFilter('Verify Now'); }
+    },
+    { 
+        label: 'To Verify', 
+        value: counts['Verify Now'].toString(), 
+        icon: <Icons.Clock size={14} color="#4f46e5" />, 
+        tone: 'indigo' as const,
+        trend: 'Action Required',
+        trendType: 'neutral' as const
+    },
   ];
 
   return (
-    <View className="flex-1 bg-[#f5f7ff]">
-      {/* Platinum Fee Header — 140px Sync */}
-      <LinearGradient
-        colors={AppTheme.colors.gradients.brand}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        className="h-[140px] px-6 pt-5 rounded-b-[40px] shadow-xl shadow-indigo-200/50 relative z-30"
-      >
-        <View className="absolute right-[-20] bottom-[-20] opacity-10 transform rotate-12">
-          <Icons.Payment size={140} color="white" />
-        </View>
-        <View className="flex-row justify-between items-start mb-4 relative z-10">
-          <View className="flex-1 mr-4">
-            <Text className={`${AppTypography.heroTitle} text-white font-inter-black`} numberOfLines={1}>Fee Management</Text>
-          </View>
-          <TouchableOpacity
-            onPress={onCreateFee}
-            className="w-10 h-10 bg-white/10 rounded-2xl items-center justify-center border border-white/20 active:scale-95"
-          >
-            <Icons.Plus size={16} color="white" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+    <View className="flex-1 bg-[#fbfbfe]">
+      <PlatinumHeader 
+        title="Fees & Accounts"
+        subtitle="INSTITUTIONAL LEDGER"
+        rightAction={
+            <TouchableOpacity 
+                onPress={() => { triggerHaptic(); onCreateFee?.(); }}
+                className="w-9 h-9 bg-indigo-600 rounded-full items-center justify-center shadow-md shadow-indigo-200 active:scale-95"
+            >
+                <Icons.Plus size={18} color="white" />
+            </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 20, paddingHorizontal: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingTop: 20, paddingHorizontal: 20, paddingBottom: 100 }}
       >
         {/* Stats Grid */}
-        <View className="flex-row gap-3 mb-5">
-          {stats.map((stat, i) => {
-            const IconComp = (Icons as any)[stat.icon] || Icons.Payment;
-            return (
-              <AppCard key={i} className="flex-1 p-3.5 border-white shadow-xl shadow-indigo-100/30">
-                <View className={`w-8 h-8 rounded-xl ${stat.bg} items-center justify-center mb-2.5 border shadow-sm`}>
-                  <IconComp size={14} color={stat.color} />
-                </View>
-                <Text className={`${AppTypography.meta} text-gray-400 mb-0.5`}>{stat.label}</Text>
-                <Text className={`${AppTypography.statValue} text-slate-900`} numberOfLines={1}>{stat.value}</Text>
-              </AppCard>
-            );
-          })}
+        <View className="flex-row gap-3 mb-8">
+          {stats.map((stat, i) => (
+            <View key={i} className="flex-1">
+                <StatCard 
+                    index={i}
+                    label={stat.label}
+                    value={stat.value}
+                    icon={stat.icon}
+                    tone={stat.tone as any}
+                    trend={stat.trend}
+                    trendType={stat.trendType}
+                    onPress={(stat as any).onPress}
+                />
+            </View>
+          ))}
         </View>
 
         {/* Section: Collection History */}
-        <View className="mb-5">
+        <View className="mb-8">
           <SectionHeader 
-            title="COLLECTION HISTORY"
-            className="px-2"
+            title="COLLECTION TRENDS"
+            className="px-1"
             rightElement={
-              <View className="flex-row items-center bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                <Icons.Activity size={10} color="#10b981" />
-                <Text className="text-[8px] font-black text-emerald-600 uppercase tracking-widest ml-1 font-inter-black">+12.4%</Text>
-              </View>
+                <TouchableOpacity onPress={() => { triggerHaptic(); onViewReport?.(); }} className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 active:bg-indigo-100">
+                  <Text className="text-[10px] text-indigo-600 uppercase tracking-[1px] font-inter-bold">Detailed Report</Text>
+                </TouchableOpacity>
             }
           />
-          <AppCard className="p-5 border-white shadow-xl shadow-indigo-100/30">
-            <View className="h-28 flex-row items-end justify-between px-1 relative">
-              <View className="absolute left-0 right-0 h-[1px] border-t border-dashed border-gray-200 z-0 top-[30%]" />
-              {collectionTrends.map((d, i) => {
-                const isLast = i === collectionTrends.length - 1;
-                return (
-                  <View key={i} className="items-center z-10 flex-1">
-                    <View className="relative w-full items-center">
-                      <LinearGradient
-                        colors={isLast ? AppTheme.colors.gradients.brand : ['#e0e7ff', '#c7d2fe']}
-                        className="w-6 rounded-t-xl shadow-sm"
-                        style={{ height: `${d.value}%` }}
-                      />
-                    </View>
-                    <Text className={`text-[8px] font-black mt-2 uppercase tracking-widest font-inter-black ${isLast ? 'text-indigo-600' : 'text-gray-400'}`}>
-                      {d.month}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
+          <AppCard className="p-6 border border-white shadow-xl shadow-indigo-100/30">
+            <PlatinumChart 
+                data={collectionTrends.map(d => ({ label: d.month, value: d.value }))}
+                height={160}
+            />
           </AppCard>
         </View>
 
-        {/* Section: Quick Actions */}
-        <View className="mb-5">
+        {/* Section: Quick Management */}
+        <View className="mb-8">
           <SectionHeader 
             title="QUICK ACTIONS"
-            className="px-2"
+            className="px-1"
           />
           <View className="flex-row flex-wrap justify-between">
             {[
-              { title: 'New Invoice',   icon: 'Plus',   color: '#4f46e5', bg: 'bg-indigo-50 border-indigo-100', action: onCreateFee   },
-              { title: 'Send Reminder', icon: 'Bell',   color: '#f43f5e', bg: 'bg-rose-50 border-rose-100',     action: onSendReminder },
-              { title: 'Fee Ledger',    icon: 'Users',  color: '#10b981', bg: 'bg-emerald-50 border-emerald-100', action: onViewLedger },
-              { title: 'Report View',   icon: 'Report',  color: '#9333ea', bg: 'bg-purple-50 border-purple-100', action: onViewReport  },
-            ].map((a, i) => {
-              const IconComp = (Icons as any)[a.icon] || Icons.Plus;
-              return (
+              { title: 'New Invoice',   subtitle: 'Generate one-time bill', icon: <Icons.Plus size={16} color="#4f46e5" />,   tone: 'indigo', action: onCreateFee   },
+              { title: 'Send Reminders', subtitle: 'Nudge pending students', icon: <Icons.Notifications size={16} color="#f43f5e" />,   tone: 'rose',     action: onSendReminder },
+              { title: 'Scholar Ledger', subtitle: 'View student history', icon: <Icons.Profile size={16} color="#10b981" />,  tone: 'emerald', action: onViewLedger },
+              { title: 'Audit Reports',  subtitle: 'Export monthly PDF', icon: <Icons.Report size={16} color="#9333ea" />,  tone: 'purple', action: onViewReport  },
+            ].map((a, i) => (
                 <TouchableOpacity
                   key={i}
-                  onPress={a.action}
-                  activeOpacity={0.75}
-                  className="w-[48.2%] bg-white p-3.5 rounded-[24px] border border-white items-start shadow-xl shadow-indigo-100/30 mb-4 active:scale-95"
+                  onPress={() => { triggerHaptic(); a.action?.(); }}
+                  activeOpacity={0.8}
+                  className="w-[48.2%] bg-white p-4 rounded-[28px] border border-white items-start shadow-xl shadow-indigo-100/20 mb-4 active:scale-95"
                 >
-                  <View className={`w-8 h-8 rounded-xl ${a.bg} items-center justify-center mb-2.5 border shadow-sm`}>
-                    <IconComp size={15} color={a.color} />
+                  <View className={`w-10 h-10 rounded-2xl bg-${a.tone}-50 items-center justify-center mb-3 border border-${a.tone}-100 shadow-sm`}>
+                    {a.icon}
                   </View>
-                  <Text className="font-black text-slate-900 text-[12px] tracking-tight font-inter-black">{a.title}</Text>
+                  <Text className="font-black text-slate-900 text-[13px] tracking-tight font-inter-black">{a.title}</Text>
+                  <Text className="text-[9px] text-gray-400 mt-1 uppercase font-inter-black">{a.subtitle}</Text>
                 </TouchableOpacity>
-              );
-            })}
+            ))}
           </View>
         </View>
 
-        {/* Section: Recent Payments */}
-        <View className="mb-6">
+        {/* Section: Recent Transaction Stream */}
+        <View className="mb-10">
           <SectionHeader 
-            title="RECENT PAYMENTS"
-            className="px-2"
+            title="TRANSACTION STREAM"
+            className="px-1"
             rightElement={
               counts['Verify Now'] > 0 && (
                 <StatusPill 
-                  label={`${counts['Verify Now']} Pending`} 
+                  label={`${counts['Verify Now']} TO VERIFY`} 
                   type="warning" 
                 />
               )
             }
           />
-          <AppCard className="p-0 overflow-hidden border-white shadow-xl shadow-indigo-100/30">
+          <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30 rounded-[28px]">
+            {/* High-Fidelity Search Bar */}
+            <View className="px-4 pt-4 pb-2">
+                <View className="bg-gray-50/80 p-3 rounded-[20px] border border-gray-100 flex-row items-center">
+                    <Icons.Search size={16} color="#94a3b8" />
+                    <TextInput
+                        className="flex-1 ml-3 text-[13px] font-inter-semibold text-gray-900"
+                        placeholder="Search students, invoices..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholderTextColor="#94a3b8"
+                        autoCapitalize="none"
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Icons.Close size={14} color="#94a3b8" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
             <AppFilterBar
               chips={filterChips}
               active={activeFilter}
-              onChange={setActiveFilter}
-              className="border-b border-gray-50 bg-gray-50/30"
+              onChange={(f) => { triggerHaptic(); setActiveFilter(f); }}
+              className="border-b border-gray-50 bg-gray-50/20"
             />
 
             {filteredNotifications.length > 0 ? (
               filteredNotifications.map((pay: any, idx) => {
                 const isSettled = pay.status === 'Verified';
+                const isFlagged = pay.status === 'Flagged';
+                const studentName = pay.users?.name || 'Scholar Registry';
+                const feeTitle = pay.fees?.title || pay.title || 'Institutional Fee';
+                
+                // Format relative date
+                let displayDate = 'N/A';
+                const rawDate = pay.paid_at || pay.created_at || pay.date;
+                if (rawDate && rawDate !== 'N/A') {
+                    const d = new Date(rawDate);
+                    if (!isNaN(d.getTime())) {
+                        displayDate = formatDetailedDate(d);
+                    }
+                }
+
                 return (
-                  <AppRow
-                    key={pay.id || idx}
-                    title={pay.schoolName || 'Scholar'}
-                    subtitle={`₹${pay.amount} · ${pay.date || 'N/A'}`}
-                    statusDot={isSettled ? 'active' : 'pending'}
-                    avatarIcon={<Icons.Student size={16} color={isSettled ? '#10b981' : '#4f46e5'} />}
-                    avatarBg={isSettled ? '#f0fdf4' : '#eef2ff'}
-                    pills={
-                      <StatusPill
-                        label={pay.status}
-                        type={isSettled ? 'success' : 'warning'}
-                      />
-                    }
-                    showBorder={idx < filteredNotifications.length - 1}
-                    swipeAction={!isSettled ? {
-                      label: 'Verify',
-                      bgColor: 'bg-indigo-500',
-                      icon: <Icons.Check size={18} color="white" />,
-                      onPress: () => onVerify(pay.id, pay.feeId),
-                    } : undefined}
-                    className="px-0"
-                    rightElement={
-                      !isSettled ? (
-                        <View className="flex-row gap-1.5">
-                          <TouchableOpacity
-                            onPress={() => onVerify(pay.id, pay.feeId)}
-                            className="bg-indigo-600 px-2.5 py-1.5 rounded-xl shadow-sm active:scale-95"
-                          >
-                            <Text className="text-white text-[9px] font-black uppercase font-inter-black">Verify</Text>
-                          </TouchableOpacity>
+                  <Animated.View key={pay.id || idx} entering={FadeInDown.delay(idx * 50)} layout={Layout.springify()}>
+                    <AppRow
+                      title={studentName}
+                      subtitle={`${feeTitle} · ${displayDate}`}
+                      avatarIcon={<Icons.Profile size={16} color={isSettled ? '#10b981' : isFlagged ? '#f43f5e' : '#4f46e5'} />}
+                      avatarBg={isSettled ? '#f0fdf4' : isFlagged ? '#fff1f2' : '#eef2ff'}
+                      showBorder={idx < filteredNotifications.length - 1}
+                      onPress={() => { triggerHaptic(); if (!isSettled) onVerify(pay.id, pay.feeId); }}
+                      className="px-1"
+                      innerClassName="bg-white"
+                      rightElement={
+                        <View className="items-end">
+                            <Text className="text-[13px] font-black text-slate-900 font-inter-black mb-1.5">₹{pay.amount}</Text>
+                            {!isSettled ? (
+                            <TouchableOpacity
+                                onPress={() => { triggerHaptic(); onVerify(pay.id, pay.feeId); }}
+                                className="bg-indigo-600 px-3 py-1.5 rounded-xl shadow-md shadow-indigo-100 active:scale-95"
+                            >
+                                <Text className="text-white text-[9px] font-black uppercase tracking-[1px] font-inter-black">VERIFY</Text>
+                            </TouchableOpacity>
+                            ) : (
+                            <View className="bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex-row items-center">
+                                <Icons.Check size={10} color="#10b981" />
+                                <Text className="text-emerald-600 text-[8px] font-black uppercase tracking-wider ml-1 font-inter-black">SETTLED</Text>
+                            </View>
+                            )}
                         </View>
-                      ) : (
-                        <Icons.Check size={14} color="#10b981" />
-                      )
-                    }
-                  />
+                      }
+                    />
+                  </Animated.View>
                 );
               })
             ) : (
-              <View className="py-16 items-center">
-                <View className="w-14 h-14 bg-gray-50 rounded-2xl items-center justify-center mb-4 border border-gray-100">
-                  <Icons.Clock size={28} color="#e5e7eb" />
+              <View className="py-20 items-center">
+                <View className="w-16 h-16 bg-gray-50 rounded-[20px] items-center justify-center mb-4 border border-gray-100 shadow-inner">
+                  <Icons.Payment size={32} color="#e5e7eb" />
                 </View>
-                <Text className="text-[13px] font-black text-gray-400 font-inter-black">No Matching Entries</Text>
+                <Text className="text-[14px] font-black text-gray-900 font-inter-black">Clear Ledger</Text>
+                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mt-2 font-inter-black">No matching entries found</Text>
               </View>
             )}
 
             {filteredNotifications.length > 0 && (
               <TouchableOpacity
-                onPress={onViewLedger}
-                className="py-4 border-t border-gray-50 items-center bg-gray-50/30"
+                onPress={() => { triggerHaptic(); onViewLedger?.(); }}
+                className="py-4 border-t border-gray-50 items-center bg-gray-50/20 active:bg-gray-100"
               >
-                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">
-                  View Full Ledger
+                <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-[2px] font-inter-black">
+                  OPEN FULL INSTITUTIONAL LEDGER
                 </Text>
               </TouchableOpacity>
             )}
           </AppCard>
         </View>
 
-        {/* Security Node */}
-        <LinearGradient
-          colors={['#0f172a', '#1e293b']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          className="rounded-[24px] p-5 flex-row items-center shadow-lg mb-4"
-        >
-          <View className="flex-1">
-            <Text className="text-white font-black text-[15px] mb-1 tracking-tight font-inter-black">Security Node</Text>
-            <Text className="text-slate-500 text-[9px] uppercase tracking-widest font-black font-inter-black">Payment Protection Active</Text>
-          </View>
-          <View className="bg-white/10 p-3 rounded-xl ml-4">
-            <Icons.Shield size={18} color="white" />
-          </View>
-        </LinearGradient>
+        {/* Security Assurance Banner */}
+        <Animated.View entering={FadeInDown.delay(300)} layout={Layout.springify()}>
+            <LinearGradient
+                colors={['#1e1b4b', '#312e81']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                className="rounded-[32px] p-6 flex-row items-center shadow-2xl shadow-indigo-200 relative overflow-hidden"
+            >
+                <View className="flex-1 relative z-10">
+                    <Text className="text-white font-black text-[16px] mb-1 tracking-tight font-inter-black">Financial Node Active</Text>
+                    <Text className="text-indigo-200 text-[9px] uppercase tracking-[2px] font-black font-inter-black opacity-80">Payment Encryption Level: TLS 1.3</Text>
+                </View>
+                <View className="bg-white/10 p-3 rounded-[20px] ml-4 border border-white/20">
+                    <Icons.Shield size={22} color="white" />
+                </View>
+                <View className="absolute right-[-20] bottom-[-20] opacity-5 rotate-12">
+                    <Icons.Activity size={120} color="white" />
+                </View>
+            </LinearGradient>
+        </Animated.View>
       </ScrollView>
     </View>
   );

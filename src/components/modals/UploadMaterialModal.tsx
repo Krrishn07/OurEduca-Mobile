@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Pressable, Animated } from 'react-native';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { Icons } from '@components/common/Icons';
@@ -66,7 +66,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
     try {
       triggerHaptic();
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain'],
         copyToCacheDirectory: true
       });
       
@@ -146,7 +146,12 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
     setTimeout(() => onClose(), 1500);
   };
 
-  const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === rosterId);
+  const selectedRoster = useMemo(() => {
+    return assignedSections.find((r, idx) => {
+        const uniqueId = (r.rosterId || r.id || `${r.class_id || idx}-${r.section || idx}-${idx}`).toString();
+        return uniqueId === rosterId;
+    });
+  }, [assignedSections, rosterId]);
 
   return (
     <ModalShell
@@ -189,7 +194,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                             className={`flex-1 h-12 rounded-xl items-center flex-row justify-center transition-all ${type === 'PDF' ? 'bg-indigo-600 shadow-md shadow-indigo-100' : 'bg-transparent'}`}
                         >
                             <Icons.FileText size={16} color={type === 'PDF' ? 'white' : '#94a3b8'} />
-                            <Text className={`text-[10px] font-inter-black uppercase tracking-[0.5px] ml-2.5 ${type === 'PDF' ? 'text-white' : 'text-gray-400'}`}>PDF Document</Text>
+                            <Text className={`text-[10px] font-inter-black uppercase tracking-[0.5px] ml-2.5 ${type === 'PDF' ? 'text-white' : 'text-gray-400'}`}>Course Document</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                             onPress={() => { triggerHaptic(); setType('LINK'); }}
@@ -206,20 +211,33 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                         <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[0.5px]">Select Class</Text>
                         {errors.roster && <Text className="text-red-400 text-[9px] font-inter-bold uppercase italic">* {errors.roster}</Text>}
                     </View>
-                    <View className="flex-row flex-wrap gap-2 mb-6">
-                        {assignedSections.map(r => {
-                            const uniqueId = r.id || r.rosterId;
+                    <View className="gap-3 mb-6">
+                        {assignedSections.map((r, idx) => {
+                            const uniqueId = (r.rosterId || r.id || `${r.class_id || idx}-${r.section || idx}-${idx}`).toString();
                             const isSelected = rosterId === uniqueId;
                             return (
                                 <TouchableOpacity 
-                                    key={uniqueId}
+                                    key={`upload-section-${uniqueId}-${idx}`}
                                     onPress={() => { triggerHaptic(); setRosterId(uniqueId); setErrors(p => ({ ...p, roster: null })); }}
                                     activeOpacity={0.75}
-                                    className={`px-5 py-3 rounded-2xl border-2 ${isSelected ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' : 'bg-gray-50/30 border-transparent shadow-sm'}`}
+                                    className={`p-4 rounded-2xl border-2 flex-row items-center ${isSelected ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' : 'bg-gray-50/30 border-transparent shadow-sm'}`}
                                 >
-                                    <Text className={`text-[11px] font-inter-black uppercase tracking-[0.5px] ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>
-                                        {r.displayName || `${r.classes?.name || 'Class'} - ${r.section || 'A'}`}
-                                    </Text>
+                                    <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${isSelected ? 'bg-indigo-600' : 'bg-gray-100'}`}>
+                                        <Icons.Classes size={18} color={isSelected ? 'white' : '#94a3b8'} />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className={`text-[12px] font-inter-black tracking-tight ${isSelected ? 'text-indigo-600' : 'text-gray-900'}`}>
+                                            {r.subject || 'General Instruction'}
+                                        </Text>
+                                        <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[0.5px]">
+                                            {r.name || 'Class'} • Section {r.section || 'A'}
+                                        </Text>
+                                    </View>
+                                    {isSelected && (
+                                        <View className="bg-indigo-50 w-6 h-6 rounded-full items-center justify-center">
+                                            <Icons.Check size={14} color="#4f46e5" />
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             );
                         })}
@@ -262,7 +280,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                                     {selectedFile ? 'File Prepared' : 'Select Document'}
                                 </Text>
                                 <Text className="text-gray-900 font-inter-black text-[14px]" numberOfLines={1}>
-                                    {selectedFile ? selectedFile.name : 'Choose institutional PDF'}
+                                    {selectedFile ? selectedFile.name : 'Choose academic resource'}
                                 </Text>
                             </View>
                             <TouchableOpacity 
@@ -292,9 +310,13 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                           </View>
                       </View>
                       
-                      <View className="flex-row justify-between mb-2">
+                      <View className="flex-row justify-between mb-3 pb-3 border-b border-gray-50">
+                          <Text className="text-[9px] font-inter-bold text-gray-400 uppercase tracking-[0.5px]">Subject Context</Text>
+                          <Text className="text-[11px] font-inter-black text-indigo-600">{selectedRoster?.subject || 'General Instruction'}</Text>
+                      </View>
+                      <View className="flex-row justify-between mb-3">
                           <Text className="text-[9px] font-inter-bold text-gray-400 uppercase tracking-[0.5px]">Target Class</Text>
-                          <Text className="text-[11px] font-inter-black text-gray-900">{selectedRoster?.displayName || 'Unknown'}</Text>
+                          <Text className="text-[11px] font-inter-black text-gray-900">{selectedRoster?.name || 'Academic Group'} - {selectedRoster?.section || 'A'}</Text>
                       </View>
                       <View className="flex-row justify-between">
                           <Text className="text-[9px] font-inter-bold text-gray-400 uppercase tracking-[0.5px]">Security</Text>

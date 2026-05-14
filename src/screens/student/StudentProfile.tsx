@@ -12,6 +12,7 @@ interface StudentProfileProps {
   onLogout: () => void;
   onEditProfile: () => void;
   onAccountSecurity?: () => void;
+  recentActivity?: any[];
 }
 
 export const StudentProfile: React.FC<StudentProfileProps> = ({ 
@@ -19,6 +20,7 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({
   onLogout,
   onEditProfile,
   onAccountSecurity,
+  recentActivity = []
 }) => (
   <ScrollView className="flex-1 bg-[#f5f7ff]" showsVerticalScrollIndicator={false}>
     {/* Platinum Brand Hero — Role Synchronized */}
@@ -123,6 +125,38 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({
                 rightElement={<Icons.ChevronRight size={13} color="#fca5a5" />}
             />
         </AppCard>
+
+        {/* Recent Activity Module — Humanized Timeline */}
+        <View className="px-0 mt-8 mb-10">
+            <SectionHeader
+                title="MY TIMELINE"
+                className="px-2 mb-3"
+                rightElement={<StatusPill label="LATEST" type="neutral" />}
+            />
+            <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+                {recentActivity.length > 0 ? (
+                    recentActivity.map((act, idx) => (
+                        <AppRow 
+                            key={act.id || idx}
+                            title={act.title}
+                            subtitle={act.time || 'Recent'}
+                            avatarIcon={<Icons.Notifications size={14} color={act.color || '#4f46e5'} />}
+                            avatarBg={act.color ? `${act.color}15` : '#eef2ff'}
+                            showBorder={idx < recentActivity.length - 1}
+                            rightElement={<Icons.ChevronRight size={12} color="#d1d5db" />}
+                        />
+                    ))
+                ) : (
+                    <View className="items-center py-12">
+                        <View className="w-12 h-12 bg-indigo-50 rounded-full items-center justify-center mb-4">
+                            <Icons.Notifications size={24} color="#818cf8" />
+                        </View>
+                        <Text className="text-[11px] font-black text-gray-400 uppercase tracking-[1px] mt-1 text-center px-6">Your academic journey is just beginning!</Text>
+                        <Text className="text-[9px] text-gray-400 mt-1">Activities will appear here as you learn.</Text>
+                    </View>
+                )}
+            </AppCard>
+        </View>
 
         {/* Platinum Terminal Signature — Synchronized */}
         <View className="mt-16 items-center opacity-30">

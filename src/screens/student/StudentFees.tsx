@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icons } from '@components/common/Icons';
-import { AppTheme, AppCard, AppTypography, SectionHeader, StatusPill, ActionTile } from '@components/common';
+import { AppTheme, AppCard, AppTypography, SectionHeader, StatusPill, ActionTile, PlatinumHeader } from '@components/common';
 import { FeeReceiptModal } from './modals/FeeReceiptModal';
 
 const StyledLinearGradient = LinearGradient || View;
@@ -41,46 +41,44 @@ export const StudentFees: React.FC<StudentFeesProps> = ({
   };
 
   return (
-    <ScrollView 
-        ref={scrollRef}
-        className="flex-1 bg-[#f5f7ff]" 
-        showsVerticalScrollIndicator={false}
-    >
-      {/* Platinum Financial Hero — 140px Sync */}
-      <StyledLinearGradient
-        colors={AppTheme.colors.gradients.brand}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="h-[140px] px-6 pt-5 rounded-b-[40px] relative shadow-2xl shadow-indigo-200/50 z-30"
+    <View className="flex-1 bg-[#f5f7ff]">
+      <PlatinumHeader 
+        title="Fee Management"
+        subtitle="Institutional Financial Registry"
+      />
+
+      <ScrollView 
+          ref={scrollRef}
+          className="flex-1" 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
       >
-        <View className="absolute right-[-15] bottom-[-15] opacity-10 transform rotate-12">
-            <Icons.Payment size={130} color="white" />
-        </View>
-        
-        <View className="relative z-10 flex-row justify-between items-start mb-5">
-          <View className="flex-1 mr-4">
-            <Text className={`${AppTypography.heroTitle} text-white`}>My Fees</Text>
-          </View>
-        </View>
-
-        <View className="relative z-10 flex-row justify-between items-end">
-            <View>
-                <Text className="text-[9px] font-black text-white/50 uppercase tracking-[2px] mb-1 font-inter-black">Amount Due</Text>
-                <View className="flex-row items-center">
-                    <Text className="text-xl font-black text-white/40 mr-1 font-inter-black">₹</Text>
-                    <Text className="text-3xl font-black text-white tracking-tighter font-inter-black">{totalOutstanding.toLocaleString()}</Text>
+        {/* Financial Summary Card */}
+        <View className="px-4 mt-6">
+          <AppCard className="bg-[#1e1b4b] p-6 rounded-[32px] shadow-2xl relative overflow-hidden border border-white/5">
+            <View className="absolute right-[-15] bottom-[-15] opacity-10 transform rotate-12">
+                <Icons.Payment size={130} color="white" />
+            </View>
+            
+            <View className="flex-row justify-between items-end relative z-10">
+                <View>
+                    <Text className="text-[9px] font-black text-white/50 uppercase tracking-[2px] mb-1 font-inter-black">Outstanding Balance</Text>
+                    <View className="flex-row items-center">
+                        <Text className="text-xl font-black text-indigo-400 mr-1 font-inter-black">₹</Text>
+                        <Text className="text-3xl font-black text-white tracking-tighter font-inter-black">{totalOutstanding.toLocaleString()}</Text>
+                    </View>
+                </View>
+                <View className="bg-emerald-500/10 px-4 py-2.5 rounded-2xl border border-emerald-500/20 backdrop-blur-md">
+                    <View className="flex-row items-center">
+                        <Icons.Check size={10} color="#10b981" />
+                        <Text className="text-[9px] font-black text-emerald-400 uppercase tracking-wider font-inter-black ml-2">₹{totalPaid.toLocaleString()} Paid</Text>
+                    </View>
                 </View>
             </View>
-            <View className="bg-white/10 px-4 py-2.5 rounded-2xl border border-white/20 backdrop-blur-md">
-                <View className="flex-row items-center">
-                    <Icons.Check size={10} color="#10b981" />
-                    <Text className="text-[9px] font-black text-white uppercase tracking-wider font-inter-black ml-2">₹{totalPaid.toLocaleString()} Paid</Text>
-                </View>
-            </View>
+          </AppCard>
         </View>
-      </StyledLinearGradient>
 
-      <View className="px-4 mt-5 relative z-20">
+        <View className="px-4 mt-5 relative z-20">
         {showPaymentSuccess && (
           <View className="bg-emerald-500 rounded-[28px] p-5 mb-5 flex-row items-center shadow-xl shadow-emerald-200/50 border border-emerald-400">
             <View className="w-11 h-11 bg-white/20 rounded-2xl items-center justify-center mr-4 border border-white/20">
@@ -247,5 +245,6 @@ export const StudentFees: React.FC<StudentFeesProps> = ({
       </View>
       <View className="h-20" />
     </ScrollView>
+  </View>
   );
 };

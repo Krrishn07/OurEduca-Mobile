@@ -142,6 +142,16 @@ export const TeacherMessages: React.FC<TeacherMessagesProps> = ({
     }
   }, [selectedChat, currentUser?.id, markMessagesAsRead]);
 
+  // Reactive mark as read: If new messages arrive while chat is open, mark them as read
+  useEffect(() => {
+    if (selectedChat && currentUser?.id && markMessagesAsRead && filteredMessages.length > 0) {
+      const hasUnread = filteredMessages.some(m => m.sender_id === selectedChat && m.status !== 'read');
+      if (hasUnread) {
+        markMessagesAsRead(selectedChat, currentUser.id);
+      }
+    }
+  }, [filteredMessages, selectedChat, currentUser?.id, markMessagesAsRead]);
+
   const hasContent = useSharedValue(0);
 
   useEffect(() => {

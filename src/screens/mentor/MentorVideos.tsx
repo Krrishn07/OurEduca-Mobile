@@ -1,28 +1,33 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Alert, Animated, Modal, AppState, AppStateStatus, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Image, ActivityIndicator, Dimensions, Modal, Animated, Alert, AppState, AppStateStatus } from 'react-native';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
+import { decode } from 'base64-arraybuffer';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+import { supabase } from '@lib/supabase';
 import { Icons } from '@components/common/Icons';
-import { Video, useSchoolData } from '@context/SchoolDataContext';
+import { Video as VideoType, useSchoolData, LiveStream } from '@context/SchoolDataContext';
+import { useSystemStatus } from '@context/SystemStatusContext';
 import { AppTheme } from '@constants/Theme';
 import { 
+  ActionTile, 
   AppCard, 
-  AppTypography, 
   SectionHeader, 
+  StatCard, 
+  AppRow, 
+  StatusPill, 
+  AppTypography, 
   AppButton, 
   ModalShell, 
-  StatusPill, 
-  AppRow 
+  PlatinumSearchHeader 
 } from '@components/common';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-if (LinearGradient) {  }
-const StyledLinearGradient = styled(LinearGradient || View);
+const { width } = Dimensions.get('window');
 
+// Private component for GoLiveModal
 interface GoLiveModalProps {
   visible: boolean;
   onClose: () => void;
@@ -39,17 +44,17 @@ interface GoLiveModalProps {
   isLoading: boolean;
 }
 
-const GoLiveModal: React.FC<GoLiveModalProps> = ({
+const GoLiveModal = ({
   visible, onClose, onStart, streamTitle, setStreamTitle, streamSubject, setStreamSubject, 
   streamSource, setStreamSource, selectedCctvNode, setSelectedCctvNode, cctvNodes, isLoading
-}) => (
+}: GoLiveModalProps) => (
   <ModalShell visible={visible} onClose={onClose} title="Session Studio" subtitle="SETUP BROADCAST">
     <View className="space-y-6">
         <View>
             <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-2.5 ml-1 font-inter-black">Session Title</Text>
             <View className="bg-white rounded-[20px] border border-gray-100 px-5 py-3.5 shadow-sm">
                 <TextInput 
-                    placeholder="e.g. Executive Oversight 01" 
+                    placeholder="e.g. Mentor Session 01" 
                     value={streamTitle}
                     onChangeText={setStreamTitle}
                     className="text-[13px] font-black text-gray-900 font-inter-black"
@@ -58,7 +63,7 @@ const GoLiveModal: React.FC<GoLiveModalProps> = ({
         </View>
         
         <View>
-          <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-3 ml-1 font-inter-black">Broadcasting Source</Text>
+          <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-3 ml-1 font-inter-black">Go Live</Text>
           <View className="flex-row gap-3">
             {(['CAMERA', 'CCTV'] as const).map(s => (
               <TouchableOpacity 
@@ -76,9 +81,9 @@ const GoLiveModal: React.FC<GoLiveModalProps> = ({
                 }`}>
                   <Icons.Video size={18} color={streamSource === s ? 'white' : '#94a3b8'} />
                 </View>
-                <Text className={`text-[9px] font-black uppercase tracking-widest font-inter-black ${
+                <Text className={`text-[9px] font-black uppercase tracking-[1px] font-inter-black ${
                   streamSource === s ? 'text-indigo-900' : 'text-gray-400'
-                }`}>{s === 'CAMERA' ? 'Integrated' : 'Surveillance'}</Text>
+                }`}>{s === 'CAMERA' ? 'Device Camera' : 'Security Feed'}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -86,7 +91,7 @@ const GoLiveModal: React.FC<GoLiveModalProps> = ({
 
         {streamSource === 'CCTV' && (
           <View>
-            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-3 ml-1 font-inter-black">Security Feed Sync</Text>
+            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-3 ml-1 font-inter-black">Security Feed Link</Text>
             <View className="flex-row flex-wrap gap-2">
               {(cctvNodes || []).map(node => (
                 <TouchableOpacity 
@@ -121,17 +126,18 @@ const GoLiveModal: React.FC<GoLiveModalProps> = ({
 );
 
 interface MentorVideosProps {
-  videoList: Video[];
+  videoList?: VideoType[];
   videoTab: 'PUBLIC' | 'PRIVATE' | 'MY_CONTENT';
   setVideoTab: (tab: 'PUBLIC' | 'PRIVATE' | 'MY_CONTENT') => void;
   videoSearch: string;
-  setVideoSearch: (text: string) => void;
-  isLiveStreamActive: boolean;
+  setVideoSearch: (q: string) => void;
   onShowVideoUploadModal: () => void;
-  onVideoPress: (video: Video) => void;
+  onVideoPress: (video: VideoType) => void;
+  isLiveStreamActive?: boolean;
   onDeleteVideo?: (id: string) => Promise<void>;
-  onNavigate?: (tab: string) => void;
   currentUser?: any;
+  teacherAssignedSections?: any[];
+  onNavigate?: (tab: string) => void;
 }
 
 interface SessionCapturedModalProps {
@@ -140,17 +146,13 @@ interface SessionCapturedModalProps {
   onDiscard: () => void;
 }
 
-const SessionCapturedModal: React.FC<SessionCapturedModalProps> = ({ visible, onSave, onDiscard }) => (
-  <Modal visible={visible} animationType="fade" transparent>
-    <View className="flex-1 justify-center items-center bg-black/60 px-6">
-      <View className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl items-center border border-gray-100">
+const SessionCapturedModal = ({ visible, onSave, onDiscard }: SessionCapturedModalProps) => (
+  <ModalShell visible={visible} onClose={onDiscard} title="Capture Studio" subtitle="RECORDING COMPLETE">
+      <View className="items-center">
         <View className="w-16 h-16 bg-emerald-50 rounded-2xl items-center justify-center mb-6 border border-emerald-100 shadow-inner">
            <Icons.CheckCircle size={32} color="#10b981" />
         </View>
 
-        <Text className="text-xl font-black text-gray-900 tracking-tight text-center font-inter-black">Recording Complete</Text>
-        <Text className="text-[10px] text-indigo-500 font-black uppercase tracking-[3px] mt-2 mb-6 font-inter-black">Academy Storage</Text>
-        
         <Text className="text-gray-500 text-[13px] font-medium text-center leading-relaxed mb-8 px-4 font-inter-medium">
            Your broadcast has been successfully encoded. Would you like to publish this recording to the academy library?
         </Text>
@@ -162,6 +164,7 @@ const SessionCapturedModal: React.FC<SessionCapturedModalProps> = ({ visible, on
             onPress={onSave}
             className="shadow-lg shadow-indigo-100"
           />
+
           <AppButton 
             label="Discard Recording"
             variant="secondary"
@@ -169,186 +172,346 @@ const SessionCapturedModal: React.FC<SessionCapturedModalProps> = ({ visible, on
           />
         </View>
       </View>
-    </View>
-  </Modal>
+  </ModalShell>
 );
 
-export const MentorVideos: React.FC<MentorVideosProps> = ({ 
-  videoList, 
-  onVideoPress, 
-  videoTab, 
-  setVideoTab, 
-  videoSearch, 
-  setVideoSearch, 
-  isLiveStreamActive,
+export const MentorVideos = React.memo<MentorVideosProps>(({
+  videoList = [],
+  videoSearch,
+  setVideoSearch,
   onShowVideoUploadModal,
+  onVideoPress,
   onDeleteVideo,
-  onNavigate,
   currentUser,
+  teacherAssignedSections = []
 }) => {
-  const { liveStreams } = useSchoolData();
-  const [activeTab, setActiveTab] = useState<'MONITOR' | 'LIBRARY'>('MONITOR');
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const { 
+    platformSettings, 
+    uploadVideo, 
+    startLiveStream, 
+    endLiveStream, 
+    liveStreams,
+    dbCameraNodes: rawCameraNodes,
+    fetchCameraNodes
+  } = useSchoolData();
 
-  const filteredVideos = (videoList || []).filter(v => {
-    const matchesSearch = !videoSearch || v.title?.toLowerCase().includes(videoSearch.toLowerCase()) || v.subject?.toLowerCase().includes(videoSearch.toLowerCase());
-    const matchesSubject = !selectedSubject || v.subject === selectedSubject;
-    return matchesSearch && matchesSubject;
+  const {
+    isLiveSessionActive: globalIsLiveActive,
+    setIsLiveSessionActive,
+    activeSessionData,
+    setActiveSessionData
+  } = useSystemStatus();
+
+  const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState<'STREAM' | 'LIBRARY' | 'MONITOR'>('STREAM');
+  
+  const [isStreaming, setIsStreaming] = useState(globalIsLiveActive);
+  const [streamSource, setStreamSource] = useState<'CAMERA' | 'CCTV' | 'SCREEN'>(activeSessionData?.source || 'CAMERA');
+  const [elapsed, setElapsed] = useState(0);
+
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showGoLiveModal, setShowGoLiveModal] = useState(false);
+  const [streamTitle, setStreamTitle] = useState('');
+  const [streamSubject, setStreamSubject] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scanlineAnim = useRef(new Animated.Value(0)).current;
+  const cameraRef = useRef<any>(null);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedVideoUri, setRecordedVideoUri] = useState<string | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [selectedCctvNode, setSelectedCctvNode] = useState<any>(null);
+  const [showCapturedModal, setShowCapturedModal] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  const memoizedCameraNodes = React.useMemo(() => rawCameraNodes || [], [rawCameraNodes]);
+
+  const player = useVideoPlayer(selectedCctvNode?.stream_url || '', (p) => {
+    p.loop = true;
+    if (isStreaming && streamSource === 'CCTV') p.play();
   });
 
-  const renderMonitorTab = () => (
-    <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-      {/* Mentor Oversight Banner */}
-      <View className="bg-emerald-50 p-6 rounded-[32px] border border-emerald-100 mb-8 mt-4">
-        <View className="flex-row items-center mb-4">
-          <View className="w-10 h-10 bg-emerald-600 rounded-xl items-center justify-center shadow-lg shadow-emerald-100">
-             <Icons.Eye size={20} color="white" />
-          </View>
-          <View className="ml-4">
-            <Text className="text-emerald-900 font-black text-[15px] font-inter-black">Institutional Oversight</Text>
-            <Text className="text-emerald-600/60 text-[9px] font-black uppercase tracking-widest font-inter-black">Read-Only Monitoring</Text>
-          </View>
-        </View>
-        <Text className="text-emerald-700/70 text-[12px] font-medium leading-relaxed font-inter-medium">
-          You can silently monitor any live class without notifying participants. Your presence is read-only (no camera or microphone access).
-        </Text>
-      </View>
+  useEffect(() => {
+    if (currentUser?.school_id) fetchCameraNodes(currentUser.school_id);
+  }, [currentUser?.school_id]);
 
-      <SectionHeader title="Active Academy Streams" subtitle="LIVE MONITORING" />
-      
-      <View className="space-y-4">
-        {(liveStreams || []).filter(s => s.is_active).length > 0 ? (
-          (liveStreams || []).filter(s => s.is_active).map((stream: any) => (
-            <AppCard key={stream.id} className="p-0 overflow-hidden border border-gray-100 shadow-sm">
-               <View className="bg-indigo-900 p-4 flex-row items-center justify-between">
+  useEffect(() => {
+    let pulseLoop: Animated.CompositeAnimation | null = null;
+    let scanlineLoop: Animated.CompositeAnimation | null = null;
+
+    if (isStreaming) {
+      pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true })
+        ])
+      );
+      scanlineLoop = Animated.loop(
+        Animated.timing(scanlineAnim, { toValue: 1, duration: 3000, useNativeDriver: true })
+      );
+      pulseLoop.start();
+      scanlineLoop.start();
+    }
+    return () => {
+      pulseLoop?.stop();
+      scanlineLoop?.stop();
+    };
+  }, [isStreaming]);
+
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartBroadcast = async () => {
+    if (!streamTitle) {
+      Alert.alert('Missing Info', 'Please provide a session title.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const activeSection = (teacherAssignedSections || []).find((s: any) => s.displayName === streamSubject) || teacherAssignedSections?.[0];
+      const streamId = await startLiveStream({
+        school_id: currentUser?.school_id,
+        created_by: currentUser?.id,
+        class_id: activeSection?.class_id || null,
+        section: activeSection?.section || null,
+        title: streamTitle,
+        subject: streamSubject || activeSection?.subject || 'General',
+        stream_url: streamSource === 'CAMERA' ? 'HARDWARE_CAMERA' : (selectedCctvNode?.stream_url || 'CCTV_FEED'),
+        source: streamSource
+      });
+      if (streamId) {
+        setActiveSessionData({ id: streamId, title: streamTitle, subject: streamSubject, source: streamSource, startTime: Date.now() });
+        setActiveSessionId(streamId);
+        setIsStreaming(true);
+        setShowGoLiveModal(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Broadcast Error', 'Failed to establish connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEndSession = async () => {
+    const idToEnd = activeSessionId || activeSessionData?.id;
+    if (idToEnd) {
+      await endLiveStream(idToEnd, currentUser?.school_id);
+    }
+    setIsStreaming(false);
+    setActiveSessionId(null);
+    setActiveSessionData(null);
+    setIsLiveSessionActive(false);
+    setElapsed(0);
+  };
+
+  const filteredVideos = (videoList || []).filter(v => 
+    v.title?.toLowerCase().includes(videoSearch.toLowerCase()) || 
+    v.subject?.toLowerCase().includes(videoSearch.toLowerCase())
+  );
+
+  const renderStreamTab = () => (
+    <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      {!isStreaming ? (
+        <View className="px-4 pt-6 space-y-6">
+          <AppCard className="p-5 border border-gray-100 shadow-sm">
+            <Text className="text-gray-900 font-black text-lg tracking-tight mb-1 font-inter-black">Broadcasting Hub</Text>
+            <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[1px] mb-6 font-inter-black">Choose stream source for subject session</Text>
+            <View className="space-y-3">
+              {[
+                { id: 'CAMERA', icon: '📹', label: 'Internal Camera', desc: 'Stream from integrated device camera' },
+                { id: 'CCTV', icon: '📷', label: 'CCTV Node', desc: 'Relay classroom surveillance feed' },
+              ].map(src => (
+                <TouchableOpacity
+                  key={src.id}
+                  style={{
+                    backgroundColor: streamSource === src.id ? '#eff6ff' : '#f8fafc',
+                    borderColor: streamSource === src.id ? '#2563eb' : '#e2e8f0',
+                    borderWidth: 1.5,
+                    borderRadius: 16,
+                    padding: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center'
+                  }}
+                  onPress={() => setStreamSource(src.id as any)}
+                >
+                  <Text style={{ fontSize: 24 }}>{src.icon}</Text>
+                  <View style={{ flex: 1, marginLeft: 16 }}>
+                    <Text className={`font-black text-[14px] font-inter-black ${streamSource === src.id ? 'text-blue-600' : 'text-slate-900'}`}>{src.label}</Text>
+                    <Text className="text-slate-500 text-[10px] font-medium font-inter-medium mt-0.5">{src.desc}</Text>
+                  </View>
+                  {streamSource === src.id && <Icons.CheckCircle size={20} color="#2563eb" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </AppCard>
+
+          <AppCard className="p-5 border border-gray-100 shadow-sm">
+            <Text className="text-gray-900 font-black text-lg tracking-tight mb-1 font-inter-black">Assigned Class Broadcast</Text>
+            <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[1px] mb-4 font-inter-black">Go live to your subject sections</Text>
+            <View className="space-y-4">
+              {teacherAssignedSections.map((cls: any, i: number) => (
+                <View key={i} className="flex-row items-center py-3 border-b border-gray-50 last:border-b-0">
                   <View className="flex-1">
-                     <Text className="text-white font-black text-[14px] font-inter-black">{stream.title}</Text>
-                     <Text className="text-indigo-300 text-[10px] font-black uppercase tracking-widest mt-1 font-inter-black">
-                        {stream.subject} • Class {stream.section || 'General'}
-                     </Text>
+                    <Text className="text-gray-900 font-black text-[14px] font-inter-black">{cls.displayName}</Text>
+                    <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[1px] mt-1 font-inter-black">{cls.subject}</Text>
                   </View>
-                  <View className="bg-rose-500 px-3 py-1 rounded-full flex-row items-center">
-                     <View className="w-1.5 h-1.5 bg-white rounded-full mr-2" />
-                     <Text className="text-white text-[9px] font-black tracking-widest font-inter-black">LIVE</Text>
-                  </View>
-               </View>
-               <View className="p-4 flex-row items-center justify-between">
-                  <Text className="text-gray-400 text-[11px] font-inter-medium italic">Faculty: {stream.teacher_name || 'Senior Staff'}</Text>
                   <TouchableOpacity 
-                    onPress={() => onVideoPress({ ...stream, video_url: stream.stream_url } as any)}
-                    className="bg-indigo-600 px-6 py-2.5 rounded-xl shadow-lg shadow-indigo-100"
+                    className="bg-indigo-600 px-5 py-2.5 rounded-xl"
+                    onPress={() => {
+                        setStreamSubject(cls.displayName);
+                        setStreamTitle(`${cls.displayName} Live`);
+                        setShowGoLiveModal(true);
+                    }}
                   >
-                     <Text className="text-white font-black text-[11px] uppercase tracking-widest font-inter-black">Monitor Hub</Text>
+                    <Text className="text-white font-black text-[11px] uppercase tracking-[1px] font-inter-black">GO LIVE</Text>
                   </TouchableOpacity>
-               </View>
-            </AppCard>
-          ))
-        ) : (
-          <View className="py-20 items-center justify-center">
-             <Icons.Video size={48} color="#e2e8f0" />
-             <Text className="text-gray-400 text-[11px] font-black uppercase tracking-widest mt-4 font-inter-black text-center">No Active Streams Found</Text>
-          </View>
-        )}
-      </View>
-      <View className="h-40" />
+                </View>
+              ))}
+            </View>
+          </AppCard>
+        </View>
+      ) : (
+        <View className="flex-1 h-screen bg-black">
+           <CameraView style={{ flex: 1 }} facing="back" mode="video" />
+           <View className="absolute top-10 left-6 right-6 flex-row justify-between">
+              <View className="bg-red-600 px-3 py-1 rounded-full flex-row items-center">
+                 <Animated.View style={{ opacity: pulseAnim }} className="w-2 h-2 bg-white rounded-full mr-2" />
+                 <Text className="text-white text-[10px] font-inter-black uppercase">LIVE</Text>
+              </View>
+              <TouchableOpacity onPress={handleEndSession} className="bg-white/20 px-4 py-2 rounded-xl border border-white/30">
+                 <Text className="text-white text-[10px] font-inter-black uppercase">END</Text>
+              </TouchableOpacity>
+           </View>
+        </View>
+      )}
     </ScrollView>
   );
 
   const renderLibraryTab = () => (
     <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-      {/* Search Bar */}
-      <View className="bg-white p-4 rounded-[24px] border border-gray-100 shadow-sm flex-row items-center mb-6 mt-4">
-          <Icons.Search size={18} color="#94a3b8" />
-          <TextInput 
-              className="flex-1 ml-4 text-[13px] font-black text-gray-900 font-inter-black"
-              placeholder="Search Lesson Library..."
-              value={videoSearch}
-              onChangeText={setVideoSearch}
-          />
-      </View>
-
-      <SectionHeader title="Institutional Archive" subtitle="RECORDED SESSIONS" />
-
-      <View className="space-y-4">
-        {filteredVideos.map((video) => (
-          <AppCard key={video.id} className="p-0 overflow-hidden border border-white shadow-sm">
-             <TouchableOpacity 
-               activeOpacity={0.9}
-               onPress={() => onVideoPress(video)}
-               className="flex-row"
-             >
-                <View className="w-28 h-28 bg-indigo-900 items-center justify-center relative">
-                   <Icons.Play size={24} color="white" />
-                   <View className="absolute bottom-2 right-2 bg-black/40 px-1.5 py-0.5 rounded">
-                      <Text className="text-white text-[8px] font-black font-inter-black">{video.duration || 'LECTURE'}</Text>
-                   </View>
-                </View>
-                <View className="flex-1 p-4 justify-between">
-                   <View>
-                      <Text className="font-black text-gray-900 text-[14px] tracking-tight leading-tight mb-1 font-inter-black" numberOfLines={2}>{video.title}</Text>
-                      <Text className="text-[10px] font-black text-indigo-500 uppercase tracking-widest font-inter-black">{video.subject}</Text>
-                   </View>
-                   <View className="flex-row items-center justify-between mt-2">
-                      <Text className="text-[9px] font-black text-gray-400 font-inter-black">{new Date(video.created_at).toLocaleDateString()}</Text>
-                      <Icons.ChevronRight size={14} color="#d1d5db" />
-                   </View>
-                </View>
-             </TouchableOpacity>
-          </AppCard>
-        ))}
-        {filteredVideos.length === 0 && (
-          <View className="py-20 items-center justify-center">
-             <Icons.Search size={48} color="#e2e8f0" />
-             <Text className="text-gray-400 text-[11px] font-black uppercase tracking-widest mt-4 font-inter-black">No recordings found</Text>
-          </View>
+      <View className="space-y-4 mt-4">
+        {filteredVideos.length > 0 ? (
+            filteredVideos.map((video: any) => (
+                <AppCard key={video.id} className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+                    <TouchableOpacity activeOpacity={0.9} onPress={() => onVideoPress(video)} className="flex-row">
+                        <View className="w-32 h-32 bg-gray-900 items-center justify-center relative">
+                            {video.thumbnail_url ? (
+                                <Image source={{ uri: video.thumbnail_url }} className="w-full h-full opacity-80" resizeMode="cover" />
+                            ) : (
+                                <Icons.Play size={24} color="white" />
+                            )}
+                            <View className="absolute top-2 left-2">
+                                <StatusPill label={video.subject || 'GENERAL'} type="info" />
+                            </View>
+                            <View className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded border border-white/10">
+                                <Text className="text-white text-[8px] font-black font-inter-black">{video.duration || 'LECTURE'}</Text>
+                            </View>
+                        </View>
+                        <View className="flex-1 p-4 justify-between">
+                            <View>
+                                <Text className="font-black text-gray-900 text-[14px] tracking-tight leading-tight mb-2 font-inter-black" numberOfLines={2}>{video.title}</Text>
+                                <View className="flex-row items-center mb-2">
+                                    <View className="w-5 h-5 bg-indigo-50 rounded-lg items-center justify-center mr-2 border border-indigo-100">
+                                        <Icons.Profile size={10} color="#4f46e5" />
+                                    </View>
+                                    <Text className="text-[10px] font-black text-gray-500 font-inter-black">{video.teacher_name || 'Institution Faculty'}</Text>
+                                </View>
+                            </View>
+                            <View className="flex-row items-center justify-between mt-auto">
+                                <View className="flex-row items-center">
+                                    <Icons.Calendar size={10} color="#94a3b8" />
+                                    <Text className="text-[9px] font-black text-gray-400 ml-1.5 font-inter-black">{new Date(video.created_at).toLocaleDateString()}</Text>
+                                </View>
+                                <Icons.ChevronRight size={14} color="#d1d5db" />
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </AppCard>
+            ))
+        ) : (
+            <View className="py-20 items-center justify-center">
+                <Icons.Video size={48} color="#e2e8f0" />
+                <Text className="text-gray-400 text-[11px] font-black uppercase tracking-widest mt-4 font-inter-black">No recordings found</Text>
+            </View>
         )}
       </View>
-      <View className="h-40" />
+    </ScrollView>
+  );
+
+  const renderMonitorTab = () => (
+    <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false}>
+       <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] mb-4 px-2 font-inter-black">Institutional Monitoring</Text>
+       <View className="space-y-3">
+           {memoizedCameraNodes.map((node: any, i: number) => (
+              <TouchableOpacity 
+                key={node.id || i}
+                className="bg-white border border-gray-100 rounded-[28px] p-4 flex-row items-center shadow-sm"
+              >
+                <View className="w-12 h-12 bg-slate-900 rounded-2xl items-center justify-center mr-4 border border-slate-800">
+                  <Icons.Eye size={20} color="white" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-900 font-inter-black text-[15px]">{node.label || `Classroom View ${i+1}`}</Text>
+                  <Text className="text-emerald-600 text-[10px] font-inter-bold uppercase">Active Feed</Text>
+                </View>
+                <View className="bg-indigo-50 px-4 py-2 rounded-xl">
+                   <Text className="text-[10px] font-inter-black text-indigo-600 uppercase">View</Text>
+                </View>
+              </TouchableOpacity>
+           ))}
+       </View>
     </ScrollView>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Mentor Dashboard Header */}
-      <View className="bg-indigo-950 px-6 pt-12 pb-6 shadow-2xl">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <View className="w-12 h-12 bg-white/10 rounded-2xl items-center justify-center border border-white/20">
-              <Text className="text-white font-black text-lg font-inter-black">
-                {currentUser?.name?.split(' ').map((n: string) => n[0]).join('') || 'M'}
-              </Text>
-            </View>
-            <View className="ml-4">
-              <Text className="text-white/40 text-[9px] font-black uppercase tracking-[2px] font-inter-black">Executive Mentor</Text>
-              <Text className="text-white font-black text-lg tracking-tight font-inter-black">{currentUser?.name}</Text>
-              <Text className="text-white/50 text-[10px] font-black tracking-widest font-inter-black">Academic Oversight</Text>
-            </View>
+    <View className="flex-1 bg-[#f5f7ff]">
+      {!isStreaming && (
+        <PlatinumSearchHeader 
+          title={activeTab === 'MONITOR' ? 'Campus View' : activeTab === 'LIBRARY' ? 'Library' : 'Broadcast'}
+          subtitle="Academy Oversight Node"
+          searchValue={videoSearch}
+          onSearchChange={setVideoSearch}
+          placeholder="Search videos or feeds..."
+        />
+      )}
+      {!isStreaming && (
+        <View className="px-4 py-4">
+          <View className="flex-row bg-white/50 p-1 rounded-[20px] border border-white shadow-sm">
+            {['STREAM', 'LIBRARY', 'MONITOR'].map(s => (
+              <TouchableOpacity 
+                key={s} 
+                onPress={() => setActiveTab(s as any)}
+                className={`flex-1 py-3 rounded-[18px] items-center ${activeTab === s ? 'bg-indigo-600 shadow-md shadow-indigo-100' : ''}`}
+              >
+                <Text className={`text-[9px] font-black uppercase tracking-[1.5px] font-inter-black ${activeTab === s ? 'text-white' : 'text-gray-400'}`}>
+                  {s === 'STREAM' ? 'Go Live' : s === 'LIBRARY' ? 'Archive' : 'Monitor'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
-      </View>
-
-      {/* Role Tabs */}
-      <View className="flex-row bg-indigo-950 border-t border-white/5">
-        {[
-          { id: 'MONITOR', label: 'Monitor Hub', icon: '👁' },
-          { id: 'LIBRARY', label: 'Archive', icon: '🎬' }
-        ].map((t) => (
-          <TouchableOpacity 
-            key={t.id}
-            onPress={() => setActiveTab(t.id as any)}
-            className={`flex-1 py-4 items-center border-b-[3px] ${activeTab === t.id ? 'border-amber-400' : 'border-transparent'}`}
-          >
-            <Text className={`text-[11px] font-black tracking-widest font-inter-black ${activeTab === t.id ? 'text-white' : 'text-white/30'}`}>
-              {t.icon} {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
+      )}
       <View className="flex-1">
-        {activeTab === 'MONITOR' && renderMonitorTab()}
+        {activeTab === 'STREAM' && renderStreamTab()}
         {activeTab === 'LIBRARY' && renderLibraryTab()}
+        {activeTab === 'MONITOR' && renderMonitorTab()}
       </View>
-    </SafeAreaView>
+      <GoLiveModal 
+        visible={showGoLiveModal} 
+        onClose={() => setShowGoLiveModal(false)} 
+        onStart={handleStartBroadcast}
+        streamTitle={streamTitle} setStreamTitle={setStreamTitle}
+        streamSubject={streamSubject} setStreamSubject={setStreamSubject}
+        streamSource={streamSource as any} setStreamSource={setStreamSource as any}
+        selectedCctvNode={selectedCctvNode} setSelectedCctvNode={setSelectedCctvNode}
+        cctvNodes={memoizedCameraNodes} isLoading={isLoading}
+      />
+    </View>
   );
-};
+});

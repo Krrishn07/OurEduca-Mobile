@@ -38,6 +38,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     onShowNoticeDetail={actions.handleShowNoticeDetail}
                     currentSchool={currentSchool}
                     onNavigate={onNavigate}
+                    onShowActivityLog={actions.handleShowActivityLog}
                     currentUser={currentUser}
                     userName={currentUser?.name || ''}
                 />
@@ -123,6 +124,10 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     chatMessages={common.transformedChatMessages}
                     currentUser={currentUser}
                     handleSendMessage={common.handleSendMessage}
+                    markMessagesAsRead={common.markMessagesAsRead}
+                    uploadMessageFile={common.uploadMessageFile}
+                    fetchMoreMessages={common.fetchMoreMessages}
+                    currentSchoolId={currentSchool?.id}
                 />
             ); 
         case 'fees': 
@@ -138,13 +143,15 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
             return (
                 <HeadmasterFees 
                     paymentNotifications={(data.dbTransactions || []).map((tx: any) => ({
+                        ...tx,
                         id: tx.id,
                         feeId: tx.fee_id,
                         studentId: tx.student_id,
-                        schoolName: tx.student_name || tx.users?.name || 'Student',
                         date: tx.paid_at ? new Date(tx.paid_at).toLocaleDateString() : (tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'N/A'),
                         amount: Number(tx.amount || 0).toLocaleString(),
-                        status: tx.status === 'VERIFIED' ? 'Verified' : (tx.status === 'REJECTED' ? 'Flagged' : 'Verify Now')
+                        status: tx.status === 'VERIFIED' ? 'Verified' : (tx.status === 'REJECTED' ? 'Flagged' : 'Verify Now'),
+                        users: tx.users,
+                        fees: tx.fees
                     }))}
                     onVerify={actions.handleVerifyTransaction}
                     onSettleManual={actions.handleSettleFeeManual}
@@ -188,6 +195,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     currentUser={currentUser!}
                     onLogout={onLogout || (() => {})}
                     onEdit={() => {}} // Placeholder
+                    onViewAll={actions.handleShowActivityLog}
                 />
             );
         default:
@@ -206,6 +214,7 @@ export const HeadmasterRouter: React.FC<HeadmasterRouterProps> = ({ bundle, comm
                     onShowNoticeDetail={actions.handleShowNoticeDetail}
                     currentSchool={currentSchool}
                     onNavigate={onNavigate}
+                    onShowActivityLog={actions.handleShowActivityLog}
                     currentUser={currentUser}
                     userName={currentUser?.name || ''}
                 />

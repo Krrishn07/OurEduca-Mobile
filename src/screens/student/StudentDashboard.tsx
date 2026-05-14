@@ -16,7 +16,11 @@ import { PaymentGatewayModal, VideoPlayerModal } from '@components/modals';
 import { RazorpayCheckout } from '@components/payment/RazorpayCheckout';
 import { StudentMessages } from '@screens/student/StudentMessages';
 import { StudentProfile } from '@screens/student/StudentProfile';
+import { StudentAssignments } from '@screens/student/StudentAssignments';
+import { StudentReports } from '@screens/student/StudentReports';
+import { StudentMaterials } from '@screens/student/StudentMaterials';
 import { AnnouncementsScreen } from '@components/common';
+import { QuickSubmitModal } from './modals/QuickSubmitModal';
 import { Video as VideoType } from '@context/SchoolDataContext';
 
 interface StudentDashboardProps {
@@ -37,6 +41,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [attendanceRate, setAttendanceRate] = useState('0%');
   const [activeRazorpayOrder, setActiveRazorpayOrder] = useState<any>(null);
+  const [studentSubmissions, setStudentSubmissions] = useState<any[]>([]);
 
   // Video Hub State
   const [videoTab, setVideoTab] = useState<'STREAM' | 'LIBRARY' | 'GALLERY'>('STREAM');
@@ -44,13 +49,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
   const [playingVideo, setPlayingVideo] = useState<VideoType | null>(null);
   const [showVideoPlayerModal, setShowVideoPlayerModal] = useState(false);
   const [showAllNotices, setShowAllNotices] = useState(false);
+  const [materialFilter, setMaterialFilter] = useState('ALL');
+
+  const handleTabNavigateWithFilter = (tab: string, filter?: string) => {
+    if (filter) setMaterialFilter(filter);
+    onNavigate(tab);
+  };
 
   const { 
     announcements, fetchAnnouncements, fetchSchoolDetails, studentPaymentLink, chatMessages, sendChatMessage, fetchMessages,
     dbFees, fetchStudentFees, initiateFeePayment, paymentConfig,
     dbVideos, fetchVideos, uploadVideo, 
     liveStreams, fetchLiveStreams,
-    hasPermission, markMessagesAsRead, uploadMessageFile
+    assignments, fetchAssignments, submissions, fetchSubmissions, submitAssignment,
+    dbGrades, fetchGrades,
+    hasPermission, markMessagesAsRead, uploadMessageFile, fetchMoreMessages
   } = useSchoolData();
   
   // Messages State
@@ -61,6 +74,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
   const [isPayModalVisible, setIsPayModalVisible] = useState(false);
   const [feeForPayment, setFeeForPayment] = useState<any>(null);
+  const [isQuickSubmitVisible, setIsQuickSubmitVisible] = useState(false);
+  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
 
   // Derived user
   const currentUser = (mockAuthUser || {
@@ -71,15 +86,50 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
       section: 'A'
   }) as User;
 
+  const handleTabNavigate = (tab: string) => {
+    if (tab === 'quick_submit') {
+      setActiveAssignmentId(null);
+      setIsQuickSubmitVisible(true);
+      return;
+    }
+
+    if (tab === 'quick_query') {
+      const primaryClass = studentClasses[0];
+      if (primaryClass?.teacher_id) {
+        setSelectedChat(primaryClass.teacher_id);
+        onNavigate('messages');
+      } else {
+        onNavigate('messages');
+      }
+      return;
+    }
+
+    if (tab === 'quick_pay') {
+      const pendingFee = dbFees.find(f => f.status === 'PENDING' || f.status === 'OVERDUE');
+      if (pendingFee) {
+        setFeeForPayment(pendingFee);
+        setIsPayModalVisible(true);
+      } else {
+        onNavigate('fees');
+      }
+      return;
+    }
+
+    onNavigate(tab);
+  };
+
+  const handleQuickCapture = (assignmentId: string) => {
+    setActiveAssignmentId(assignmentId);
+    setIsQuickSubmitVisible(true);
+  };
+
   // --- Supabase: Fetch Student Data ---
   const fetchStudentData = useCallback(async () => {
     if (!mockAuthUser?.id) return;
     setIsLoading(true);
     try {
-        // 1. Fetch Student's Class Assignments
         const { data: rosterData, error: rosterError } = await supabase
             .from('class_roster')
-            // GLOBAL SYNC FIX: Explicitly request 'section' metadata for precise privacy gating
             .select('id, class_id, section, grade_score, classes(name, subject, teacher_name, class_time, last_topic)')
             .eq('user_id', mockAuthUser.id)
             .eq('role_in_class', 'student');
@@ -89,7 +139,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
         if (rosterData && (rosterData || []).length > 0) {
             const classIds = (rosterData || []).map(r => r.class_id);
 
-            // 2. Resolve Real Teacher Names from class_roster for these classes
             const { data: facultyData, error: facultyError } = await supabase
                 .from('class_roster')
                 .select('class_id, role_in_class, section, subject, users!inner(id, name, role, avatar)')
@@ -98,48 +147,47 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
             
             if (facultyError) throw facultyError;
 
-            // 3. Fetch Materials
             const { data: materials, error: materialsError } = await supabase
                 .from('materials')
-                .select('*')
+                .select('*, creator:users!created_by(name), classes(subject, teacher_name)')
                 .in('class_id', classIds)
                 .order('created_at', { ascending: false });
             
             if (materialsError) throw materialsError;
             
-            // 4. Privacy Filtering: Strict Section-Aware Logic
-            const filteredMaterials = (materials || []).filter((m: any) => {
-                if (m.is_public) return true; // CONFIRMED: Public content visible to everyone
-                
-                // Find what section the student is in for this specific material's class
-                const enrollment = rosterData?.find(r => r.class_id === m.class_id);
-                if (!enrollment) return false;
-
-                // Match: Material has NO section (class-wide) OR matches student's specific section
-                return !m.section || m.section === enrollment.section;
-            });
+            await Promise.all([
+              fetchAssignments(mockAuthUser.school_id || ''),
+              fetchSubmissions(mockAuthUser.school_id || '', mockAuthUser.id),
+              fetchGrades(mockAuthUser.id)
+            ]);
+            
+            const filteredMaterials = (materials || [])
+                .filter((m: any) => {
+                    if (m.is_public) return true;
+                    const enrollment = rosterData?.find(r => r.class_id === m.class_id);
+                    if (!enrollment) return false;
+                    return !m.section || m.section === enrollment.section;
+                })
+                .map((m: any) => ({
+                    ...m,
+                    subject: m.subject || m.classes?.subject || m.classes?.name || 'Academic Resource',
+                    teacher_name: m.creator?.name || m.classes?.teacher_name || 'Academic Faculty'
+                }));
 
             setStudentMaterials(filteredMaterials);
 
-            // 4. Personnel Enrichment Transformation: EXPANDED 1:M Mapping
             const flattenedClasses: any[] = [];
             
             (rosterData || []).forEach((r: any) => {
                 const studentSection = (r.section || 'A').toString().toUpperCase().trim();
-                
-                // Find all faculty assigned to this specific class
                 const classFaculty = (facultyData || []).filter(f => {
                     const facultySection = (f.section || '').toString().toUpperCase().trim();
-                    // Match: Exact section OR teacher is assigned to 'ALL' sections (empty or 'ALL')
                     return f.class_id === r.class_id && (facultySection === studentSection || facultySection === '' || facultySection === 'ALL');
                 });
 
                 if (classFaculty.length > 0) {
                     classFaculty.forEach(f => {
                         const u = Array.isArray(f.users) ? f.users[0] : f.users;
-                        
-                        // SKIP: Only skip if it's a PURE mentor role with no subject. 
-                        // If they are a subject teacher (even if they also mentor), they should show up.
                         if (f.role_in_class === 'mentor' && !f.subject) return;
 
                         flattenedClasses.push({
@@ -158,7 +206,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                         });
                     });
                 } else {
-                    // Fallback
                     flattenedClasses.push({
                         ...r,
                         ...r.classes,
@@ -171,11 +218,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                     });
                 }
             });
-            // Ensure unique cards per (Class, Subject, Teacher)
             const uniqueClasses = Array.from(new Map(flattenedClasses.map(c => [`${c.class_id}_${c.subject}_${c.teacher_id}`, c])).values());
             setStudentClasses(uniqueClasses);
 
-            // 5. Fetch Essential Institutional Contacts (Principal)
             const { data: principalData } = await supabase
                 .from('users')
                 .select('id, name, role, avatar')
@@ -186,8 +231,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                 setDbPrincipals(principalData as User[]);
             }
 
-            // Sync faculty data from the roster
-            // ARMOR: Strictly filter faculty to match only whose (Class ID, Section) pairs match the student's enrollment
             const facultyUsers: User[] = (facultyData || [])
                 .filter((f: any) => {
                     return flattenedClasses.some(c => c.class_id === f.class_id && c.section === f.section);
@@ -199,8 +242,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                 .filter(u => u && u.id);
             setDbFaculty(facultyUsers);
             
-            // 6. Fetch Personal Attendance Rate
-            console.log(`[STUDENT_DASHBOARD_PULSE] Syncing attendance for: ${mockAuthUser.id}`);
             const { data: attData, error: attError } = await supabase
                 .from('attendance')
                 .select('status')
@@ -211,50 +252,38 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                 const present = attData.filter((r: any) => (r.status || '').toUpperCase() === 'PRESENT').length;
                 const rate = Math.round((present / total) * 100);
                 setAttendanceRate(`${rate}%`);
-                console.log(`[STUDENT_SYNC_SUCCESS] Personal Rate: ${rate}%`);
             } else {
                 setAttendanceRate('0%');
-                console.log(`[STUDENT_SYNC_EMPTY] No history for student ${mockAuthUser.id}`);
             }
-
         }
     } catch (err: any) {
         console.error('fetchStudentData error:', err.message);
     } finally {
         setIsLoading(false);
     }
-  }, [mockAuthUser?.id]);
+  }, [mockAuthUser?.id, fetchAssignments, fetchSubmissions, fetchGrades]);
 
-  // Financial Circuit Breaker: Decouple from Pulse to prevent sync loops
   useEffect(() => {
     if (mockAuthUser?.id) {
         fetchStudentFees(mockAuthUser.id);
     }
   }, [mockAuthUser?.id, fetchStudentFees]);
 
-  // Optimized contact lookup (Memoized to prevent sync loops)
   const displayContacts = React.useMemo(() => {
     const uniqueContactsMap = new Map();
-    
-    // 1. Add Headmasters
     dbPrincipals.forEach(u => {
         if (u.id !== mockAuthUser?.id) uniqueContactsMap.set(u.id, u);
     });
-
-    // 2. Add Faculty from roster
     dbFaculty.forEach(u => {
         if (u.id !== mockAuthUser?.id) uniqueContactsMap.set(u.id, u);
     });
-
-    // 3. Add anyone we have a conversation with
-    const myConversations = new Set<string>();
     (chatMessages || []).forEach((msg: any) => {
-        if (msg.sender_id === mockAuthUser?.id) myConversations.add(msg.receiver_id);
-        if (msg.receiver_id === mockAuthUser?.id) myConversations.add(msg.sender_id);
+        if (msg.sender_id === mockAuthUser?.id) uniqueContactsMap.set(msg.receiver_id, { id: msg.receiver_id, name: 'User' });
+        if (msg.receiver_id === mockAuthUser?.id) uniqueContactsMap.set(msg.sender_id, { id: msg.sender_id, name: 'User' });
     });
-    
     return Array.from(uniqueContactsMap.values()) as User[];
   }, [dbPrincipals, dbFaculty, chatMessages, mockAuthUser?.id]);
+
   const showToast = (msg: string) => {
     setToast({ show: true, message: msg });
     setTimeout(() => setToast({ show: false, message: '' }), 3000);
@@ -271,12 +300,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
             fetchLiveStreams(mockAuthUser.school_id);
         }
     };
-
     hydrate();
   }, [fetchStudentData, fetchAnnouncements, fetchSchoolDetails, fetchMessages, fetchVideos, fetchLiveStreams, mockAuthUser?.school_id]);
-
-
-
 
   const handlePayNow = async (feeId: string) => {
     const fee = dbFees.find(f => f.id === feeId);
@@ -286,17 +311,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
     }
   };
 
+
   const handleConfirmPayment = async (method: string) => {
     if (!mockAuthUser?.id || !feeForPayment) return;
     setIsPaymentProcessing(true);
     try {
         const schoolId = mockAuthUser.school_id || mockAuthUser.schoolId || '';
         const orderData = await initiateFeePayment(feeForPayment.id, mockAuthUser.id, feeForPayment.amount, schoolId);
-        
         setIsPaymentProcessing(false);
-        setIsPayModalVisible(false); // Close simulation modal
-
-        // Trigger real Razorpay Checkout
+        setIsPayModalVisible(false);
         if (orderData && orderData.id) {
             setActiveRazorpayOrder({
                 ...orderData,
@@ -304,50 +327,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                 email: mockAuthUser.email,
                 contact: mockAuthUser.phone || ''
             });
-        } else {
-            throw new Error("Invalid order data received");
         }
     } catch (err: any) {
         setIsPaymentProcessing(false);
-        showToast("Payment initiation failed: " + err.message);
+        showToast("Payment failed: " + err.message);
     }
   };
 
   const handleRazorpaySuccess = async (paymentId: string, orderId: string, signature: string) => {
-    console.log('[RAZORPAY_FLOW] Payment Successful:', paymentId);
     setActiveRazorpayOrder(null);
     setShowPaymentSuccess(true);
     setTimeout(() => setShowPaymentSuccess(false), 5000);
-    
-    if (mockAuthUser?.id) {
-        // Refresh local student fees to show the 'Processing' status while webhook processes
-        fetchStudentFees(mockAuthUser.id);
-    }
-    showToast("Payment Successful! Verifying records...");
+    if (mockAuthUser?.id) fetchStudentFees(mockAuthUser.id);
+    showToast("Payment Successful!");
   };
 
   const handleLinkPress = (url: string) => {
     Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
   };
 
-  const handleSendMessage = async () => {
-    if (!msgInput.trim() || !selectedChat) return;
-    
-    // Defensive ID lookup for students
+  const handleSendMessage = async (type: 'text'|'image'|'document' = 'text', url?: string, name?: string, content?: string, targetId?: string) => {
+    const finalChat = targetId || selectedChat;
+    if (!finalChat) return;
+    const finalContent = content || msgInput.trim();
+    if (type === 'text' && !finalContent) return;
     const schoolId = mockAuthUser?.school_id || mockAuthUser?.schoolId;
     const senderId = currentUser.id || mockAuthUser?.id;
-
     if (schoolId && senderId) {
         try {
-            await sendChatMessage(schoolId, senderId, selectedChat, msgInput);
-            setMsgInput('');
-            // Success is handled by context Realtime listener
+            await sendChatMessage(schoolId, senderId, finalChat, finalContent, type, url, name);
+            if (!content) setMsgInput('');
         } catch (err: any) {
-            console.error('Student send error:', err.message);
             showToast(`Send failed: ${err.message}`);
         }
-    } else {
-        showToast('Identification error. Try role-switching again.');
     }
   };
 
@@ -356,9 +368,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
     senderId: msg.sender_id,
     receiverId: msg.receiver_id,
     message: msg.content,
-    timestamp: msg.created_at 
-        ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'Just now'
+    timestamp: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
   }));
 
   return (
@@ -380,14 +390,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                     <StudentHome 
                       currentUser={currentUser}
                       studentMaterials={studentMaterials}
-                      studentAssignments={studentAssignments}
+                      studentAssignments={assignments.filter(a => studentClasses.some(c => c.class_id === a.class_id))}
                       studentPrimaryClass={studentClasses[0] || null}
                       allStudentClasses={studentClasses}
                       announcements={announcements}
-                      onNavigate={onNavigate}
+                      onNavigate={handleTabNavigate}
+                      onQuickCapture={handleQuickCapture}
                       onShowHistory={() => setShowAllNotices(true)}
                       currentSchool={currentSchool}
                       attendanceRate={attendanceRate}
+                      studentSubmissions={submissions}
                     />
                   )
                 )}
@@ -396,13 +408,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                     <StudentClasses 
                       studentPrimaryClass={studentClasses[0] || null} 
                       allStudentClasses={studentClasses}
+                      studentMaterials={studentMaterials}
+                      studentAssignments={assignments}
+                      onNavigate={onNavigate}
+                      onAction={handleTabNavigate}
+                      onFilterNavigate={handleTabNavigateWithFilter}
                     />
                   ) : (
-                    <RestrictedAccessView 
-                        featureName="Class Access" 
-                        onContactAdmin={() => onNavigate('messages')}
-                        role={role}
-                    />
+                    <RestrictedAccessView featureName="Class Access" onContactAdmin={() => onNavigate('messages')} role={role} />
                   )
                 )}
                 {activeTab === 'fees' && (
@@ -421,12 +434,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                        handleLinkPress={handleLinkPress}
                      />
                   ) : (
-                    <RestrictedAccessView 
-                        featureName="Fee Access" 
-                        onContactAdmin={() => onNavigate('messages')}
-                        role={role}
-                    />
+                    <RestrictedAccessView featureName="Fee Access" onContactAdmin={() => onNavigate('messages')} role={role} />
                   )
+                )}
+                {activeTab === 'materials' && (
+                  <StudentMaterials 
+                    materials={studentMaterials}
+                    isLoading={isLoading}
+                    onBack={() => onNavigate('home')}
+                    initialSubject={materialFilter}
+                  />
                 )}
                 {activeTab === 'videos' && (
                   hasPermission('videos', role, currentSchool?.id) ? (
@@ -448,14 +465,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                       setVideoTab={setVideoTab}
                       videoSearch={videoSearch}
                       setVideoSearch={setVideoSearch}
-                      studentClasses={studentClasses}
                     />
                   ) : (
-                    <RestrictedAccessView 
-                        featureName="Resource Access" 
-                        onContactAdmin={() => onNavigate('messages')}
-                        role={role}
-                    />
+                    <RestrictedAccessView featureName="Resource Access" onContactAdmin={() => onNavigate('messages')} role={role} />
                   )
                 )}
                 {activeTab === 'messages' && (
@@ -468,27 +480,46 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
                     setSelectedChat={setSelectedChat}
                     markMessagesAsRead={markMessagesAsRead}
                     uploadMessageFile={uploadMessageFile}
+                    fetchMoreMessages={fetchMoreMessages}
+                    currentSchoolId={currentSchool?.id}
                     msgInput={msgInput}
                     setMsgInput={setMsgInput}
                   />
                 )}
+                {activeTab === 'assignments' && (
+                  hasPermission('assignments', role, currentSchool?.id) ? (
+                    <StudentAssignments 
+                      assignments={assignments.filter(a => studentClasses.some(c => c.class_id === a.class_id))}
+                      submissions={submissions}
+                      uploadFile={uploadMessageFile}
+                      onSubmit={async (sub) => {
+                        if (mockAuthUser?.id) {
+                          await submitAssignment({
+                            ...sub,
+                            student_id: mockAuthUser.id,
+                            school_id: mockAuthUser.school_id || ''
+                          });
+                          fetchSubmissions(mockAuthUser.school_id || '', mockAuthUser.id);
+                        }
+                      }}
+                      isLoading={isLoading}
+                    />
+                  ) : (
+                    <RestrictedAccessView featureName="Task Hub" onContactAdmin={() => onNavigate('messages')} role={role} />
+                  )
+                )}
+                {activeTab === 'reports' && (
+                  <StudentReports grades={dbGrades} isLoading={isLoading} />
+                )}
                 {activeTab === 'profile' && (
-                  <StudentProfile 
-                    currentUser={currentUser}
-                    onShowEditProfileModal={() => {}}
-                    onLogout={() => console.log('Logout')}
-                  />
+                  <StudentProfile currentUser={currentUser} onShowEditProfileModal={() => {}} onLogout={() => {}} />
                 )}
              </>
          )}
 
-
          <VideoPlayerModal 
             visible={showVideoPlayerModal}
-            onClose={() => {
-                setShowVideoPlayerModal(false);
-                setPlayingVideo(null);
-            }}
+            onClose={() => { setShowVideoPlayerModal(false); setPlayingVideo(null); }}
             video={playingVideo}
          />
 
@@ -505,14 +536,29 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ role, active
              <RazorpayCheckout 
                order={activeRazorpayOrder}
                onSuccess={handleRazorpaySuccess}
-               onFailure={(err) => {
-                   console.error('[RAZORPAY_FLOW] Payment Failed:', err);
-                   setActiveRazorpayOrder(null);
-                   showToast(`Payment failed: ${err.description || 'Verification Error'}`);
-               }}
+               onFailure={() => setActiveRazorpayOrder(null)}
                onClose={() => setActiveRazorpayOrder(null)}
              />
          )}
+
+          <QuickSubmitModal 
+             visible={isQuickSubmitVisible}
+             onClose={() => { setIsQuickSubmitVisible(false); setActiveAssignmentId(null); }}
+             assignments={assignments.filter(a => studentClasses.some(c => c.class_id === a.class_id))}
+             submissions={submissions}
+             initialAssignmentId={activeAssignmentId}
+             uploadFile={uploadMessageFile}
+             onSubmit={async (sub) => {
+               if (mockAuthUser?.id) {
+                 await submitAssignment({
+                   ...sub,
+                   student_id: mockAuthUser.id,
+                   school_id: mockAuthUser.school_id || ''
+                 });
+                 fetchSubmissions(mockAuthUser.school_id || '', mockAuthUser.id);
+               }
+             }}
+           />
       </View>
   );
 };

@@ -12,6 +12,10 @@ import { MentorMaterials } from '@screens/mentor/MentorMaterials';
 
 import { DashboardDomainBundles } from '@/types/dashboard';
 import { AnnouncementsScreen } from '@components/common';
+import { TeacherGrading } from '@screens/teacher/TeacherGrading';
+import { TeacherReports } from '@screens/teacher/TeacherReports';
+import { TeacherClassDetail } from '@screens/teacher/TeacherClassDetail';
+import { TeacherApprovals } from '@screens/teacher/TeacherApprovals';
 
 interface MentorRouterProps {
     bundle: DashboardDomainBundles['mentor'];
@@ -20,7 +24,40 @@ interface MentorRouterProps {
 
 export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) => {
     const { data, actions } = bundle;
-    const { activeTab, currentUser, currentUserRole, currentSchool, onNavigate, hasPermission, onLogout } = common;
+    const { activeTab, currentUser, currentUserRole, currentSchool, onNavigate, hasPermission, onLogout, showToast } = common;
+
+    if (data.showGrading) {
+        return (
+            <TeacherGrading 
+                onBack={() => { 
+                    actions.setShowGrading?.(false); 
+                    actions.setGradingInitialClass?.(null); 
+                    actions.setSelectedAssignmentForGrading?.(null);
+                }}
+                initialClass={data.gradingInitialClass}
+                initialAssignment={data.selectedAssignmentForGrading}
+                onAddAssignment={(cid) => {
+                    actions.setModalInitialClassId?.(cid || null);
+                    actions.setShowAssignmentModal?.(true);
+                }}
+            />
+        );
+    }
+
+    if (data.showReports) {
+        return (
+            <TeacherReports 
+                assignedSections={data.teacherAssignedSections || []}
+                onBack={() => actions.setShowReports?.(false)}
+                onShowToast={showToast}
+                initialClassId={data.gradingInitialClass?.class_id || data.gradingInitialClass?.id}
+            />
+        );
+    }
+
+    if (data.showApprovals) {
+        return <TeacherApprovals onBack={() => actions.setShowApprovals?.(false)} />;
+    }
 
     switch (activeTab) {
         case 'home':
@@ -41,10 +78,13 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     onShowHistory={() => onNavigate?.('notices')}
                     onDeleteNotice={actions.handleDeleteAnnouncement}
                     onShowAddStudentModal={() => actions.setShowAddStudentModal(true)}
+                    onQuickAction={actions.handleQuickAction}
                     currentSchool={currentSchool}
                     attendanceRate={data.classAttendanceRate || '...'}
                     subjectCount={data.actualSubjectCount}
                     parentCount={data.actualParentCount}
+                    teacherAssignedSections={data.teacherAssignedSections}
+                    pendingGradesCount={data.pendingGradesCount}
                 />
             );
         case 'classes':
@@ -61,6 +101,11 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                 <MentorClasses 
                     assignedClassName={data.assignedClassName}
                     mentorRoster={data.mentorRoster}
+                    dbRoster={data.dbRoster}
+                    dbClasses={data.dbClasses}
+                    teacherAssignedSections={data.teacherAssignedSections}
+                    dbMaterials={data.dbMaterials}
+                    assignments={data.assignments}
                     sectionFaculty={data.dbSectionFaculty}
                     attendanceMap={data.attendanceMap}
                     isSavingAttendance={data.isSavingAttendance}
@@ -90,6 +135,10 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     chatMessages={common.transformedChatMessages}
                     currentUser={currentUser}
                     handleSendMessage={common.handleSendMessage}
+                    markMessagesAsRead={common.markMessagesAsRead}
+                    uploadMessageFile={common.uploadMessageFile}
+                    fetchMoreMessages={common.fetchMoreMessages}
+                    currentSchoolId={currentSchool?.id}
                 />
             );
         case 'videos':
@@ -116,23 +165,7 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
 
                     currentUser={currentUser}
                     onNavigate={onNavigate}
-                />
-            );
-        case 'monitor':
-            if (hasPermission && !hasPermission('monitor')) {
-                return (
-                    <RestrictedAccessView 
-                        featureName="Security Monitor" 
-                        onContactAdmin={() => onNavigate?.('messages')}
-                        role={currentUserRole}
-                    />
-                );
-            }
-            return (
-                <MentorMonitor 
-                    assignedClassId={data.assignedClassId}
-                    assignedSection={data.assignedSection}
-                    assignedClassName={data.assignedClassName}
+                    teacherAssignedSections={data.teacherAssignedSections}
                 />
             );
         case 'profile':
@@ -141,6 +174,7 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     currentUser={currentUser!}
                     onShowEditProfileModal={() => actions.setShowEditProfileModal(true)}
                     onLogout={onLogout || (() => {})}
+                    recentActivity={data.systemLogs || []}
                 />
             );
         case 'notices':
@@ -157,7 +191,9 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
             return (
                 <MentorMaterials 
                     materials={data.dbMaterials || []}
-                    onUpload={() => actions.setShowUploadMaterialModal?.(true) || actions.setShowUploadModal?.(true)}
+                    onUpload={() => actions.handleQuickAction?.('Upload Material')}
+                    onDelete={actions.handleDeleteMaterial}
+                    onBack={() => onNavigate?.('home')}
                 />
             );
         default:
@@ -177,7 +213,15 @@ export const MentorRouter: React.FC<MentorRouterProps> = ({ bundle, common }) =>
                     onShowHistory={() => onNavigate?.('notices')}
                     onDeleteNotice={actions.handleDeleteAnnouncement}
                     onShowAddStudentModal={() => actions.setShowAddStudentModal(true)}
+                    onQuickAction={actions.handleQuickAction}
                     currentSchool={currentSchool}
+                    attendanceRate={data.classAttendanceRate}
+                    subjectCount={data.actualSubjectCount}
+                    parentCount={data.actualParentCount}
+                    teacherAssignedSections={data.teacherAssignedSections}
+                    pendingGradesCount={data.pendingGradesCount}
+                    mentorMaterials={data.dbMaterials}
+                    onDeleteMaterial={actions.handleDeleteMaterial}
                 />
             );
     }

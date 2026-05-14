@@ -10,6 +10,7 @@ import { AppTheme } from '@constants/Theme';
 import { AppCard, AppRow, StatusPill, SectionHeader, Skeleton, SkeletonCard, AvatarShimmer } from '@components/common';
 import { USER_DEFAULTS } from '@constants/user';
 import { triggerHaptic, HapticPatterns } from '@utils/haptics';
+import { UnifiedActivityFeed } from '@components/dashboard/UnifiedActivityFeed';
 
 const StyledLinearGradient = LinearGradient;
 const AnimatedGradient = Animated.createAnimatedComponent(StyledLinearGradient);
@@ -19,7 +20,7 @@ interface TeacherProfileProps {
   onEdit: () => void;
   onAccountSecurity?: () => void;
   onLogout: () => void;
-  recentActivity?: any[];
+  onViewAll?: () => void;
 }
 
 export const TeacherProfile = React.memo<TeacherProfileProps>(({
@@ -27,7 +28,7 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
   onEdit,
   onAccountSecurity,
   onLogout,
-  recentActivity = [],
+  onViewAll,
 }) => {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -319,34 +320,11 @@ export const TeacherProfile = React.memo<TeacherProfileProps>(({
       </View>
 
       <View className="px-4 mb-10">
-        <SectionHeader
-          title="RECENT ACTIVITY"
-          className="mb-3"
-          rightElement={
-            <StatusPill 
-              label="LOGS" 
-              type="neutral" 
-            />
-          }
+        <UnifiedActivityFeed 
+          limit={5} 
+          onViewAll={onViewAll}
+          emptyMessage="Your digital workspace is clear. No recent professional actions detected."
         />
-        <AppCard className="p-0 overflow-hidden border border-white shadow-sm">
-          {recentActivity.length > 0 ? recentActivity.map((act, idx) => (
-            <AppRow
-              key={act.id || idx}
-              title={act.title}
-              subtitle={`${act.user} • ${act.time}`}
-              avatarIcon={act.icon}
-              avatarBg={act.bg}
-              showBorder={idx < recentActivity.length - 1}
-              rightElement={<Icons.ChevronRight size={12} color="#d1d5db" />}
-            />
-          )) : (
-              <View className="items-center py-10">
-                  <Icons.Notifications size={20} color="#cbd5e1" />
-                  <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[1px] mt-2">No recent system activity</Text>
-              </View>
-          )}
-        </AppCard>
       </View>
 
       <View className="px-4 mb-10 items-center opacity-50">

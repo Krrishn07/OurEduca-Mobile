@@ -29,6 +29,7 @@ export interface DashboardDomainBundles {
         onNavigate: (tab: string) => void;
         onLogout: () => void;
         showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+        isLoading?: boolean;
         hasPermission: (permission: string) => boolean;
         getDisplayContacts: () => any[];
         transformedChatMessages: ChatMessage[];

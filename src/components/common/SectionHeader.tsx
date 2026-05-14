@@ -22,7 +22,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 
           <Text className={AppTypography.sectionTitle}>{title}</Text>
         </View>
-        {subtitle ? <Text className={`${AppTypography.eyebrow} text-indigo-500 mt-0.5`}>{subtitle}</Text> : null}
+        {subtitle ? <Text className={`${AppTypography.eyebrow} text-gray-400 mt-0.5`}>{subtitle}</Text> : null}
       </View>
       {rightElement}
     </View>

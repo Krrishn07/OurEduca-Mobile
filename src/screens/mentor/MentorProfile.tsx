@@ -20,6 +20,7 @@ interface MentorProfileProps {
   onShowEditProfileModal: () => void;
   onAccountSecurity?: () => void;
   onLogout: () => void;
+  recentActivity?: any[];
 }
 
 export const MentorProfile: React.FC<MentorProfileProps> = ({
@@ -27,6 +28,7 @@ export const MentorProfile: React.FC<MentorProfileProps> = ({
   onShowEditProfileModal,
   onAccountSecurity,
   onLogout,
+  recentActivity = []
 }) => {
   return (
     <ScrollView className="flex-1 bg-[#f5f7ff]" showsVerticalScrollIndicator={false}>
@@ -110,7 +112,7 @@ export const MentorProfile: React.FC<MentorProfileProps> = ({
         </View>
 
         {/* Security & Settings Section */}
-        <View className="px-4 mb-24">
+        <View className="px-4 mb-5">
             <SectionHeader
                 title="SECURITY & SETTINGS"
                 className="px-2"
@@ -136,13 +138,44 @@ export const MentorProfile: React.FC<MentorProfileProps> = ({
                   rightElement={<Icons.ChevronRight size={13} color="#fca5a5" />}
                 />
             </AppCard>
+        </View>
 
-            {/* App Footer */}
-            <View className="mt-16 items-center opacity-30">
-                <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-4" />
-                <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[4px] font-inter-black">OurEduca Mentor v2.0</Text>
-                <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black italic text-center">Secured Connection • My School Hub</Text>
-            </View>
+        {/* Recent Activity Module */}
+        <View className="px-4 mb-10">
+            <SectionHeader
+                title="RECENT ACTIVITY"
+                className="px-2 mb-3"
+                rightElement={<StatusPill label="LIVE" type="neutral" />}
+            />
+            <AppCard className="p-0 overflow-hidden border border-white shadow-xl shadow-indigo-100/30">
+                {recentActivity.length > 0 ? recentActivity.map((act, idx) => {
+                    const IconComponent = Icons[act.icon as keyof typeof Icons] || Icons.Notifications;
+                    const timeStr = act.created_at ? new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent';
+                    return (
+                        <AppRow 
+                            key={act.id || idx}
+                            title={act.title}
+                            subtitle={`${act.category} • ${timeStr}`}
+                            avatarIcon={<IconComponent size={14} color={act.color || '#4f46e5'} />}
+                            avatarBg={act.color ? `${act.color}15` : '#eef2ff'}
+                            showBorder={idx < recentActivity.length - 1}
+                            rightElement={<Icons.ChevronRight size={12} color="#d1d5db" />}
+                        />
+                    );
+                }) : (
+                    <View className="items-center py-12">
+                        <Icons.Notifications size={24} color="#cbd5e1" />
+                        <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mt-3">No recent activity detected</Text>
+                    </View>
+                )}
+            </AppCard>
+        </View>
+
+        {/* App Footer */}
+        <View className="mb-16 items-center opacity-30">
+            <View className="w-8 h-0.5 bg-gray-300 rounded-full mb-4" />
+            <Text className="text-[9px] font-black text-gray-400 uppercase tracking-[4px] font-inter-black">OurEduca Mentor v2.0</Text>
+            <Text className="text-[8px] font-black text-gray-400 mt-1 uppercase tracking-widest font-inter-black italic text-center">Secured Connection • My School Hub</Text>
         </View>
     </ScrollView>
   );

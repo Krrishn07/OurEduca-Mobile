@@ -89,7 +89,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   };
 
   const handleSubmit = () => {
-    const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === selectedRosterId);
+    const selectedRoster = assignedSections.find((r, idx) => (r.rosterId || r.id || `${r.class_id}-${r.section}-${idx}`).toString() === selectedRosterId);
     if (!selectedRoster || !selectedRoster.class_id) return;
 
     if (!canSubmit) {
@@ -116,7 +116,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     setTimeout(() => onClose(), 1500);
   };
 
-  const selectedRoster = assignedSections.find(r => (r.id || r.rosterId) === selectedRosterId);
+  const selectedRoster = assignedSections.find((r, idx) => (r.rosterId || r.id || `${r.class_id}-${r.section}-${idx}`).toString() === selectedRosterId);
 
   return (
     <ModalShell
@@ -148,18 +148,19 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   <Reanimated.View entering={FadeInDown.delay(100).springify().damping(SPRING_CONFIG.damping)}>
                     <Text className="text-[10px] font-inter-bold text-gray-400 uppercase tracking-[0.5px] mb-3 px-1">Select Class</Text>
                     <View className="flex-row flex-wrap gap-2 mb-6">
-                        {assignedSections.map(r => {
-                            const uniqueId = r.id || r.rosterId;
+                        {assignedSections.map((r, idx) => {
+                            // PRIORITIZE rosterId (unique to entry) over id (which might be class ID)
+                            const uniqueId = (r.rosterId || r.id || `${r.class_id}-${r.section}-${idx}`).toString();
                             const isSelected = selectedRosterId === uniqueId;
                             return (
                                 <TouchableOpacity 
-                                    key={uniqueId}
+                                    key={`section-${uniqueId}-${idx}`}
                                     onPress={() => setSelectedRosterId(uniqueId)}
                                     activeOpacity={0.75}
                                     className={`px-5 py-3 rounded-2xl border-2 ${isSelected ? 'bg-white border-indigo-500 shadow-xl shadow-indigo-100/50' : 'bg-gray-50/30 border-transparent shadow-sm'}`}
                                 >
                                     <Text className={`text-[11px] font-inter-black uppercase tracking-[0.5px] ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>
-                                        {r.name || 'Class'}
+                                        {r.name || (r as any).classes?.name || 'Class'}
                                     </Text>
                                     <Text className={`text-[8px] font-inter-bold uppercase tracking-[0.5px] mt-0.5 ${isSelected ? 'text-indigo-400' : 'text-gray-400'}`}>
                                         {r.subject || 'Academic'} • Sec {r.section || 'A'}

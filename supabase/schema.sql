@@ -198,7 +198,23 @@ CREATE TABLE IF NOT EXISTS assignments (
 );
 
 -- ============================================================
--- 8. GRADES TABLE (Specific evaluations per assignment)
+-- 8. SUBMISSIONS TABLE (Student work entries)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS submissions (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    student_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assignment_id   UUID NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+    school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    content         TEXT, -- Text-based submission
+    content_url     TEXT, -- Link to uploaded photo/file
+    content_type    TEXT DEFAULT 'TEXT', -- 'TEXT', 'IMAGE', 'LINK'
+    status          TEXT DEFAULT 'SUBMITTED' CHECK (status IN ('SUBMITTED', 'GRADED')),
+    submitted_at    TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(student_id, assignment_id)
+);
+
+-- ============================================================
+-- 9. GRADES TABLE (Specific evaluations per assignment)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS grades (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -215,6 +231,8 @@ CREATE TABLE IF NOT EXISTS grades (
 CREATE INDEX IF NOT EXISTS idx_grades_student ON grades(student_id);
 CREATE INDEX IF NOT EXISTS idx_grades_assignment ON grades(assignment_id);
 CREATE INDEX IF NOT EXISTS idx_grades_class ON grades(class_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id);
 
 -- ANALYTICS VIEW
 CREATE OR REPLACE VIEW class_performance AS

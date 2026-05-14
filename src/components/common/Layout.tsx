@@ -148,7 +148,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, role, activeTab, onTab
         return [
           { id: 'home', label: 'Home', icon: Icons.Home },
           { id: 'classes', label: 'Classes', icon: Icons.Classes },
-          { id: 'monitor', label: 'Monitor', icon: Icons.Eye },
           { id: 'videos', label: 'Videos', icon: Icons.Video },
           { id: 'messages', label: 'Messages', icon: Icons.Messages },
           { id: 'profile', label: 'Profile', icon: Icons.Profile },

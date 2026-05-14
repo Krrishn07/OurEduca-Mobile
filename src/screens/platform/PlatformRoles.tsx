@@ -7,8 +7,10 @@ import { ViewRoleUsersModal } from './modals/ViewRoleUsersModal';
 import { EditRoleModal } from './modals/EditRoleModal';
 import { normalizePermissions } from './constants';
 import { User, UserRole } from '@/types';
-import { AppTheme, AppCard, AppButton, AppTypography, AppRadius, AppRow, StatusPill } from '@components/common';
+import { AppTheme, AppCard, AppButton, AppTypography, AppRadius, AppRow, StatusPill, PlatinumSearchHeader, SectionHeader } from '@components/common';
 import { LinearGradient } from 'expo-linear-gradient';
+import { triggerHaptic } from '@utils/haptics';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 
 interface Role {
   id: string;
@@ -103,131 +105,139 @@ export const PlatformRoles: React.FC<PlatformRolesProps> = ({
     };
 
     return (
-        <View className="flex-1 bg-[#f5f7ff]">
-            {/* High-Fidelity Header */}
-            <LinearGradient 
-                colors={AppTheme.colors.gradients.brand} 
-                start={{x: 0, y: 0}} end={{x: 1, y: 1}} 
-                className="px-6 pt-5 pb-10 rounded-b-[40px] shadow-xl shadow-indigo-200"
-            >
-                <View className="absolute right-[-20] bottom-[-20] opacity-10 transform rotate-12">
-                    <Icons.Admin size={140} color="white" />
-                </View>
-                <View className="flex-row justify-between items-center relative z-10 mb-5">
-                    <View>
-                        <Text className={`${AppTypography.heroTitle} text-white`}>System Roles</Text>
-                        <Text className={`${AppTypography.eyebrow} text-white/60 mt-1`}>RBAC Configuration</Text>
-                    </View>
-                    {!schoolId && (
+        <View className="flex-1 bg-[#fbfbfe]">
+            <PlatinumSearchHeader 
+                title="System Roles"
+                subtitle="RBAC CONFIGURATION"
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                placeholder="Search roles, permissions..."
+                rightAction={
+                    !schoolId && (
                         <TouchableOpacity 
-                            onPress={() => setIsAddRoleModalVisible(true)} 
-                            className="w-10 h-10 bg-white/10 rounded-2xl items-center justify-center border border-white/20 active:scale-95"
+                            onPress={() => { triggerHaptic(); setIsAddRoleModalVisible(true); }} 
+                            className="w-10 h-10 bg-indigo-600 rounded-full items-center justify-center shadow-md shadow-indigo-200 active:scale-95"
                         >
                             <Icons.Plus size={20} color="white" />
                         </TouchableOpacity>
-                    )}
-                </View>
-
-                {/* Search Bar */}
-                <View className="bg-white/10 rounded-2xl border border-white/20 px-4 py-3 flex-row items-center relative z-10">
-                    <Icons.Search size={18} color="white" opacity={0.8} />
-                    <TextInput 
-                        className="flex-1 ml-3 text-sm font-bold text-white p-0" 
-                        placeholder="Filter system roles..." 
-                        placeholderTextColor="rgba(255, 255, 255, 0.4)" 
-                        selectionColor="white"
-                        value={searchQuery} 
-                        onChangeText={setSearchQuery} 
-                    />
-                </View>
-            </LinearGradient>
-
-            {/* Roles Eyebrow — Compactness consistent with dashboard */}
-            <View className="flex-row items-center mt-6 mb-3 px-6">
-                <View className="w-1 h-4 bg-indigo-500 rounded-full mr-2" />
-                <Text className="text-[10px] font-black text-gray-900 uppercase tracking-[2px] font-inter-black">Role Management</Text>
-            </View>
+                    )
+                }
+            />
 
             <ScrollView 
                 className="flex-1" 
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 60 }} 
+                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }} 
                 showsVerticalScrollIndicator={false}
             >
-            {/* Role list — 3-zone AppCard */}
-            <AppCard className="p-0 overflow-hidden mb-4">
+                {/* Statistics Overview (Optional but premium) */}
+                <View className="flex-row gap-3 mb-8">
+                    <View className="flex-1 bg-indigo-50/50 p-4 rounded-[28px] border border-indigo-100/50">
+                        <Text className="text-[10px] font-black text-indigo-400 uppercase tracking-widest font-inter-black mb-1">Total Roles</Text>
+                        <Text className="text-2xl font-black text-indigo-900 font-inter-black">{systemRoles.length}</Text>
+                    </View>
+                    <View className="flex-1 bg-emerald-50/50 p-4 rounded-[28px] border border-emerald-100/50">
+                        <Text className="text-[10px] font-black text-emerald-400 uppercase tracking-widest font-inter-black mb-1">Active Users</Text>
+                        <Text className="text-2xl font-black text-emerald-900 font-inter-black">{users.length}</Text>
+                    </View>
+                </View>
+
+                <SectionHeader 
+                    title="INSTITUTIONAL HIERARCHY"
+                    className="px-1 mb-4"
+                />
+
                 {filteredRoles.map((role, index) => {
                     const RoleIcon = (Icons as any)[role.icon] || Icons.Shield;
                     return (
-                        <View key={role.id}>
-                            <AppRow
-                                title={role.name}
-                                subtitle={role.description}
-                                statusDot={role.usersCount > 0 ? 'active' : 'none'}
-                                avatarIcon={<RoleIcon size={16} color={role.color} />}
-                                avatarBg={`${role.color}18`}
-                                pills={
-                                    <View className="flex-row flex-wrap gap-1 mt-1">
-                                        {role.permissions.slice(0, 3).map((perm, pi) => (
-                                            <View key={pi} className="bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md">
-                                                <Text className="text-[8px] font-black text-gray-400 uppercase tracking-widest font-inter-black">{perm}</Text>
-                                            </View>
-                                        ))}
-                                        {role.permissions.length > 3 && (
-                                            <View className="bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">
-                                                <Text className="text-[8px] font-black text-indigo-500 uppercase tracking-widest font-inter-black">+{role.permissions.length - 3}</Text>
-                                            </View>
-                                        )}
+                        <AppCard key={role.id} className="p-0 overflow-hidden mb-5 border-white shadow-xl shadow-indigo-100/20 rounded-[32px]">
+                            <View className="p-5">
+                                <View className="flex-row justify-between items-start mb-4">
+                                    <View className="flex-row items-center flex-1 mr-4">
+                                        <View 
+                                            className="w-12 h-12 rounded-[20px] items-center justify-center mr-4 border border-white shadow-sm"
+                                            style={{ backgroundColor: `${role.color}10` }}
+                                        >
+                                            <RoleIcon size={22} color={role.color} />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-[17px] font-black text-slate-900 font-inter-black tracking-tight leading-6">{role.name}</Text>
+                                            <Text className="text-[9px] font-black text-slate-400 uppercase tracking-[2.5px] mt-1 font-inter-black opacity-80">{role.usersCount} Active Nodes</Text>
+                                        </View>
                                     </View>
-                                }
-                                meta={`${role.usersCount} users`}
-                                showBorder={false}
-                            />
-                            {/* Inline action row */}
-                            <View className={`flex-row gap-2 px-4 pb-3 ${index < filteredRoles.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                                <TouchableOpacity
-                                    onPress={() => handleModifyPermissions(role)}
-                                    className="flex-1 flex-row items-center justify-center bg-indigo-600 py-2 rounded-xl shadow-sm active:scale-95"
-                                >
-                                    <Icons.Shield size={12} color="white" />
-                                    <Text className="text-white text-[10px] font-black uppercase tracking-wider ml-1.5 font-inter-black">Permissions</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => handleViewUsers(role)}
-                                    className="flex-1 flex-row items-center justify-center bg-gray-50 border border-gray-100 py-2 rounded-xl active:scale-95"
-                                >
-                                    <Icons.Users size={12} color="#6b7280" />
-                                    <Text className="text-gray-600 text-[10px] font-black uppercase tracking-wider ml-1.5 font-inter-black">Users</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => handleEditRole(role)}
-                                    className="w-9 items-center justify-center bg-gray-50 border border-gray-100 rounded-xl active:scale-95"
-                                >
-                                    <Icons.Settings size={14} color="#94a3b8" />
-                                </TouchableOpacity>
+                                    <View className={`px-2.5 py-1 rounded-full ${role.usersCount > 0 ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-100'}`}>
+                                        <Text className={`text-[8px] font-black uppercase tracking-widest font-inter-black ${role.usersCount > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                            {role.usersCount > 0 ? 'ACTIVE' : 'IDLE'}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text className="text-slate-500 text-[12px] leading-5 font-inter-medium mb-5 px-1">
+                                    {role.description}
+                                </Text>
+
+                                <View className="flex-row flex-wrap gap-2 mb-6 px-1">
+                                    {role.permissions.slice(0, 4).map((perm, pi) => (
+                                        <View key={pi} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl">
+                                            <Text className="text-[9px] font-black text-slate-500 uppercase tracking-widest font-inter-black">{perm}</Text>
+                                        </View>
+                                    ))}
+                                    {role.permissions.length > 4 && (
+                                        <View className="bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl">
+                                            <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest font-inter-black">+{role.permissions.length - 4}</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View className="flex-row gap-3">
+                                    <TouchableOpacity
+                                        onPress={() => { triggerHaptic(); handleModifyPermissions(role); }}
+                                        className="flex-[1.5] flex-row items-center justify-center bg-indigo-600 py-3.5 rounded-2xl shadow-lg shadow-indigo-200 active:scale-95"
+                                    >
+                                        <Icons.Shield size={14} color="white" />
+                                        <Text className="text-white text-[11px] font-black uppercase tracking-widest ml-2 font-inter-black">Manage Permissions</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => { triggerHaptic(); handleViewUsers(role); }}
+                                        className="flex-1 flex-row items-center justify-center bg-white border border-slate-100 py-3.5 rounded-2xl shadow-sm active:scale-95"
+                                    >
+                                        <Icons.Users size={14} color="#64748b" />
+                                        <Text className="text-slate-600 text-[11px] font-black uppercase tracking-widest ml-2 font-inter-black">Users</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => { triggerHaptic(); handleEditRole(role); }}
+                                        className="w-12 h-12 items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl active:scale-95"
+                                    >
+                                        <Icons.Settings size={18} color="#94a3b8" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
+                        </AppCard>
                     );
                 })}
-            </AppCard>
 
                 {/* Permissions Guide Node */}
-                <LinearGradient 
-                    colors={['#1e1b4b', '#312e81']} 
-                    start={{x: 0, y: 0}} 
-                    end={{x: 1, y: 1}} 
-                    style={{ borderRadius: 20 }}
-                    className="p-5 flex-row items-center shadow-lg shadow-indigo-200 mt-2 overflow-hidden"
-                >
-                    <View className="absolute right-[-20] bottom-[-20] opacity-10 transform rotate-12">
-                        <Icons.Shield size={120} color="white" />
-                    </View>
-                    <View className="flex-1 relative z-10">
-                        <Text className="text-white font-black text-[15px] mb-1 tracking-tight font-inter-black">Access Control Guide</Text>
-                        <Text className="text-indigo-300 text-[11px] leading-relaxed font-medium font-inter-medium">
-                            Role-based access determines what data nodes each user can interact with across the institutional hierarchy.
-                        </Text>
-                    </View>
-                </LinearGradient>
+                <Animated.View entering={FadeInDown.delay(300)}>
+                    <LinearGradient 
+                        colors={['#1e1b4b', '#312e81']} 
+                        start={{x: 0, y: 0}} 
+                        end={{x: 1, y: 1}} 
+                        style={{ borderRadius: 32 }}
+                        className="p-6 flex-row items-center shadow-2xl shadow-indigo-200 mt-2 overflow-hidden"
+                    >
+                        <View className="absolute right-[-20] bottom-[-20] opacity-10 transform rotate-12">
+                            <Icons.Shield size={120} color="white" />
+                        </View>
+                        <View className="flex-1 relative z-10">
+                            <Text className="text-white font-black text-[16px] mb-1 tracking-tight font-inter-black">RBAC Architecture</Text>
+                            <Text className="text-indigo-300 text-[11px] leading-relaxed font-inter-medium opacity-80">
+                                Role-based access determines what data nodes each user can interact with across the institutional hierarchy.
+                            </Text>
+                        </View>
+                        <View className="bg-white/10 p-3 rounded-2xl border border-white/20 ml-4">
+                            <Icons.Activity size={20} color="white" />
+                        </View>
+                    </LinearGradient>
+                </Animated.View>
             </ScrollView>
 
             <ModifyPermissionsModal visible={isPermissionsModalVisible} onClose={() => setIsPermissionsModalVisible(false)} role={selectedRole} onSave={handleSavePermissions} showConfirm={showConfirm} showToast={showToast} />

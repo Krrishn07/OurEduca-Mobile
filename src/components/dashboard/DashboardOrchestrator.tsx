@@ -22,8 +22,8 @@ export const DashboardOrchestrator: React.FC<DashboardOrchestratorProps> = ({ ro
             return <HeadmasterRouter bundle={bundles.headmaster} common={bundles.common} />;
         
         case UserRole.ADMIN_TEACHER:
-            // Intelligence: If mentor has no assigned class, fallback ONLY if they have teacher roles
-            if (!bundles.mentor.data.assignedClassId && (bundles.teacher.data.teacherAssignedSections?.length || 0) > 0) {
+            // Intelligence: If mentor has no assigned class, fallback ONLY if they have teacher roles and NOT loading
+            if (!bundles.mentor.data.assignedClassId && !bundles.common.isLoading && (bundles.teacher.data.teacherAssignedSections?.length || 0) > 0) {
                 return <TeacherRouter bundle={bundles.teacher} common={bundles.common} />;
             }
             return <MentorRouter bundle={bundles.mentor} common={bundles.common} />;

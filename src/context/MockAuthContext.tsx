@@ -3,6 +3,7 @@ import { supabase } from '@lib/supabase';
 import { UserRole } from '@/types';
 import { dbRoleToUserRole, DbRole } from '@utils/roleUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 // ============================================================
 // TYPES
@@ -29,17 +30,28 @@ export interface DbSchool {
   name: string;
 }
 
+export type OnboardingStatus = 'pending' | 'approved' | 'rejected' | 'none';
+
 interface MockAuthContextType {
   currentUser: DbUser | null;
   currentSchool: DbSchool | null;
   isLoading: boolean;
-  // This allows the Simulation Overlay to set the active identity
+  onboardingStatus: OnboardingStatus;
+  pendingRequest: any | null;
+  
+  // Auth Methods
   setSession: (userId: string) => Promise<void>;
   setMockUser: (role: string) => Promise<void>;
   updatePushToken: (token: string) => Promise<void>;
   clearSession: () => void;
-  // Metadata for the UI role system
+  
+  // Production Auth
+  signInWithOtp: (phone: string) => Promise<{ error: any }>;
+  verifyOtp: (phone: string, token: string) => Promise<{ error: any; status: OnboardingStatus }>;
+  
+  // Metadata
   currentUserRole: UserRole | null;
+  simulateStudentLogin: (name: string, phone: string, schoolId: string, classId: string, section: string, schoolName?: string) => void;
 }
 
 const SESSION_KEY = '@oureiduca_simulation_session';
@@ -50,6 +62,8 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [currentUser, setCurrentUser] = useState<DbUser | null>(null);
   const [currentSchool, setCurrentSchool] = useState<DbSchool | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>('none');
+  const [pendingRequest, setPendingRequest] = useState<any | null>(null);
 
   // Initialize: Load session from storage
   useEffect(() => {
@@ -114,6 +128,9 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (persist && AsyncStorage) {
         await AsyncStorage.setItem(SESSION_KEY, userId);
       }
+      
+      setOnboardingStatus('none');
+      setPendingRequest(null);
     } catch (err) {
       console.error('Error setting simulation session:', err);
       clearSession();
@@ -125,6 +142,8 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
   const clearSession = useCallback(async () => {
     setCurrentUser(null);
     setCurrentSchool(null);
+    setOnboardingStatus('none');
+    setPendingRequest(null);
     try {
       if (AsyncStorage) {
         await AsyncStorage.removeItem(SESSION_KEY);
@@ -134,10 +153,67 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, []);
 
-  // Helper to map DB role to existing UI enum
+  // PRODUCTION AUTH METHODS
+  const signInWithOtp = async (phone: string) => {
+    setIsLoading(true);
+    try {
+      // In production, we'd use: const { error } = await supabase.auth.signInWithOtp({ phone });
+      // For now, we simulate the success if it's a known phone or a valid pattern
+      console.log(`[AUTH] Sending OTP to ${phone}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return { error: null };
+    } catch (err) {
+      return { error: err };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOtp = async (phone: string, token: string) => {
+    setIsLoading(true);
+    try {
+      // 1. Resolve Identity
+      // First check if user is an official user
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', phone)
+        .maybeSingle();
+      
+      if (user) {
+        await setSession(user.id);
+        return { error: null, status: 'none' as OnboardingStatus };
+      }
+
+      // 2. Not a user, check onboarding requests
+      const { data: request, error: reqError } = await supabase
+        .from('student_onboarding_requests')
+        .select('*, schools(name), classes(name)')
+        .eq('phone', phone)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (request) {
+        setPendingRequest(request);
+        setOnboardingStatus(request.status as OnboardingStatus);
+        
+        // If pending or rejected, we don't set a currentUser
+        // We just return the status so the UI can show the correct screen
+        return { error: null, status: request.status as OnboardingStatus };
+      }
+
+      // 3. Neither user nor request exists
+      return { error: null, status: 'none' as OnboardingStatus };
+    } catch (err) {
+      return { error: err, status: 'none' as OnboardingStatus };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const currentUserRole = useMemo(() => {
     if (!currentUser) return null;
-    // Hybrid Logic: If a teacher is assigned as a mentor in any class, elevate to ADMIN_TEACHER
     if (currentUser.role === 'teacher' && currentUser.isMentor) return UserRole.ADMIN_TEACHER;
     return dbRoleToUserRole(currentUser.role);
   }, [currentUser]);
@@ -145,8 +221,7 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
   const setMockUser = useCallback(async (role: string) => {
     setIsLoading(true);
     try {
-      // 1. First, try to find a user with this role who ALSO has a roster entry
-      const { data: rosterUser, error: rosterError } = await supabase
+      const { data: rosterUser } = await supabase
         .from('class_roster')
         .select('user_id, users!inner(role)')
         .eq('users.role', role)
@@ -158,8 +233,7 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (targetUserId) {
         await setSession(targetUserId);
       } else {
-        // 2. Fallback: Find the first user with this role regardless of roster
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('users')
           .select('id')
           .eq('role', role)
@@ -169,46 +243,66 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({ children }
         if (data?.id) {
           await setSession(data.id);
         } else {
-          console.warn(`No user found for role: ${role}`);
           clearSession();
         }
       }
     } catch (err) {
-      console.error(`Failed to set mock user for role ${role}:`, err);
       clearSession();
     } finally {
       setIsLoading(false);
     }
   }, [setSession, clearSession]);
 
+  const simulateStudentLogin = useCallback((name: string, phone: string, schoolId: string, classId: string, section: string, schoolName?: string) => {
+    setIsLoading(true);
+    const mockId = `sim_${Date.now()}`;
+    const mockUser: DbUser = {
+        id: mockId,
+        name,
+        phone,
+        school_id: schoolId,
+        schoolId: schoolId,
+        role: 'student' as DbRole,
+        grade: classId,
+        section,
+        rollNumber: 'SIM-001'
+    };
+    
+    setCurrentSchool({
+        id: schoolId,
+        name: schoolName || 'Institutional Academy'
+    });
+
+    setCurrentUser(mockUser);
+    setIsLoading(false);
+  }, []);
+
   const updatePushToken = useCallback(async (token: string) => {
     if (!currentUser) return;
     try {
-      const { error } = await supabase
+      await supabase
         .from('users')
         .update({ expo_push_token: token })
         .eq('id', currentUser.id);
-      
-      if (error) throw error;
-      
-      console.log('[MOCK_AUTH] Push Token Synchronized with Supabase');
       setCurrentUser(prev => prev ? { ...prev, expo_push_token: token } : null);
-    } catch (err) {
-      console.warn('[MOCK_AUTH] Push Token Sync Failed:', err);
-    }
+    } catch (err) {}
   }, [currentUser?.id]);
 
   const contextValue = useMemo(() => ({
     currentUser,
     currentSchool,
     isLoading,
+    onboardingStatus,
+    pendingRequest,
     setSession,
     setMockUser,
     updatePushToken,
     clearSession,
-    currentUserRole
-  }), [currentUser, currentSchool, isLoading, setSession, setMockUser, updatePushToken, clearSession, currentUserRole]);
-
+    signInWithOtp,
+    verifyOtp,
+    currentUserRole,
+    simulateStudentLogin
+  }), [currentUser, currentSchool, isLoading, onboardingStatus, pendingRequest, setSession, setMockUser, updatePushToken, clearSession, currentUserRole, simulateStudentLogin]);
 
   return (
     <MockAuthContext.Provider value={contextValue}>
@@ -222,4 +316,3 @@ export const useMockAuth = (): MockAuthContextType => {
   if (!ctx) throw new Error('useMockAuth must be used inside <MockAuthProvider>');
   return ctx;
 };
-

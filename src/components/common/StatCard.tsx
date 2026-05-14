@@ -89,7 +89,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           {icon}
         </View>
 
-        <View className="items-center px-2">
+        <View className="items-center px-4">
           <Text 
             className={`${AppTypography.statValue} text-[22px]`}
             numberOfLines={1}

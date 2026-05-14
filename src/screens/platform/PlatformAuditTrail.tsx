@@ -4,6 +4,7 @@ import { Icons } from '@components/common/Icons';
 import { useSchoolData, SystemLog } from '@context/SchoolDataContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppCard, AppTheme, AppTypography, AppRow, AppFilterBar, StatusPill } from '@components/common';
+import { UnifiedActivityFeed } from '@components/dashboard/UnifiedActivityFeed';
 
 type CategoryFilter = 'ALL' | SystemLog['category'];
 
@@ -49,14 +50,7 @@ export const PlatformAuditTrail: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  const filteredLogs = useMemo(() => {
-    return (systemLogs || []).filter(log => {
-      const matchesSearch   = log.title?.toLowerCase().includes(searchQuery.toLowerCase());
-      const logCategory     = log.category || 'SYSTEM';
-      const matchesCategory = activeCategory === 'ALL' || logCategory === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [systemLogs, searchQuery, activeCategory]);
+  // Filtering logic moved to UnifiedActivityFeed
 
   return (
     <View className="flex-1 bg-white">
@@ -119,47 +113,12 @@ export const PlatformAuditTrail: React.FC = () => {
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
-        {filteredLogs.length === 0 ? (
-          <View className="items-center justify-center py-20">
-            <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-4 border border-gray-100">
-              <Icons.Inbox size={32} color="#d1d5db" />
-            </View>
-            <Text className="text-[15px] font-black text-gray-900 tracking-tight font-inter-black">No History Found</Text>
-            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 font-inter-black">
-              Zero entries match your criteria
-            </Text>
-          </View>
-        ) : (
-          <AppCard className="p-0 overflow-hidden">
-            {filteredLogs.map((log, index) => {
-              const IconComponent = (Icons as any)[log.icon] || Icons.Activity;
-              const category      = log.category || 'SYSTEM';
-              const pillType      = CATEGORY_PILL_TYPE[category] ?? 'neutral';
-              const dotStatus     = CATEGORY_DOT[category] ?? 'none';
-              const logTime       = new Date(log.created_at);
-              const timeStr       = logTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const dateStr       = logTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-              return (
-                <AppRow
-                  key={log.id}
-                  title={log.title}
-                  subtitle={`${dateStr} · ${timeStr}`}
-                  statusDot={dotStatus}
-                  avatarIcon={<IconComponent size={16} color={log.color || AppTheme.colors.primary} />}
-                  avatarBg={log.color ? `${log.color}15` : '#eef2ff'}
-                  pills={
-                    <StatusPill label={category} type={pillType} />
-                  }
-                  showBorder={index < filteredLogs.length - 1}
-                  rightElement={
-                    <Icons.ChevronRight size={14} color="#d1d5db" />
-                  }
-                />
-              );
-            })}
-          </AppCard>
-        )}
+        <UnifiedActivityFeed 
+          showTitle={false}
+          searchQuery={searchQuery}
+          activeCategory={activeCategory}
+          emptyMessage="No History Found. Zero entries match your criteria."
+        />
       </ScrollView>
     </View>
   );

@@ -8,7 +8,12 @@ import { TeacherVideos } from '@screens/teacher/TeacherVideos';
 import { TeacherMessages } from '@screens/teacher/TeacherMessages';
 import { TeacherProfile } from '@screens/teacher/TeacherProfile';
 
+import { TeacherGrading } from '@screens/teacher/TeacherGrading';
+import { TeacherReports } from '@screens/teacher/TeacherReports';
+import { TeacherClassDetail } from '@screens/teacher/TeacherClassDetail';
+
 import { DashboardDomainBundles } from '@/types/dashboard';
+import { TeacherApprovals } from '@screens/teacher/TeacherApprovals';
 
 interface TeacherRouterProps {
     bundle: DashboardDomainBundles['teacher'];
@@ -27,10 +32,46 @@ export const TeacherRouter: React.FC<TeacherRouterProps> = ({ bundle, common }) 
             case 'Post Announcement':
                 actions.setShowAnnouncementModal(true);
                 return;
+            case 'Verification Hub':
+                actions.setShowApprovals?.(true);
+                return;
             default:
                 showToast(`Action: ${action}`);
         }
     };
+
+    if (data.showGrading) {
+        return (
+            <TeacherGrading 
+                onBack={() => { 
+                    actions.setShowGrading?.(false); 
+                    actions.setGradingInitialClass?.(null); 
+                    actions.setSelectedAssignmentForGrading?.(null);
+                }}
+                initialClass={data.gradingInitialClass}
+                initialAssignment={data.selectedAssignmentForGrading}
+                onAddAssignment={(cid) => {
+                    actions.setModalInitialClassId?.(cid || null);
+                    actions.setShowAssignmentModal?.(true);
+                }}
+            />
+        );
+    }
+
+    if (data.showReports) {
+        return (
+            <TeacherReports 
+                assignedSections={data.teacherAssignedSections || []}
+                onBack={() => actions.setShowReports?.(false)}
+                onShowToast={showToast}
+                initialClassId={data.gradingInitialClass?.class_id || data.gradingInitialClass?.id}
+            />
+        );
+    }
+
+    if (data.showApprovals) {
+        return <TeacherApprovals onBack={() => actions.setShowApprovals?.(false)} />;
+    }
 
     switch (activeTab) {
         case 'home':
@@ -123,6 +164,7 @@ export const TeacherRouter: React.FC<TeacherRouterProps> = ({ bundle, common }) 
                     currentUser={currentUser!}
                     onEdit={() => {}} // Placeholder
                     onLogout={onLogout || (() => {})}
+                    recentActivity={data.systemLogs}
                 />
             );
         default:

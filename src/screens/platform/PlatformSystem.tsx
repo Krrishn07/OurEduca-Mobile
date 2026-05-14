@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Switch, KeyboardAvoidingView, Platform, Modal, Alert } from 'react-native';
 import { Icons } from '@components/common/Icons';
 import { useSchoolData } from '@context/SchoolDataContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AppTheme, AppCard, AppTypography, RestrictedAccessView } from '@components/common';
+import { AppTheme, AppCard, AppTypography, RestrictedAccessView, PlatinumHeader, SectionHeader, StatusPill } from '@components/common';
 import { UserRole } from '@/types';
+import { triggerHaptic } from '@utils/haptics';
 
 interface PlatformSystemProps {
     settings?: any;
@@ -40,6 +41,7 @@ export const PlatformSystem: React.FC<PlatformSystemProps> = ({
     });
 
     const handleToggleMaintenance = (value: boolean) => {
+        triggerHaptic();
         const newSettings = { ...formData, maintenanceMode: value };
         setFormData(newSettings);
         onUpdateSettings?.(newSettings);
@@ -47,11 +49,13 @@ export const PlatformSystem: React.FC<PlatformSystemProps> = ({
     };
 
     const handleSave = () => {
+        triggerHaptic();
         onUpdateSettings?.(formData);
         setEditMode(false);
     };
 
     const handleSendBroadcast = () => {
+        triggerHaptic();
         if (!broadcastData.title || !broadcastData.message) {
             Alert.alert("Required", "Provide both a title and message.");
             return;
@@ -61,165 +65,225 @@ export const PlatformSystem: React.FC<PlatformSystemProps> = ({
         setShowBroadcastModal(false);
     };
 
-    const CompactHeader = ({ title, icon: IconComp }: any) => (
-        <View className="flex-row items-center mb-4">
-            <View className="w-8 h-8 rounded-lg bg-indigo-50 items-center justify-center mr-3 border border-indigo-100/50 shadow-sm">
-                <IconComp size={16} color="#4f46e5" />
+    const SettingRow = ({ label, value, onChangeText, placeholder, icon: IconComp, iconColor, isLast = false, keyboardType = 'default' }: any) => (
+        <View>
+            <View className="flex-row items-center p-4">
+                <View 
+                    className="w-10 h-10 rounded-xl items-center justify-center mr-4"
+                    style={{ backgroundColor: `${iconColor}15` }}
+                >
+                    <IconComp size={18} color={iconColor} />
+                </View>
+                <View className="flex-1">
+                    <Text className="text-[9px] font-black text-slate-400 uppercase tracking-[1px] mb-0.5 font-inter-black">{label}</Text>
+                    {editMode ? (
+                        <TextInput
+                            value={value}
+                            onChangeText={onChangeText}
+                            placeholder={placeholder}
+                            placeholderTextColor="#94a3b8"
+                            keyboardType={keyboardType}
+                            className="text-[14px] font-bold text-slate-900 font-inter-bold p-0 min-h-[24px]"
+                        />
+                    ) : (
+                        <Text className="text-[14px] font-bold text-slate-900 font-inter-bold" numberOfLines={1}>
+                            {value || placeholder}
+                        </Text>
+                    )}
+                </View>
             </View>
-            <Text className="text-[11px] font-black text-gray-900 uppercase tracking-widest">{title}</Text>
-        </View>
-    );
-
-    const LabeledInput = ({ label, value, onChangeText, placeholder, keyboardType = 'default' }: any) => (
-        <View className="mb-4">
-            <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">{label}</Text>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor="#94a3b8"
-                editable={editMode}
-                keyboardType={keyboardType as any}
-                className={`bg-gray-50/50 px-4 py-3.5 rounded-2xl border ${editMode ? 'border-gray-200 text-gray-900 bg-white' : 'border-gray-100 text-gray-500'} text-[13px] font-bold`}
-            />
+            {!isLast && <View className="h-[1px] mx-4 bg-slate-50" />}
         </View>
     );
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-[#f5f7ff]">
-            {/* 1. Cinematic Hero Header */}
-            <LinearGradient 
-                colors={AppTheme.colors.gradients.brand} 
-                start={{x: 0, y: 0}} 
-                end={{x: 1, y: 1}} 
-                className="px-6 pt-5 pb-12 rounded-b-[40px] shadow-2xl shadow-indigo-200 z-20"
-            >
-                <View className="absolute right-[-20] bottom-[-20] opacity-10 transform rotate-12">
-                    <Icons.Settings size={160} color="white" />
-                </View>
-                <View className="flex-row justify-between items-center relative z-10">
-                    <View className="flex-1 mr-4">
-                        <Text className={`${AppTypography.heroTitle} text-white`} numberOfLines={1}>Platform Settings</Text>
-                        <Text className={`${AppTypography.eyebrow} text-white/60 mt-1.5`}>System Controls</Text>
-                    </View>
-                    {!editMode ? (
-                        <TouchableOpacity onPress={() => setEditMode(true)} className="bg-white/10 p-3 rounded-2xl border border-white/20 active:scale-95">
-                            <Icons.Edit size={20} color="white" />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-[#fbfbfe]">
+            {/* 1. Control Stage - High-Fidelity Platinum Header */}
+            <PlatinumHeader 
+                title="System Settings"
+                subtitle="PLATFORM CONFIGURATION"
+                rightAction={
+                    !editMode ? (
+                        <TouchableOpacity 
+                            onPress={() => { triggerHaptic(); setEditMode(true); }} 
+                            className="w-10 h-10 bg-white border border-slate-200 rounded-full items-center justify-center active:scale-95 shadow-sm"
+                        >
+                            <Icons.Edit size={18} color="#4f46e5" />
                         </TouchableOpacity>
                     ) : (
-                        <View className="flex-row items-center gap-3">
-                            <TouchableOpacity onPress={() => setEditMode(false)} className="bg-white/10 p-3 rounded-2xl border border-white/20 active:scale-95">
-                                <Icons.Close size={20} color="white" />
+                        <View className="flex-row items-center gap-2">
+                            <TouchableOpacity 
+                                onPress={() => { triggerHaptic(); setEditMode(false); }} 
+                                className="w-10 h-10 bg-white border border-slate-200 rounded-full items-center justify-center active:scale-95 shadow-sm"
+                            >
+                                <Icons.Close size={18} color="#64748b" />
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleSave} className="bg-white p-3 rounded-2xl shadow-lg shadow-indigo-500/20 active:scale-95">
-                                <Icons.Check size={20} color="#4f46e5" />
+                            <TouchableOpacity 
+                                onPress={handleSave} 
+                                className="w-10 h-10 bg-indigo-600 rounded-full items-center justify-center active:scale-95 shadow-md shadow-indigo-200"
+                            >
+                                <Icons.Check size={18} color="white" />
                             </TouchableOpacity>
                         </View>
-                    )}
-                </View>
-            </LinearGradient>
+                    )
+                }
+            />
 
             <ScrollView 
-                className="flex-1 px-6 pt-8" 
+                className="flex-1" 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
             >
-                {/* 2. Brand Identity Card */}
-                <AppCard className="mb-6 border border-gray-100 p-5">
-                    <CompactHeader title="Branding & Name" icon={Icons.School} />
-                    <LabeledInput label="Platform Name" value={formData.platformName} onChangeText={(t: string) => setFormData({...formData, platformName: t})} placeholder="Oureduca" />
-                </AppCard>
-
-                {/* 3. Support Contacts */}
-                <AppCard className="mb-6 border border-gray-100 p-5">
-                    <CompactHeader title="Contact Information" icon={Icons.Phone} />
-                    <View className="flex-row gap-4">
-                        <View className="flex-1"><LabeledInput label="Admin Email" value={formData.supportEmail} onChangeText={(t: string) => setFormData({...formData, supportEmail: t})} placeholder="admin@domain.com" keyboardType="email-address" /></View>
-                        <View className="flex-1"><LabeledInput label="Support Phone" value={formData.supportPhone} onChangeText={(t: string) => setFormData({...formData, supportPhone: t})} placeholder="+1 (555) 000-0000" keyboardType="phone-pad" /></View>
-                    </View>
-                </AppCard>
-
-                {/* 4. App Status & Performance */}
-                <AppCard className="mb-6 border border-gray-100 p-5">
-                    <CompactHeader title="App Status" icon={Icons.Zap} />
-                    
-                    <View className={`p-4 flex-row justify-between items-center border rounded-2xl mb-4 shadow-sm ${formData.maintenanceMode ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
-                        <View className="flex-row items-center flex-1">
-                            <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${formData.maintenanceMode ? 'bg-rose-500' : 'bg-emerald-500'}`}>
-                                <Icons.Alert size={18} color="white" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-sm font-bold text-gray-900 tracking-tight">Maintenance Mode</Text>
-                                <Text className={`text-[8px] font-black uppercase tracking-widest mt-0.5 ${formData.maintenanceMode ? 'text-rose-600' : 'text-emerald-600'}`}>{formData.maintenanceMode ? 'PAUSED' : 'LIVE'}</Text>
-                            </View>
-                        </View>
-                        <Switch value={formData.maintenanceMode} onValueChange={handleToggleMaintenance} trackColor={{ false: '#e2e8f0', true: '#ef4444' }} thumbColor="#ffffff" />
-                    </View>
-
-                    <View className="flex-row gap-4">
-                        <View className={`flex-1 p-4 rounded-xl border shadow-sm ${healthStatus === 'Optimal' ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
-                            <Text className={`text-[8px] font-black uppercase tracking-widest mb-1 ${healthStatus === 'Optimal' ? 'text-emerald-600' : 'text-rose-600'}`}>System Health</Text>
-                            <Text className="text-lg font-black text-gray-900 tracking-tighter">{healthStatus}</Text>
-                        </View>
-                        <View className="flex-1 bg-gray-50/50 p-4 rounded-xl border border-gray-100 shadow-sm">
-                            <Text className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Server Delay</Text>
-                            <Text className="text-lg font-black text-gray-900 tracking-tighter">{dbLatency}ms</Text>
-                        </View>
-                    </View>
-                </AppCard>
-
-                {/* 5. Notification Card */}
-                <AppCard className="mb-6 border border-gray-100 p-5 shadow-sm">
-                    <CompactHeader title="Send Global Alert" icon={Icons.Notifications} />
-                    <TouchableOpacity onPress={() => setShowBroadcastModal(true)} activeOpacity={0.8} className="active:scale-95 transition-all">
-                        <LinearGradient colors={AppTheme.colors.gradients.brand} start={{x: 0, y: 0}} end={{x: 1, y: 1}} className="py-4 rounded-[16px] items-center flex-row justify-center shadow-md shadow-indigo-200">
-                            <Icons.Messages size={20} color="white" />
-                            <Text className="text-white font-black ml-3 uppercase tracking-[2px] text-[10px]">Send Notification</Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </AppCard>
-
-                <View className="mt-12 items-center opacity-30">
-                    <Text className="text-[10px] font-black text-gray-500 uppercase tracking-[4px]">OurEduca Hub v2.4.0</Text>
+                {/* 2. Brand & Contact Identity */}
+                <View className="px-5 mb-8">
+                    <SectionHeader title="BRAND & IDENTITY" className="px-1 mb-4" />
+                    <AppCard className="p-0 overflow-hidden border-white shadow-xl shadow-indigo-100/20 rounded-[16px]">
+                        <SettingRow 
+                            label="Platform Name" 
+                            value={formData.platformName} 
+                            onChangeText={(t: string) => setFormData({...formData, platformName: t})} 
+                            placeholder="Oureduca" 
+                            icon={Icons.School} 
+                            iconColor="#4f46e5" 
+                        />
+                        <SettingRow 
+                            label="Admin Email" 
+                            value={formData.supportEmail} 
+                            onChangeText={(t: string) => setFormData({...formData, supportEmail: t})} 
+                            placeholder="admin@domain.com" 
+                            icon={Icons.Messages} 
+                            iconColor="#4f46e5" 
+                            keyboardType="email-address"
+                        />
+                        <SettingRow 
+                            label="Support Phone" 
+                            value={formData.supportPhone} 
+                            onChangeText={(t: string) => setFormData({...formData, supportPhone: t})} 
+                            placeholder="+1 (555) 000-0000" 
+                            icon={Icons.Phone} 
+                            iconColor="#4f46e5" 
+                            keyboardType="phone-pad"
+                            isLast={true}
+                        />
+                    </AppCard>
                 </View>
 
-                {/* Notification Modal - High Fidelity Architecture */}
-                <Modal visible={showBroadcastModal} transparent animationType="slide">
-                    <View className="flex-1 bg-black/60 items-center justify-center px-6">
-                        <View className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl border border-gray-100">
-                            <LinearGradient colors={AppTheme.colors.gradients.brand} start={{x: 0, y: 0}} end={{x: 1, y: 0}} className="px-6 py-6 flex-row justify-between items-center">
+                {/* 3. System Status & Performance */}
+                <View className="px-5 mb-8">
+                    <SectionHeader 
+                        title="SYSTEM CONTROLS" 
+                        className="px-1 mb-4"
+                        rightElement={<StatusPill label={formData.maintenanceMode ? 'Maintenance' : 'Live'} type={formData.maintenanceMode ? 'warning' : 'success'} />}
+                    />
+                    
+                    <AppCard className="p-0 overflow-hidden border-white shadow-xl shadow-indigo-100/20 rounded-[16px]">
+                        <View className="flex-row items-center p-4">
+                            <View 
+                                className="w-10 h-10 rounded-xl items-center justify-center mr-4"
+                                style={{ backgroundColor: `${formData.maintenanceMode ? '#f43f5e' : '#10b981'}15` }}
+                            >
+                                <Icons.Alert size={18} color={formData.maintenanceMode ? '#f43f5e' : '#10b981'} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-[9px] font-black text-slate-400 uppercase tracking-[1px] mb-0.5 font-inter-black">Maintenance Mode</Text>
+                                <Text className="text-[14px] font-bold text-slate-900 font-inter-bold">{formData.maintenanceMode ? 'TRAFFIC PAUSED' : 'SYSTEMS LIVE'}</Text>
+                            </View>
+                            <Switch 
+                                value={formData.maintenanceMode} 
+                                onValueChange={handleToggleMaintenance} 
+                                trackColor={{ false: '#f1f5f9', true: '#f43f5e' }} 
+                                thumbColor="#ffffff" 
+                            />
+                        </View>
+                        <View className="h-[1px] mx-4 bg-slate-50" />
+                        <View className="flex-row items-center p-4">
+                            <View className="w-10 h-10 rounded-xl items-center justify-center mr-4 bg-emerald-50">
+                                <Icons.Activity size={18} color="#10b981" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-[9px] font-black text-slate-400 uppercase tracking-[1px] mb-0.5 font-inter-black">Health Status</Text>
+                                <Text className="text-[14px] font-bold text-emerald-600 font-inter-bold">{healthStatus}</Text>
+                            </View>
+                            <View className="h-full w-[1px] bg-slate-50 mx-4" />
+                            <View className="flex-1">
+                                <Text className="text-[9px] font-black text-slate-400 uppercase tracking-[1px] mb-0.5 font-inter-black">Server Latency</Text>
+                                <Text className="text-[14px] font-bold text-slate-900 font-inter-bold">{dbLatency}ms</Text>
+                            </View>
+                        </View>
+                    </AppCard>
+                </View>
+
+                {/* 4. Global Communication */}
+                <View className="px-5 mb-10">
+                    <SectionHeader title="GLOBAL COMMUNICATION" className="px-1 mb-4" />
+                    <TouchableOpacity 
+                        onPress={() => { triggerHaptic(); setShowBroadcastModal(true); }} 
+                        activeOpacity={0.9} 
+                        className="active:scale-[0.98]"
+                    >
+                        <AppCard className="p-0 overflow-hidden border-indigo-100 shadow-xl shadow-indigo-100/20 rounded-[16px]">
+                            <LinearGradient 
+                                colors={AppTheme.colors.gradients.brand} 
+                                start={{x: 0, y: 0}} 
+                                end={{x: 1, y: 1}} 
+                                className="p-5 items-center flex-row justify-between"
+                            >
                                 <View className="flex-row items-center">
-                                    <View className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 items-center justify-center mr-3">
-                                        <Icons.Radio size={18} color="white" />
+                                    <View className="w-11 h-11 rounded-2xl bg-white/20 items-center justify-center mr-4 border border-white/30">
+                                        <Icons.Radio size={20} color="white" />
                                     </View>
                                     <View>
-                                        <Text className="text-white text-lg font-black tracking-tighter">Send Announcement</Text>
-                                        <Text className="text-indigo-200 text-[8px] font-black uppercase tracking-[2px]">App Notifications</Text>
+                                        <Text className="text-white text-[15px] font-black tracking-tight font-inter-black">Broadcast Alert</Text>
+                                        <Text className="text-white/70 text-[9px] font-black uppercase tracking-widest font-inter-black">Send to all dashboards</Text>
                                     </View>
                                 </View>
-                                <TouchableOpacity onPress={() => setShowBroadcastModal(false)} className="bg-white/10 p-2.5 rounded-full border border-white/10 active:scale-95">
+                                <Icons.ChevronRight size={18} color="white" />
+                            </LinearGradient>
+                        </AppCard>
+                    </TouchableOpacity>
+                </View>
+
+                <View className="py-10 items-center opacity-30">
+                    <Text className="text-[10px] font-black text-slate-400 uppercase tracking-[4px] font-inter-black">OurEduca Hub v2.5.0</Text>
+                </View>
+
+                {/* Broadcast Modal - High Fidelity Architecture */}
+                <Modal visible={showBroadcastModal} transparent animationType="slide">
+                    <View className="flex-1 bg-black/60 items-center justify-center px-6">
+                        <View className="bg-white w-full max-w-sm rounded-[16px] overflow-hidden shadow-2xl border border-slate-100">
+                            <LinearGradient colors={AppTheme.colors.gradients.brand} start={{x: 0, y: 0}} end={{x: 1, y: 0}} className="px-8 py-8 flex-row justify-between items-center">
+                                <View className="flex-row items-center">
+                                    <View className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 items-center justify-center mr-4">
+                                        <Icons.Radio size={20} color="white" />
+                                    </View>
+                                    <View>
+                                        <Text className="text-white text-[18px] font-black tracking-tighter font-inter-black">Announce</Text>
+                                        <Text className="text-indigo-200 text-[9px] font-black uppercase tracking-[2px] font-inter-black">Global Broadcast</Text>
+                                    </View>
+                                </View>
+                                <TouchableOpacity onPress={() => setShowBroadcastModal(false)} className="bg-white/20 w-10 h-10 rounded-full items-center justify-center active:scale-95">
                                     <Icons.Close size={18} color="white" />
                                 </TouchableOpacity>
                             </LinearGradient>
 
-                            <View className="p-6 bg-gray-50/30">
-                                <View className="gap-4">
+                            <View className="p-8">
+                                <View className="gap-5">
                                     <View>
-                                        <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Message Title</Text>
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-inter-black">Subject Line</Text>
                                         <TextInput 
-                                            className="bg-white px-4 py-4 rounded-2xl text-[13px] font-black text-gray-900 border border-gray-100 shadow-sm" 
-                                            placeholder="e.g. School Update" 
-                                            placeholderTextColor="#9ca3af" 
+                                            className="bg-slate-50 px-4 py-4 rounded-2xl text-[14px] font-black text-slate-900 border border-slate-100 shadow-inner font-inter-black" 
+                                            placeholder="e.g. Critical System Update" 
+                                            placeholderTextColor="#94a3b8" 
                                             value={broadcastData.title} 
                                             onChangeText={(t) => setBroadcastData({...broadcastData, title: t})} 
                                         />
                                     </View>
                                     <View>
-                                        <Text className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Message Content</Text>
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-inter-black">Message Content</Text>
                                         <TextInput 
-                                            className="bg-white px-4 py-4 rounded-2xl text-[13px] font-black text-gray-700 border border-gray-100 shadow-sm min-h-[120px]" 
-                                            placeholder="Type your message here..." 
-                                            placeholderTextColor="#9ca3af" 
+                                            className={`bg-slate-50 px-4 py-4 rounded-2xl text-[14px] font-black text-slate-700 border border-slate-100 shadow-inner ${Platform.OS === 'ios' ? 'min-h-[140px]' : 'h-[140px]'} font-inter-black`}
+                                            placeholder="Write your announcement..." 
+                                            placeholderTextColor="#94a3b8" 
                                             multiline 
                                             textAlignVertical="top" 
                                             value={broadcastData.message} 
@@ -228,20 +292,20 @@ export const PlatformSystem: React.FC<PlatformSystemProps> = ({
                                     </View>
                                 </View>
                                 
-                                <View className="mt-5 bg-amber-50 p-4 rounded-2xl border border-amber-100 flex-row items-center shadow-sm">
-                                    <Icons.Alert size={16} color="#d97706" />
+                                <View className="mt-6 bg-amber-50 p-4 rounded-3xl border border-amber-100 flex-row items-center">
+                                    <Icons.Alert size={18} color="#d97706" />
                                     <View className="ml-3 flex-1">
-                                        <Text className="text-[9px] text-amber-800 font-black uppercase tracking-widest leading-none mb-1">System Note</Text>
-                                        <Text className="text-[11px] text-amber-900 font-bold tracking-tight">This message will be sent to all users immediately.</Text>
+                                        <Text className="text-[12px] text-amber-900 font-bold tracking-tight font-inter-bold">Sent to all institutional dashboards instantly.</Text>
                                     </View>
                                 </View>
-                            </View>
 
-                            <View className="p-6 bg-white border-t border-gray-100">
-                                <TouchableOpacity onPress={handleSendBroadcast} className="active:scale-95 shadow-lg shadow-indigo-100 transition-all">
-                                    <LinearGradient colors={AppTheme.colors.gradients.brand} className="py-4.5 rounded-2xl items-center flex-row justify-center">
-                                        <Icons.Radio size={16} color="white" />
-                                        <Text className="text-white font-black uppercase tracking-[2px] text-[11px] ml-3">Send Now</Text>
+                                <TouchableOpacity 
+                                    onPress={handleSendBroadcast} 
+                                    className="mt-8 active:scale-95 shadow-xl shadow-indigo-100 transition-all"
+                                >
+                                    <LinearGradient colors={AppTheme.colors.gradients.brand} className="py-5 rounded-[24px] items-center flex-row justify-center">
+                                        <Icons.Radio size={18} color="white" />
+                                        <Text className="text-white font-black uppercase tracking-[2px] text-[12px] ml-3 font-inter-black">Send Announcement</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
                             </View>
